@@ -28,6 +28,7 @@ pub mod cli;
 pub mod closure;
 pub mod identity;
 pub mod model;
+pub mod path_effect;
 pub mod profile;
 pub mod source;
 pub mod support;
@@ -42,6 +43,15 @@ pub use model::{
     EvidenceRef, ExecutionMode, FrfReceiptId, FuzzContentId, GemelGid, Hazard, Obligation,
     ObligationState, OutcomeCategory, PremiseKind, Property, Quantifier, ResidualClass,
     ReviewRecord, ScopeAnchors, TrustPremise,
+};
+pub use path_effect::{
+    analyze, analyze_inventory, path_input_from_inventory, validate_input, AccessMode, AliasDecl,
+    AliasKind, ByteRange, CallbackBehavior, CallbackDecl, EventKind, EventRef, Footprint,
+    FootprintKind, ObjectDecl, PathEffectsInput, PathError, PathErrorCategory, PathEvent,
+    PathReport, PathUnknown, ProviderBehavior, ProviderDecl, QualifiedOutcome, QualifiedStatus,
+    ReferenceIntervalDecl, MAX_OUTCOMES, MAX_PAIR_CHECKS, MAX_PATH_EVENTS,
+    PATH_EFFECT_CLAIM_CEILING, PATH_EFFECT_INPUT_SCHEMA, PATH_EFFECT_REPORT_SCHEMA,
+    PATH_EFFECT_SPEC,
 };
 pub use profile::{
     evaluate_profile, evaluate_profile_json, local_buffer_bundle, local_buffer_claims,
@@ -102,6 +112,10 @@ pub fn capabilities() -> Capabilities {
             "named finite-profile refusal checks with deny_unknown_fields",
             "bounded syntax-only Rust source inventory with pinned syn 2.x full/visit",
             "source scan limits, explicit unknowns, symlink refusal, and canonical JSON",
+            "finite explicit-input path effects: exact/descendant/top aliases and footprints",
+            "typed observed-conflict, omission, not-falsified, and finite-compatible outcomes",
+            "C callback retention, deferral, after-free, and foreign/provider uncertainty",
+            "path analyze CLI over explicit input or a Phase 3.1 source inventory",
             "footprint and reference-interval conflict classification types",
             "lifecycle responsibility trace types",
             "detector calibration receipt adjudication types",
@@ -117,8 +131,10 @@ pub fn capabilities() -> Capabilities {
             "live Gemel publication",
             "live OpenSSL-Rust Safe-33 native courts",
             "native proof-checker adapter",
-            "MIR/compiler-resolved caller graph and whole-program closure (phase 3.2/3.3)",
-            "alias, footprint, and reference-interval semantics (phase 3.2/3.3)",
+            "MIR/compiler-resolved caller graph and whole-program closure (phase 3.3+)",
+            "source- or MIR-extracted alias, footprint, and reference-interval semantics",
+            "native C callback observation and retained-pointer lifecycle recording",
+            "whole-program or universal alias-compatibility claims",
             "universal safe-interior or SAFE_COMPATIBLE acceptance",
         ],
         external_authorities: vec![
