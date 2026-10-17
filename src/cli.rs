@@ -13,11 +13,16 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use crate::identity::{parse_strict, require_canonical, MsId, MAX_BYTES};
+use crate::path_effect::{
+    analyze, analyze_inventory, PathEffectsInput, PathErrorCategory, PATH_EFFECT_INPUT_SCHEMA,
+};
 use crate::profile::{
     canonical_bundle_bytes, evaluate_profile_json, local_buffer_bundle, local_buffer_records,
     ProfileEvaluation, ProfileRefusalKind, UNIVERSAL_SOUNDNESS,
 };
-use crate::source::{scan_source_default, SourceError, SourceErrorCategory};
+use crate::source::{
+    scan_source_default, SourceError, SourceErrorCategory, SourceInventory, SOURCE_INVENTORY_SCHEMA,
+};
 use crate::support::{evaluate, explain, RuleSystem, SupportError, SupportPolicy};
 
 /// Command completed and its declared checks passed.
@@ -46,6 +51,7 @@ Commands:
   support evaluate FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
   support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
   source scan PATH [--json]
+  path analyze FILE [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -92,6 +98,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "profile" => command_profile(&args[1..]),
         "support" => command_support(&args[1..]),
         "source" => Ok(command_source(&args[1..])),
+        "path" => Ok(command_path(&args[1..])),
         "evidence" => command_evidence(&args[1..]),
         "report" => command_report(&args[1..]),
         "court" => command_not_run("court run", args),
@@ -127,6 +134,8 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
             "canonical_schema": crate::CANONICAL_SCHEMA,
             "profile_schema": crate::profile::PROFILE_SCHEMA,
             "source_inventory_schema": crate::source::SOURCE_INVENTORY_SCHEMA,
+            "path_effects_input_schema": crate::path_effect::PATH_EFFECT_INPUT_SCHEMA,
+            "path_effects_report_schema": crate::path_effect::PATH_EFFECT_REPORT_SCHEMA,
             "universal_soundness": UNIVERSAL_SOUNDNESS,
         }))?;
     } else {
@@ -135,6 +144,10 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
         println!(
             "source inventory schema: {}",
             crate::source::SOURCE_INVENTORY_SCHEMA
+        );
+        println!(
+            "path-effects input schema: {}",
+            crate::path_effect::PATH_EFFECT_INPUT_SCHEMA
         );
         println!("universal soundness: {UNIVERSAL_SOUNDNESS}");
     }
@@ -286,6 +299,112 @@ fn source_error_exit(error: &SourceError) -> i32 {
         SourceErrorCategory::Usage => EXIT_USAGE,
         SourceErrorCategory::Integrity => EXIT_INTEGRITY,
         SourceErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn command_path(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("analyze") {
+        eprintln!("usage: path analyze FILE [--json]");
+        return EXIT_USAGE;
+    }
+    let mut path = None;
+    let mut json = false;
+    for argument in &rest[1..] {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: path analyze FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: path analyze FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: path analyze FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let value = match parse_strict(&bytes) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("invalid path-effects input: {error}");
+            return EXIT_INTEGRITY;
+        }
+    };
+    let schema = value.get("schema").and_then(|item| item.as_str());
+    let report = match schema {
+        Some(PATH_EFFECT_INPUT_SCHEMA) => {
+            let input: PathEffectsInput = match serde_json::from_value(value) {
+                Ok(input) => input,
+                Err(error) => {
+                    eprintln!("invalid path-effects input: {error}");
+                    return EXIT_INTEGRITY;
+                }
+            };
+            analyze(&input)
+        }
+        Some(SOURCE_INVENTORY_SCHEMA) => {
+            let inventory: SourceInventory = match serde_json::from_value(value) {
+                Ok(inventory) => inventory,
+                Err(error) => {
+                    eprintln!("invalid source inventory: {error}");
+                    return EXIT_INTEGRITY;
+                }
+            };
+            analyze_inventory(&inventory)
+        }
+        Some(other) => {
+            eprintln!(
+                "unsupported path-effects input schema: {other}; expected {PATH_EFFECT_INPUT_SCHEMA} or {SOURCE_INVENTORY_SCHEMA}"
+            );
+            return EXIT_INTEGRITY;
+        }
+        None => {
+            eprintln!("path-effects input is missing a schema field");
+            return EXIT_INTEGRITY;
+        }
+    };
+    let report = match report {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return path_error_exit(error.category());
+        }
+    };
+    let bytes = match report.canonical_bytes() {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return path_error_exit(error.category());
+        }
+    };
+    // `--json` is accepted explicitly; both spellings emit the same canonical
+    // machine form so callers cannot accidentally depend on a lossy pretty form.
+    let _ = json;
+    if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write path-effects report: {error}");
+        return EXIT_HARNESS;
+    }
+    EXIT_OK
+}
+
+fn path_error_exit(category: PathErrorCategory) -> i32 {
+    match category {
+        PathErrorCategory::Usage => EXIT_USAGE,
+        PathErrorCategory::Integrity => EXIT_INTEGRITY,
+        PathErrorCategory::Harness => EXIT_HARNESS,
     }
 }
 
