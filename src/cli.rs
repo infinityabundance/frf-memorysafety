@@ -6,6 +6,7 @@
 
 use std::collections::BTreeSet;
 use std::fs;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use serde::de::DeserializeOwned;
@@ -16,6 +17,7 @@ use crate::profile::{
     canonical_bundle_bytes, evaluate_profile_json, local_buffer_bundle, local_buffer_records,
     ProfileEvaluation, ProfileRefusalKind, UNIVERSAL_SOUNDNESS,
 };
+use crate::source::{scan_source_default, SourceError, SourceErrorCategory};
 use crate::support::{evaluate, explain, RuleSystem, SupportError, SupportPolicy};
 
 /// Command completed and its declared checks passed.
@@ -43,6 +45,7 @@ Commands:
   profile enumerate --out DIR
   support evaluate FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
   support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
+  source scan PATH [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -88,6 +91,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "capabilities" => command_capabilities(&args[1..]),
         "profile" => command_profile(&args[1..]),
         "support" => command_support(&args[1..]),
+        "source" => Ok(command_source(&args[1..])),
         "evidence" => command_evidence(&args[1..]),
         "report" => command_report(&args[1..]),
         "court" => command_not_run("court run", args),
@@ -122,11 +126,16 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
             "version": env!("CARGO_PKG_VERSION"),
             "canonical_schema": crate::CANONICAL_SCHEMA,
             "profile_schema": crate::profile::PROFILE_SCHEMA,
+            "source_inventory_schema": crate::source::SOURCE_INVENTORY_SCHEMA,
             "universal_soundness": UNIVERSAL_SOUNDNESS,
         }))?;
     } else {
         println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         println!("canonical schema: {}", crate::CANONICAL_SCHEMA);
+        println!(
+            "source inventory schema: {}",
+            crate::source::SOURCE_INVENTORY_SCHEMA
+        );
         println!("universal soundness: {UNIVERSAL_SOUNDNESS}");
     }
     Ok(EXIT_OK)
@@ -219,6 +228,65 @@ fn command_profile_enumerate(rest: &[String]) -> Result<i32, String> {
         "universal_soundness": UNIVERSAL_SOUNDNESS,
     }))?;
     Ok(EXIT_OK)
+}
+
+fn command_source(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("scan") {
+        eprintln!("usage: source scan PATH [--json]");
+        return EXIT_USAGE;
+    }
+    let mut path = None;
+    let mut json = false;
+    for argument in &rest[1..] {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: source scan PATH [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: source scan PATH [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: source scan PATH [--json]");
+        return EXIT_USAGE;
+    };
+    let inventory = match scan_source_default(path) {
+        Ok(inventory) => inventory,
+        Err(error) => {
+            eprintln!("{error}");
+            return source_error_exit(&error);
+        }
+    };
+    let bytes = match inventory.canonical_bytes() {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    };
+    // `--json` is accepted explicitly; both spellings emit the same canonical
+    // machine form so callers cannot accidentally depend on a lossy pretty form.
+    let _ = json;
+    if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write source inventory: {error}");
+        return EXIT_HARNESS;
+    }
+    EXIT_OK
+}
+
+fn source_error_exit(error: &SourceError) -> i32 {
+    match error.category() {
+        SourceErrorCategory::Usage => EXIT_USAGE,
+        SourceErrorCategory::Integrity => EXIT_INTEGRITY,
+        SourceErrorCategory::Harness => EXIT_HARNESS,
+    }
 }
 
 fn command_support(rest: &[String]) -> Result<i32, String> {
