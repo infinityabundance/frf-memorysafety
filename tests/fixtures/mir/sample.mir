@@ -1,0 +1,164 @@
+// WARNING: This output format is intended for human consumers only
+// and is subject to change without notice. Knock yourself out.
+fn add(_1: i32, _2: i32) -> i32 {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: i32;
+    let mut _3: (i32, bool);
+    scope 1 {
+        debug c => _0;
+    }
+
+    bb0: {
+        _3 = AddWithOverflow(copy _1, copy _2);
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", copy _1, copy _2) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = move (_3.0: i32);
+        return;
+    }
+}
+
+fn use_ref(_1: &mut Holder) -> i32 {
+    debug input => _1;
+    let mut _0: i32;
+    let mut _2: u8;
+
+    bb0: {
+        StorageLive(_2);
+        ((*_1).0: u8) = const 7_u8;
+        _2 = copy ((*_1).0: u8);
+        _0 = <i32 as From<u8>>::from(move _2) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageDead(_2);
+        return;
+    }
+}
+
+fn maybe_drop(_1: bool) -> () {
+    debug flag => _1;
+    let mut _0: ();
+    let _2: Holder;
+    let _3: ();
+    scope 1 {
+        debug holder => _2;
+    }
+
+    bb0: {
+        _2 = Holder { value: const 1_u8 };
+        switchInt(copy _1) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _3 = std::mem::drop::<Holder>(move _2) -> [return: bb2, unwind continue];
+    }
+
+    bb2: {
+        MysteryOp(copy _1);
+        return;
+    }
+}
+
+fn callback_use(_1: fn(i32) -> i32) -> i32 {
+    debug f => _1;
+    let mut _0: i32;
+
+    bb0: {
+        _0 = copy _1(const 3_i32) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}
+
+fn raw(_1: *mut u8) -> i32 {
+    debug ptr => _1;
+    let mut _0: i32;
+
+    bb0: {
+        _0 = foreign_work(copy _1) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: Holder;
+    let mut _2: i32;
+    let mut _3: i32;
+    let mut _4: &mut Holder;
+    let _5: ();
+    let mut _6: i32;
+    let mut _7: fn(i32) -> i32;
+    let mut _9: i32;
+    let mut _10: *mut u8;
+    let mut _11: &mut u8;
+    scope 1 {
+        debug holder => _1;
+        scope 2 {
+            scope 3 {
+                scope 4 {
+                    let mut _8: u8;
+                    scope 5 {
+                        debug byte => _8;
+                        scope 6 {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _1 = Holder { value: const 2_u8 };
+        _2 = add(const 1_i32, const 2_i32) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _4 = &mut _1;
+        _3 = use_ref(copy _4) -> [return: bb2, unwind continue];
+    }
+
+    bb2: {
+        _5 = maybe_drop(const true) -> [return: bb3, unwind continue];
+    }
+
+    bb3: {
+        _7 = const ZeroSized: {closure@sample.rs:41:26: 41:33} as fn(i32) -> i32 (PointerCoercion(ClosureFnPointer(Safe), Implicit));
+        _6 = callback_use(move _7) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        _8 = const 0_u8;
+        _11 = &mut _8;
+        _10 = &raw mut (*_11);
+        _9 = raw(move _10) -> [return: bb5, unwind continue];
+    }
+
+    bb5: {
+        return;
+    }
+}
+
+fn main::{closure#0}(_1: &{closure@sample.rs:41:26: 41:33}, _2: i32) -> i32 {
+    debug value => _2;
+    let mut _0: i32;
+    let mut _3: (i32, bool);
+
+    bb0: {
+        _3 = AddWithOverflow(copy _2, const 1_i32);
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", copy _2, const 1_i32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = move (_3.0: i32);
+        return;
+    }
+}

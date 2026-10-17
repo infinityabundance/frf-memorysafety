@@ -27,6 +27,7 @@
 pub mod cli;
 pub mod closure;
 pub mod identity;
+pub mod mir;
 pub mod model;
 pub mod path_effect;
 pub mod profile;
@@ -37,6 +38,13 @@ pub use closure::{compare_inventory, CoverageOutcome, EdgeKey};
 pub use identity::{
     canonical_bytes, digest_bytes, digest_value, parse_strict, require_canonical, IdentityDomain,
     IdentityError, MsId, CANONICAL_SCHEMA,
+};
+pub use mir::{
+    parse_mir_text, MirAdapter, MirCallEdge, MirCalleeForm, MirDereference, MirDrop, MirDropKind,
+    MirError, MirErrorCategory, MirFunction, MirLimits, MirNotRun, MirNotRunReason, MirObservation,
+    MirProvenance, MirResolution, MirRunStatus, MirScanOutcome, MirStorageKind, MirStorageMarker,
+    MirSummary, MirUnknown, MIR_CLAIM_CEILING, MIR_EDITION, MIR_NOT_RUN_SCHEMA,
+    MIR_OBSERVATION_SCHEMA, MIR_SPEC, MIR_TOOLCHAIN,
 };
 pub use model::{
     ClaimAxis, ClaimKey, ClaimRecord, ClosureState, DetectorKind, DetectorOutcome, EpistemicStatus,
