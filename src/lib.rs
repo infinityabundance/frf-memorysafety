@@ -29,6 +29,7 @@ pub mod closure;
 pub mod identity;
 pub mod model;
 pub mod profile;
+pub mod source;
 pub mod support;
 
 pub use closure::{compare_inventory, CoverageOutcome, EdgeKey};
@@ -49,6 +50,11 @@ pub use profile::{
     ProfileClaim, ProfileEvaluation, ProfilePolicy, ProfileRefusal, ProfileRefusalKind,
     ProfileRule, BUFFER_MODEL_ID, BUFFER_RECORD_COUNT, CLAIMS_PER_VARIANT, PROFILE_SCHEMA,
     PROFILE_SPEC, SCENARIOS_PER_VARIANT, UNIVERSAL_SOUNDNESS,
+};
+pub use source::{
+    scan_source, scan_source_default, FindingKind, ScanLimits, SourceError, SourceErrorCategory,
+    SourceFileRecord, SourceFileRole, SourceFinding, SourceInventory, SourceSummary, SourceUnknown,
+    UnknownKind, SOURCE_INVENTORY_CLAIM_CEILING, SOURCE_INVENTORY_SCHEMA, SOURCE_INVENTORY_SPEC,
 };
 pub use support::{
     certificates, evaluate, exact_cut, explain, noninterference, reconstruct_recorded_verdict,
@@ -94,6 +100,8 @@ pub fn capabilities() -> Capabilities {
             "finite three-rule semantic profile (enumeration, restriction, conjunction)",
             "deterministic local buffer model: 24 records, 5 claims per variant",
             "named finite-profile refusal checks with deny_unknown_fields",
+            "bounded syntax-only Rust source inventory with pinned syn 2.x full/visit",
+            "source scan limits, explicit unknowns, symlink refusal, and canonical JSON",
             "footprint and reference-interval conflict classification types",
             "lifecycle responsibility trace types",
             "detector calibration receipt adjudication types",
@@ -109,6 +117,8 @@ pub fn capabilities() -> Capabilities {
             "live Gemel publication",
             "live OpenSSL-Rust Safe-33 native courts",
             "native proof-checker adapter",
+            "MIR/compiler-resolved caller graph and whole-program closure (phase 3.2/3.3)",
+            "alias, footprint, and reference-interval semantics (phase 3.2/3.3)",
             "universal safe-interior or SAFE_COMPATIBLE acceptance",
         ],
         external_authorities: vec![
