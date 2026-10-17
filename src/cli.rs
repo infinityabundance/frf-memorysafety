@@ -8,14 +8,15 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use crate::identity::{parse_strict, require_canonical, MAX_BYTES};
+use crate::identity::{parse_strict, require_canonical, MsId, MAX_BYTES};
 use crate::profile::{
     canonical_bundle_bytes, evaluate_profile_json, local_buffer_bundle, local_buffer_records,
     ProfileEvaluation, ProfileRefusalKind, UNIVERSAL_SOUNDNESS,
 };
-use crate::support::{evaluate, explain, RuleSystem, SupportError};
+use crate::support::{evaluate, explain, RuleSystem, SupportError, SupportPolicy};
 
 /// Command completed and its declared checks passed.
 pub const EXIT_OK: i32 = 0;
@@ -40,8 +41,8 @@ Commands:
   capabilities [--json]
   profile validate FILE
   profile enumerate --out DIR
-  support evaluate FILE
-  support explain FILE
+  support evaluate FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
+  support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -223,43 +224,41 @@ fn command_profile_enumerate(rest: &[String]) -> Result<i32, String> {
 fn command_support(rest: &[String]) -> Result<i32, String> {
     let action = rest.first().map(String::as_str);
     if !matches!(action, Some("evaluate" | "explain")) {
-        eprintln!("usage: support evaluate|explain FILE");
+        eprintln!("usage: support evaluate|explain FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]");
         return Ok(EXIT_USAGE);
     }
     let explain_mode = action == Some("explain");
-    let Some(path) = rest.get(1) else {
-        eprintln!("usage: support evaluate|explain FILE");
+    let Some(arguments) = parse_support_args(rest) else {
+        eprintln!("usage: support evaluate|explain FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]");
         return Ok(EXIT_USAGE);
     };
-    if rest.len() != 2 {
-        eprintln!("usage: support evaluate|explain FILE");
-        return Ok(EXIT_USAGE);
-    }
-    let bytes = match read_limited(Path::new(path)) {
-        Ok(bytes) => bytes,
-        Err(error) => {
-            eprintln!("{error}");
-            return Ok(EXIT_USAGE);
-        }
-    };
-    let value = match parse_strict(&bytes) {
-        Ok(value) => value,
-        Err(error) => {
-            eprintln!("invalid support file: {error}");
-            return Ok(EXIT_INTEGRITY);
-        }
-    };
-    let file: SupportFile = match serde_json::from_value(value) {
+
+    let file: SupportFile = match read_typed_file(&arguments.path, "support file") {
         Ok(file) => file,
-        Err(error) => {
-            eprintln!("invalid support file: {error}");
-            return Ok(EXIT_INTEGRITY);
-        }
+        Err(code) => return Ok(code),
     };
     if let Err(error) = file.rules.validate() {
         eprintln!("invalid rule system: {error}");
         return Ok(EXIT_INTEGRITY);
     }
+
+    let policy = match bind_policy(&arguments, &file) {
+        Ok(policy) => policy,
+        Err(code) => return Ok(code),
+    };
+    if let Some(policy) = &policy {
+        if let Err((code, error)) = check_policy_expectations(&arguments, policy) {
+            eprintln!("{error}");
+            return Ok(code);
+        }
+    } else if arguments.expect_policy_digest.is_some() || arguments.expect_policy_version.is_some()
+    {
+        eprintln!(
+            "a policy identity is required for --expect-policy-digest or --expect-policy-version"
+        );
+        return Ok(EXIT_USAGE);
+    }
+
     if explain_mode {
         let Some(claim) = file.claim.as_deref() else {
             eprintln!("support explain requires a \"claim\" field");
@@ -272,6 +271,171 @@ fn command_support(rest: &[String]) -> Result<i32, String> {
         emit_json(&result)?;
     }
     Ok(EXIT_OK)
+}
+
+struct SupportArgs {
+    path: String,
+    policy_path: Option<String>,
+    expect_policy_digest: Option<String>,
+    expect_policy_version: Option<String>,
+}
+
+fn parse_support_args(rest: &[String]) -> Option<SupportArgs> {
+    let mut path = None;
+    let mut policy_path = None;
+    let mut expect_policy_digest = None;
+    let mut expect_policy_version = None;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--policy" => {
+                index += 1;
+                if policy_path.is_some() {
+                    return None;
+                }
+                policy_path = Some(rest.get(index)?.clone());
+            }
+            "--expect-policy-digest" => {
+                index += 1;
+                if expect_policy_digest.is_some() {
+                    return None;
+                }
+                expect_policy_digest = Some(rest.get(index)?.clone());
+            }
+            "--expect-policy-version" => {
+                index += 1;
+                if expect_policy_version.is_some() {
+                    return None;
+                }
+                expect_policy_version = Some(rest.get(index)?.clone());
+            }
+            value if value.starts_with("--") => return None,
+            value => {
+                if path.is_some() {
+                    return None;
+                }
+                path = Some(value.to_owned());
+            }
+        }
+        index += 1;
+    }
+    Some(SupportArgs {
+        path: path?,
+        policy_path,
+        expect_policy_digest,
+        expect_policy_version,
+    })
+}
+
+fn bind_policy(arguments: &SupportArgs, file: &SupportFile) -> Result<Option<SupportPolicy>, i32> {
+    let mut identity = file.policy.clone();
+    if let Some(path) = &arguments.policy_path {
+        let policy: PolicyFile = read_typed_file(path, "policy file")?;
+        if let Err(error) = policy.rules.validate() {
+            eprintln!("invalid policy rule system: {error}");
+            return Err(EXIT_INTEGRITY);
+        }
+        if policy.rules != file.rules {
+            eprintln!(
+                "policy rules differ from the support file rules; policy substitution rejected"
+            );
+            return Err(EXIT_INTEGRITY);
+        }
+        if identity
+            .as_ref()
+            .is_some_and(|identity| identity.id != policy.id || identity.version != policy.version)
+        {
+            eprintln!("support file policy identity differs from the policy file");
+            return Err(EXIT_INTEGRITY);
+        }
+        identity = Some(PolicyIdentity {
+            id: policy.id,
+            version: policy.version,
+        });
+    }
+    Ok(identity.map(|identity| SupportPolicy {
+        id: identity.id,
+        version: identity.version,
+        rules: file.rules.clone(),
+    }))
+}
+
+fn check_policy_expectations(
+    arguments: &SupportArgs,
+    policy: &SupportPolicy,
+) -> Result<(), (i32, String)> {
+    let digest = policy.digest().map_err(|error| {
+        (
+            EXIT_INTEGRITY,
+            format!("cannot compute policy digest: {error}"),
+        )
+    })?;
+    if let Some(expected) = &arguments.expect_policy_digest {
+        let expected = MsId::parse(expected.clone()).map_err(|error| {
+            (
+                EXIT_USAGE,
+                format!("invalid expected policy digest: {error}"),
+            )
+        })?;
+        if digest != expected {
+            return Err((
+                EXIT_INTEGRITY,
+                "policy digest differs from the expected digest; policy substitution rejected"
+                    .to_owned(),
+            ));
+        }
+    }
+    if arguments
+        .expect_policy_version
+        .as_ref()
+        .is_some_and(|expected| policy.version != *expected)
+    {
+        return Err((
+            EXIT_INTEGRITY,
+            "policy version differs from the expected version; policy substitution rejected"
+                .to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn read_typed_file<T: DeserializeOwned>(path: &str, label: &str) -> Result<T, i32> {
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return Err(EXIT_USAGE);
+        }
+    };
+    let value = match parse_strict(&bytes) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("invalid {label}: {error}");
+            return Err(EXIT_INTEGRITY);
+        }
+    };
+    match serde_json::from_value(value) {
+        Ok(file) => Ok(file),
+        Err(error) => {
+            eprintln!("invalid {label}: {error}");
+            Err(EXIT_INTEGRITY)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PolicyIdentity {
+    id: String,
+    version: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PolicyFile {
+    id: String,
+    version: String,
+    rules: RuleSystem,
 }
 
 #[derive(Debug, Deserialize)]
@@ -288,6 +452,8 @@ struct SupportFile {
     challenged: BTreeSet<String>,
     #[serde(default)]
     claim: Option<String>,
+    #[serde(default)]
+    policy: Option<PolicyIdentity>,
 }
 
 fn command_evidence(rest: &[String]) -> Result<i32, String> {
