@@ -13,6 +13,10 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use crate::identity::{parse_strict, require_canonical, MsId, MAX_BYTES};
+use crate::mir::{
+    MirAdapter, MirError, MirErrorCategory, MirScanOutcome, MIR_NOT_RUN_SCHEMA,
+    MIR_OBSERVATION_SCHEMA,
+};
 use crate::path_effect::{
     analyze, analyze_inventory, PathEffectsInput, PathErrorCategory, PATH_EFFECT_INPUT_SCHEMA,
 };
@@ -52,6 +56,7 @@ Commands:
   support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
   source scan PATH [--json]
   path analyze FILE [--json]
+  mir scan FILE [--json] [--toolchain NAME]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -99,6 +104,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "support" => command_support(&args[1..]),
         "source" => Ok(command_source(&args[1..])),
         "path" => Ok(command_path(&args[1..])),
+        "mir" => Ok(command_mir(&args[1..])),
         "evidence" => command_evidence(&args[1..]),
         "report" => command_report(&args[1..]),
         "court" => command_not_run("court run", args),
@@ -136,6 +142,8 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
             "source_inventory_schema": crate::source::SOURCE_INVENTORY_SCHEMA,
             "path_effects_input_schema": crate::path_effect::PATH_EFFECT_INPUT_SCHEMA,
             "path_effects_report_schema": crate::path_effect::PATH_EFFECT_REPORT_SCHEMA,
+            "mir_observation_schema": MIR_OBSERVATION_SCHEMA,
+            "mir_not_run_schema": MIR_NOT_RUN_SCHEMA,
             "universal_soundness": UNIVERSAL_SOUNDNESS,
         }))?;
     } else {
@@ -149,6 +157,7 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
             "path-effects input schema: {}",
             crate::path_effect::PATH_EFFECT_INPUT_SCHEMA
         );
+        println!("MIR observation schema: {MIR_OBSERVATION_SCHEMA}");
         println!("universal soundness: {UNIVERSAL_SOUNDNESS}");
     }
     Ok(EXIT_OK)
@@ -405,6 +414,110 @@ fn path_error_exit(category: PathErrorCategory) -> i32 {
         PathErrorCategory::Usage => EXIT_USAGE,
         PathErrorCategory::Integrity => EXIT_INTEGRITY,
         PathErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn command_mir(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("scan") {
+        eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+        return EXIT_USAGE;
+    }
+    let mut path = None;
+    let mut json = false;
+    let mut toolchain = None;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--toolchain" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                    return EXIT_USAGE;
+                };
+                if value.is_empty() || value.starts_with("--") {
+                    eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                    return EXIT_USAGE;
+                }
+                toolchain = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value.to_owned());
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+        return EXIT_USAGE;
+    };
+
+    let mut adapter = MirAdapter::new();
+    if let Some(toolchain) = toolchain {
+        adapter = adapter.with_toolchain(toolchain);
+    }
+    let _ = json;
+    match adapter.scan(&path) {
+        Ok(MirScanOutcome::Live(observation)) => {
+            let bytes = match observation.canonical_bytes() {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    eprintln!("{error}");
+                    return mir_error_exit(&error);
+                }
+            };
+            if let Err(error) = std::io::stdout().write_all(&bytes) {
+                eprintln!("cannot write MIR observation: {error}");
+                return EXIT_HARNESS;
+            }
+            EXIT_OK
+        }
+        Ok(MirScanOutcome::NotRun(not_run)) => {
+            eprintln!(
+                "MIR adapter NOT_RUN ({}): {}",
+                not_run.reason.as_str(),
+                not_run.detail
+            );
+            let value = match serde_json::to_value(&not_run) {
+                Ok(value) => value,
+                Err(error) => {
+                    eprintln!("cannot encode MIR NOT_RUN response: {error}");
+                    return EXIT_HARNESS;
+                }
+            };
+            let bytes = match crate::identity::canonical_bytes(&value) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    eprintln!("cannot encode MIR NOT_RUN response: {error}");
+                    return EXIT_HARNESS;
+                }
+            };
+            if let Err(error) = std::io::stdout().write_all(&bytes) {
+                eprintln!("cannot write MIR NOT_RUN response: {error}");
+                return EXIT_HARNESS;
+            }
+            EXIT_NOT_RUN
+        }
+        Err(error) => {
+            eprintln!("{error}");
+            mir_error_exit(&error)
+        }
+    }
+}
+
+fn mir_error_exit(error: &MirError) -> i32 {
+    match error.category() {
+        MirErrorCategory::Usage => EXIT_USAGE,
+        MirErrorCategory::Integrity => EXIT_INTEGRITY,
+        MirErrorCategory::Harness => EXIT_HARNESS,
     }
 }
 

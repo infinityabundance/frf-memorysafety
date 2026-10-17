@@ -407,3 +407,29 @@ fn support_policy_custody_rejects_substitution() {
         2
     );
 }
+
+#[test]
+fn mir_scan_uses_section_14_statuses_and_typed_not_run() {
+    assert_eq!(run(&["mir"]), 2);
+    assert_eq!(run(&["mir", "scan"]), 2);
+    assert_eq!(run(&["mir", "scan", "x", "--unknown"]), 2);
+    assert_eq!(
+        run(&["mir", "scan", "tests/fixtures/mir/source.rs", "--toolchain"]),
+        2
+    );
+
+    assert_eq!(run(&["mir", "scan", "/nonexistent/input.rs"]), 2);
+    assert_eq!(run(&["mir", "scan", "README.md"]), 2);
+
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/mir/source.rs");
+    assert_eq!(
+        run(&[
+            "mir",
+            "scan",
+            fixture.to_str().unwrap(),
+            "--toolchain",
+            "frf-memorysafety-toolchain-that-is-not-installed",
+        ]),
+        6
+    );
+}

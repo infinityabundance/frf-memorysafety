@@ -10,15 +10,20 @@
 //!
 //! This build implements strict canonical encoding, domain-separated
 //! identities, the typed claim/obligation model, least-fixed-point support with
-//! certificates and exact cuts, policy-versioned reconstruction, and the finite
-//! three-rule profile with a deterministic local buffer model. Those results are
-//! finite-model or bookkeeping results only.
+//! certificates and exact cuts, policy-versioned reconstruction, the finite
+//! three-rule profile with a deterministic local buffer model, a syntax-only
+//! source inventory, finite path effects, and an optional pinned MIR text
+//! adapter. Those results are finite-model, textual, or bookkeeping results
+//! only.
 //!
 //! # What this build does not establish
 //!
 //! No live Miri, sanitizer, Kani, Loom, FRF court, FRF-Fuzz, Gemel, or native
-//! proof-checker run is performed. Universal Rust soundness and
-//! `SAFE_COMPATIBLE` are outside the finite profile and are always withheld.
+//! proof-checker run is performed. The optional MIR adapter observes unresolved
+//! textual edges from an unstable compiler format; it does not resolve symbols,
+//! aliases, types, provenance, or whole-program closure. Universal Rust
+//! soundness and `SAFE_COMPATIBLE` are outside the finite profile and are always
+//! withheld.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -124,6 +129,9 @@ pub fn capabilities() -> Capabilities {
             "typed observed-conflict, omission, not-falsified, and finite-compatible outcomes",
             "C callback retention, deferral, after-free, and foreign/provider uncertainty",
             "path analyze CLI over explicit input or a Phase 3.1 source inventory",
+            "optional pinned MIR adapter (nightly-2025-02-20) with bounded, shell-free invocation",
+            "conservative MIR text parser: functions, unresolved call edges, dereferences, storage/lifetime markers, drops, and unknowns",
+            "mir scan CLI with typed NOT_RUN and SPEC.md §14 exit status 6",
             "footprint and reference-interval conflict classification types",
             "lifecycle responsibility trace types",
             "detector calibration receipt adjudication types",
@@ -139,7 +147,7 @@ pub fn capabilities() -> Capabilities {
             "live Gemel publication",
             "live OpenSSL-Rust Safe-33 native courts",
             "native proof-checker adapter",
-            "MIR/compiler-resolved caller graph and whole-program closure (phase 3.3+)",
+            "MIR edges: available only when pinned nightly-2025-02-20 is present; otherwise NOT_RUN (exit 6)",
             "source- or MIR-extracted alias, footprint, and reference-interval semantics",
             "native C callback observation and retained-pointer lifecycle recording",
             "whole-program or universal alias-compatibility claims",
