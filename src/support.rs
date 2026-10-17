@@ -8,7 +8,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::identity::{canonical_bytes, IdentityDomain, MsId};
+use crate::identity::{canonical_bytes, digest_bytes, IdentityDomain, MsId};
 
 /// A claim identifier local to a finite support graph.
 pub type ClaimId = String;
@@ -58,6 +58,28 @@ impl RuleSystem {
     /// leaf's actual scope and owner; this method records only admission.
     pub fn admit_leaf(&mut self, claim: impl Into<ClaimId>) {
         self.admitted_leaves.insert(claim.into());
+    }
+
+    /// Remove exactly one rule instance `conclusion <- premises`.
+    ///
+    /// The match is at the rule boundary: a different premise set for the same
+    /// conclusion, or the same premise set for a different conclusion, is not
+    /// removed. Leaf admission is a separate external justification and is not
+    /// revoked by this method.
+    ///
+    /// Returns `true` when a rule was removed.
+    pub fn remove_rule(&mut self, conclusion: &str, premises: &PremiseSet) -> bool {
+        let Some(rules) = self.rules.get_mut(conclusion) else {
+            return false;
+        };
+        let Some(index) = rules.iter().position(|candidate| candidate == premises) else {
+            return false;
+        };
+        rules.remove(index);
+        if rules.is_empty() {
+            self.rules.remove(conclusion);
+        }
+        true
     }
 
     /// Validate structural constraints, including empty-premise admission.
@@ -111,6 +133,10 @@ pub enum SupportError {
     },
     /// The supplied policy identity does not match the stored verdict.
     PolicyMismatch,
+    /// A recorded historical verdict does not match its policy or digest.
+    HistoryMismatch(String),
+    /// A claim reported as supported has no surviving certificate.
+    InconsistentSupport(ClaimId),
 }
 
 impl fmt::Display for SupportError {
@@ -130,6 +156,10 @@ impl fmt::Display for SupportError {
                 )
             }
             Self::PolicyMismatch => f.write_str("policy identity mismatch"),
+            Self::HistoryMismatch(detail) => write!(f, "historical verdict mismatch: {detail}"),
+            Self::InconsistentSupport(claim) => {
+                write!(f, "supported claim {claim:?} has no certificate")
+            }
         }
     }
 }
@@ -217,6 +247,7 @@ impl SupportPolicy {
 
 /// An immutable historical verdict bound to its policy identity.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct HistoricVerdict {
     /// Policy identifier that produced the verdict.
     pub policy_id: String,
@@ -232,6 +263,120 @@ pub struct HistoricVerdict {
     pub result: SupportResult,
     /// Digest of the recorded verdict.
     pub verdict_digest: MsId,
+}
+
+#[derive(Serialize)]
+struct VerdictDigestPayload<'a> {
+    policy_id: &'a str,
+    policy_version: &'a str,
+    policy_digest: &'a MsId,
+    revoked: &'a BTreeSet<ClaimId>,
+    challenged: &'a BTreeSet<ClaimId>,
+    result: &'a SupportResult,
+}
+
+fn verdict_digest(
+    policy_id: &str,
+    policy_version: &str,
+    policy_digest: &MsId,
+    revoked: &BTreeSet<ClaimId>,
+    challenged: &BTreeSet<ClaimId>,
+    result: &SupportResult,
+) -> Result<MsId, SupportError> {
+    let value = serde_json::to_value(VerdictDigestPayload {
+        policy_id,
+        policy_version,
+        policy_digest,
+        revoked,
+        challenged,
+        result,
+    })
+    .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
+    let bytes = canonical_bytes(&value)
+        .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
+    Ok(digest_bytes(IdentityDomain::Assessment, &bytes))
+}
+
+impl HistoricVerdict {
+    /// Record a verdict under `policy` and bind it to the policy digest.
+    ///
+    /// The record is a bookkeeping object. It does not authenticate the policy,
+    /// the evidence, or the execution that produced either.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SupportError::UnjustifiedLeaf`] when the policy rules are
+    /// structurally invalid, or [`SupportError::HistoryMismatch`] when the
+    /// verdict cannot be encoded canonically.
+    pub fn record(
+        policy: &SupportPolicy,
+        revoked: &BTreeSet<ClaimId>,
+        challenged: &BTreeSet<ClaimId>,
+    ) -> Result<Self, SupportError> {
+        policy.rules.validate()?;
+        let policy_digest = policy
+            .digest()
+            .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
+        let result = evaluate(&policy.rules, revoked, challenged);
+        let verdict_digest = verdict_digest(
+            &policy.id,
+            &policy.version,
+            &policy_digest,
+            revoked,
+            challenged,
+            &result,
+        )?;
+        Ok(Self {
+            policy_id: policy.id.clone(),
+            policy_version: policy.version.clone(),
+            policy_digest,
+            revoked: revoked.clone(),
+            challenged: challenged.clone(),
+            result,
+            verdict_digest,
+        })
+    }
+
+    /// Verify that this verdict was produced by exactly `policy` and that its
+    /// recorded result and digest are internally consistent.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SupportError::PolicyMismatch`] when the policy identifier,
+    /// version, or digest differs. Returns [`SupportError::HistoryMismatch`]
+    /// when the replay or verdict digest does not match the recorded bytes.
+    pub fn verify(&self, policy: &SupportPolicy) -> Result<(), SupportError> {
+        policy.rules.validate()?;
+        let expected_policy_digest = policy
+            .digest()
+            .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
+        if self.policy_id != policy.id
+            || self.policy_version != policy.version
+            || self.policy_digest != expected_policy_digest
+        {
+            return Err(SupportError::PolicyMismatch);
+        }
+        let replayed = evaluate(&policy.rules, &self.revoked, &self.challenged);
+        if replayed != self.result {
+            return Err(SupportError::HistoryMismatch(
+                "recorded support result does not match policy replay".to_owned(),
+            ));
+        }
+        let expected = verdict_digest(
+            &self.policy_id,
+            &self.policy_version,
+            &self.policy_digest,
+            &self.revoked,
+            &self.challenged,
+            &self.result,
+        )?;
+        if self.verdict_digest != expected {
+            return Err(SupportError::HistoryMismatch(
+                "recorded verdict digest does not match its contents".to_owned(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// Evaluate positive and admissible support.
@@ -378,14 +523,19 @@ fn certificates_inner(
     }
 
     let mut result: Vec<BTreeSet<ClaimId>> = Vec::new();
+    // Admission is the nullary justification. It is independent of whether an
+    // empty rule is also present, so the singleton certificate must be emitted
+    // even when the claim has other, non-nullary rules.
+    if system.admitted_leaves.contains(claim) {
+        let mut set = BTreeSet::new();
+        set.insert(claim.to_owned());
+        result.push(set);
+    }
     if let Some(rules) = system.rules.get(claim) {
         for premises in rules {
             if premises.is_empty() {
-                if system.admitted_leaves.contains(claim) {
-                    let mut set = BTreeSet::new();
-                    set.insert(claim.to_owned());
-                    result.push(set);
-                }
+                // An unadmitted empty rule derives nothing; an admitted leaf is
+                // already recorded above.
                 continue;
             }
 
@@ -421,10 +571,6 @@ fn certificates_inner(
                 }
             }
         }
-    } else if system.admitted_leaves.contains(claim) {
-        let mut set = BTreeSet::new();
-        set.insert(claim.to_owned());
-        result.push(set);
     }
 
     visiting.remove(claim);
@@ -482,7 +628,9 @@ pub struct ReconstructedVerdict {
 /// # Errors
 ///
 /// Returns [`SupportError::PolicyMismatch`] when the policy identifiers differ
-/// or the historical verdict cannot be re-encoded.
+/// or a policy digest cannot be encoded. Returns
+/// [`SupportError::UnjustifiedLeaf`] when either rule system is structurally
+/// invalid.
 pub fn reconstruct_under_policy(
     old_policy: &SupportPolicy,
     new_policy: &SupportPolicy,
@@ -492,23 +640,149 @@ pub fn reconstruct_under_policy(
     if old_policy.id != new_policy.id {
         return Err(SupportError::PolicyMismatch);
     }
+    old_policy.rules.validate()?;
+    new_policy.rules.validate()?;
     let historical = evaluate(&old_policy.rules, revoked, challenged);
     let current = evaluate(&new_policy.rules, revoked, challenged);
     let historical_bytes = canonical_bytes(
         &serde_json::to_value(&historical)
-            .map_err(|error| SupportError::UnknownClaim(error.to_string()))?,
+            .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?,
     )
-    .map_err(|_| SupportError::PolicyMismatch)?;
+    .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
     let historical_again = evaluate(&old_policy.rules, revoked, challenged);
     let historical_again_bytes = canonical_bytes(
         &serde_json::to_value(&historical_again)
-            .map_err(|error| SupportError::UnknownClaim(error.to_string()))?,
+            .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?,
     )
-    .map_err(|_| SupportError::PolicyMismatch)?;
+    .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
     Ok(ReconstructedVerdict {
         current,
         historical,
         byte_identical_historical: historical_bytes == historical_again_bytes,
+    })
+}
+
+/// Reconstruct a recorded verdict under its original policy while evaluating
+/// the same exclusions under a new policy version.
+///
+/// The recorded verdict is verified first. A caller cannot substitute a
+/// different "old" policy: the policy identifier, version, and digest must all
+/// match the record. The historical replay is then compared byte-for-byte with
+/// the recorded result, so a new policy cannot rewrite history.
+///
+/// # Errors
+///
+/// Returns [`SupportError::PolicyMismatch`] when `old_policy` is not the policy
+/// that produced `historical` or when the policy identifiers differ. Returns
+/// [`SupportError::HistoryMismatch`] when the record is internally inconsistent
+/// or its canonical bytes cannot be reproduced.
+pub fn reconstruct_recorded_verdict(
+    historical: &HistoricVerdict,
+    old_policy: &SupportPolicy,
+    new_policy: &SupportPolicy,
+) -> Result<ReconstructedVerdict, SupportError> {
+    historical.verify(old_policy)?;
+    if old_policy.id != new_policy.id {
+        return Err(SupportError::PolicyMismatch);
+    }
+    new_policy.rules.validate()?;
+    let replayed = evaluate(
+        &old_policy.rules,
+        &historical.revoked,
+        &historical.challenged,
+    );
+    let current = evaluate(
+        &new_policy.rules,
+        &historical.revoked,
+        &historical.challenged,
+    );
+    let replayed_bytes = canonical_bytes(
+        &serde_json::to_value(&replayed)
+            .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?,
+    )
+    .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
+    let recorded_bytes = canonical_bytes(
+        &serde_json::to_value(&historical.result)
+            .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?,
+    )
+    .map_err(|error| SupportError::HistoryMismatch(error.to_string()))?;
+    Ok(ReconstructedVerdict {
+        current,
+        historical: replayed,
+        byte_identical_historical: replayed_bytes == recorded_bytes,
+    })
+}
+
+/// Difference between two support results plus witnesses for retained claims.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NonInterferenceReport {
+    /// Claims positively supported before but not after the change.
+    pub lost: BTreeSet<ClaimId>,
+    /// Claims positively supported after but not before the change.
+    pub gained: BTreeSet<ClaimId>,
+    /// Claims positively supported in both results.
+    pub retained: BTreeSet<ClaimId>,
+    /// Retained claims whose admissibility is withheld by a challenge.
+    pub withheld: BTreeSet<ClaimId>,
+    /// One minimal certificate, disjoint from revoked leaves, per retained claim.
+    pub witnesses: BTreeMap<ClaimId, BTreeSet<ClaimId>>,
+}
+
+/// Compare two support results and produce an explicit noninterference witness
+/// for every positively retained claim.
+///
+/// Positive support is compared because a challenge withholds admissibility but
+/// does not erase positive-support history. The `withheld` set records retained
+/// claims whose admissibility is blocked. Witness certificates are computed
+/// under `after.revoked`, so they demonstrate that unrelated positive support
+/// survives the revocation actually applied by the later evaluation.
+///
+/// # Errors
+///
+/// Returns [`SupportError::CertificateLimitExceeded`] when witness enumeration
+/// exceeds `cap`, or [`SupportError::InconsistentSupport`] when a retained claim
+/// has no certificate.
+pub fn noninterference(
+    system: &RuleSystem,
+    before: &SupportResult,
+    after: &SupportResult,
+    cap: usize,
+) -> Result<NonInterferenceReport, SupportError> {
+    let lost = before
+        .positive
+        .difference(&after.positive)
+        .cloned()
+        .collect();
+    let gained = after
+        .positive
+        .difference(&before.positive)
+        .cloned()
+        .collect();
+    let retained: BTreeSet<ClaimId> = before
+        .positive
+        .intersection(&after.positive)
+        .cloned()
+        .collect();
+    let withheld = retained
+        .iter()
+        .filter(|claim| !after.is_admissible(claim))
+        .cloned()
+        .collect();
+    let mut witnesses = BTreeMap::new();
+    for claim in &retained {
+        let surviving = certificates(system, claim, &after.revoked, cap)?;
+        let Some(witness) = surviving.into_iter().next() else {
+            return Err(SupportError::InconsistentSupport(claim.clone()));
+        };
+        witnesses.insert(claim.clone(), witness);
+    }
+    Ok(NonInterferenceReport {
+        lost,
+        gained,
+        retained,
+        withheld,
+        witnesses,
     })
 }
 

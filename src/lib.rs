@@ -25,11 +25,13 @@
 #![warn(clippy::pedantic)]
 
 pub mod cli;
+pub mod closure;
 pub mod identity;
 pub mod model;
 pub mod profile;
 pub mod support;
 
+pub use closure::{compare_inventory, CoverageOutcome, EdgeKey};
 pub use identity::{
     canonical_bytes, digest_bytes, digest_value, parse_strict, require_canonical, IdentityDomain,
     IdentityError, MsId, CANONICAL_SCHEMA,
@@ -49,8 +51,9 @@ pub use profile::{
     PROFILE_SPEC, SCENARIOS_PER_VARIANT, UNIVERSAL_SOUNDNESS,
 };
 pub use support::{
-    certificates, evaluate, exact_cut, explain, reconstruct_under_policy, RuleSystem,
-    SupportPolicy, SupportResult, SupportState,
+    certificates, evaluate, exact_cut, explain, noninterference, reconstruct_recorded_verdict,
+    reconstruct_under_policy, HistoricVerdict, NonInterferenceReport, RuleSystem, SupportPolicy,
+    SupportResult, SupportState,
 };
 
 /// Crate version from Cargo metadata.
@@ -81,8 +84,10 @@ pub fn capabilities() -> Capabilities {
         implemented: vec![
             "strict canonical encoding and domain-separated identities",
             "typed claim, obligation, hazard, and execution-mode model",
-            "least-fixed-point support, challenges, certificates, exact cuts",
-            "policy-versioned verdict reconstruction",
+            "least-fixed-point support, challenged premises, all-node certificates, exact cuts",
+            "fixed-rule cuts, recorded historical verdicts, noninterference witnesses",
+            "policy-versioned verdict reconstruction and policy-substitution detection",
+            "§12.4 coverage, policy, and alternative-support acceptance cases",
             "finite three-rule semantic profile (enumeration, restriction, conjunction)",
             "deterministic local buffer model: 24 records, 5 claims per variant",
             "named finite-profile refusal checks with deny_unknown_fields",

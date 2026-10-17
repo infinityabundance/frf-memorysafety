@@ -600,10 +600,11 @@ fn read_limited(path: &Path) -> Result<Vec<u8>, String> {
 #[must_use]
 pub fn support_error_exit(error: &SupportError) -> i32 {
     match error {
-        SupportError::PolicyMismatch => EXIT_INTEGRITY,
+        SupportError::PolicyMismatch | SupportError::HistoryMismatch(_) => EXIT_INTEGRITY,
         SupportError::UnjustifiedLeaf(_)
         | SupportError::UnknownClaim(_)
         | SupportError::CertificateLimitExceeded { .. } => EXIT_USAGE,
+        SupportError::InconsistentSupport(_) => EXIT_HARNESS,
     }
 }
 
