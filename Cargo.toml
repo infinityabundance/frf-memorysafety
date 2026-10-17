@@ -1,0 +1,39 @@
+[package]
+name = "frf-memorysafety"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.85"
+license = "Apache-2.0 OR MIT"
+description = "Candidate-bound memory-safety assurance for unsafe-to-safe Rust compatibility ports"
+repository = "https://github.com/infinityabundance/frf-memorysafety"
+documentation = "https://docs.rs/frf-memorysafety"
+readme = "README.md"
+keywords = ["rust", "memory-safety", "assurance", "ffi", "verification"]
+categories = ["development-tools", "security"]
+
+[lib]
+name = "frf_memorysafety"
+path = "src/lib.rs"
+
+[[bin]]
+name = "frf-memorysafety"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = { version = "1.0.134", features = ["preserve_order"] }
+sha2 = "0.10.8"
+thiserror = "2.0.11"
+
+[dev-dependencies]
+
+[profile.release]
+overflow-checks = true
+debug = 1
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
