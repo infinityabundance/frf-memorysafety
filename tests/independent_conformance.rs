@@ -1,208 +1,230 @@
-//! Independent replay of the paper's 110,592-configuration support campaign.
+//! Differential conformance over the paper's 110,592-configuration campaign.
 //!
-//! The shipping evaluator is compared against two different implementations
-//! written in this test file:
+//! The oracle in `support_oracle` is written from `SPEC.md` §6 and does not
+//! call the production evaluator, certificate enumerator, exact-cut predicate,
+//! or conformance generators. Production functions are invoked only here, on
+//! the other side of the comparison.
 //!
-//! * a naive round-based least-fixed-point evaluator; and
-//! * an independent certificate checker that resolves every node of a claimed
-//!   certificate and verifies inclusion-minimality.
-//!
-//! Agreement is a consistency check within the enumerated finite domain. It is
-//! not a proof of the rule system or of any real-world premise.
+//! Domain: three nodes (`a`, `b`, `c`), twelve rule patterns per node, all
+//! 1,728 rule systems, all eight revocation masks, and all eight challenge
+//! masks. Agreement is a consistency result inside this finite domain. It is
+//! not a proof of `SPEC.md`, of any real rule system, or of Rust soundness.
 
-use std::collections::BTreeSet;
+mod support_oracle;
+
+use std::collections::{BTreeMap, BTreeSet};
 
 use frf_memorysafety::support::{
-    certificates, conformance_patterns, conformance_system, evaluate, exact_cut, ClaimId,
-    RuleSystem,
+    certificates, evaluate, exact_cut, ClaimId, RuleSystem, SupportState,
 };
+use support_oracle::System;
 
-fn naive_fixed_point(system: &RuleSystem, excluded: &BTreeSet<ClaimId>) -> BTreeSet<ClaimId> {
-    let mut supported = BTreeSet::new();
-    loop {
-        let mut changed = false;
-        for claim in system.nodes() {
-            if excluded.contains(&claim) || supported.contains(&claim) {
-                continue;
-            }
-            let admitted = system.admitted_leaves.contains(&claim);
-            let by_rule = system.rules.get(&claim).is_some_and(|rules| {
-                rules.iter().any(|premises| {
-                    (!premises.is_empty() || admitted)
-                        && premises.iter().all(|premise| supported.contains(premise))
+type IndexCertificates = Vec<Vec<BTreeSet<usize>>>;
+type NamedCertificates = Vec<Vec<BTreeSet<ClaimId>>>;
+
+fn to_production(system: &System) -> RuleSystem {
+    let mut rules = BTreeMap::new();
+    let mut admitted_leaves = BTreeSet::new();
+    for (index, name) in system.nodes.iter().enumerate() {
+        if !system.rules[index].is_empty() {
+            let clauses = system.rules[index]
+                .iter()
+                .map(|clause| {
+                    clause
+                        .iter()
+                        .map(|premise| system.nodes[*premise].clone())
+                        .collect()
                 })
-            });
-            if admitted || by_rule {
-                supported.insert(claim);
-                changed = true;
-            }
+                .collect();
+            rules.insert(name.clone(), clauses);
         }
-        if !changed {
-            return supported;
+        if system.admitted[index] {
+            admitted_leaves.insert(name.clone());
         }
+    }
+    RuleSystem {
+        rules,
+        admitted_leaves,
     }
 }
 
-/// Check that `certificate` is a finite, well-founded derivation of `claim`.
-fn check_certificate(system: &RuleSystem, claim: &str, certificate: &BTreeSet<ClaimId>) -> bool {
-    if !certificate.contains(claim) {
-        return false;
-    }
-    let nodes = system.nodes();
-    if !certificate.iter().all(|node| nodes.contains(node)) {
-        return false;
-    }
-    let mut resolved: BTreeSet<ClaimId> = BTreeSet::new();
-    loop {
-        let mut changed = false;
-        for node in certificate {
-            if resolved.contains(node) {
-                continue;
-            }
-            let admitted = system.admitted_leaves.contains(node);
-            let by_rule = system.rules.get(node).is_some_and(|rules| {
-                rules.iter().any(|premises| {
-                    (!premises.is_empty() || admitted)
-                        && premises.iter().all(|premise| {
-                            certificate.contains(premise) && resolved.contains(premise)
-                        })
-                })
-            });
-            if admitted || by_rule {
-                resolved.insert(node.clone());
-                changed = true;
-            }
-        }
-        if !changed {
-            break;
-        }
-    }
-    resolved.len() == certificate.len()
+fn supported_names(values: &[bool], names: &[String]) -> BTreeSet<ClaimId> {
+    names
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| values[*index])
+        .map(|(_, name)| name.clone())
+        .collect()
 }
 
-/// Check that no proper subset of the certificate is still a certificate.
-fn is_minimal_certificate(
-    system: &RuleSystem,
-    claim: &str,
-    certificate: &BTreeSet<ClaimId>,
-) -> bool {
-    if !check_certificate(system, claim, certificate) {
-        return false;
+fn sort_sets(sets: &mut [BTreeSet<ClaimId>]) {
+    sets.sort_by(|left, right| {
+        left.len()
+            .cmp(&right.len())
+            .then_with(|| left.iter().cmp(right.iter()))
+    });
+}
+
+fn expected_state(positive: bool, admissible: bool, challenged: bool) -> SupportState {
+    match (positive, admissible) {
+        (_, true) => SupportState::Supported,
+        (true, false) => SupportState::SupportedButChallenged,
+        (false, false) if challenged => SupportState::Challenged,
+        (false, false) => SupportState::Unsupported,
     }
-    for node in certificate {
-        let mut reduced = certificate.clone();
-        reduced.remove(node);
-        if check_certificate(system, claim, &reduced) {
-            return false;
+}
+
+#[derive(Default)]
+struct Counters {
+    configurations: usize,
+    node_comparisons: usize,
+    exact_cut_comparisons: usize,
+    certificates_checked: usize,
+    verdict_state_comparisons: usize,
+}
+
+/// Build both certificate families and validate every independent certificate.
+fn compare_certificates(
+    system: &System,
+    production: &RuleSystem,
+    counters: &mut Counters,
+) -> (IndexCertificates, NamedCertificates) {
+    let empty = BTreeSet::new();
+    let independent = system.certificates();
+    let shipped: NamedCertificates = system
+        .nodes
+        .iter()
+        .map(|name| {
+            certificates(production, name, &empty, 256).expect("bounded certificate family")
+        })
+        .collect();
+
+    for node in 0..system.nodes.len() {
+        let mut independent_named: Vec<BTreeSet<ClaimId>> = independent[node]
+            .iter()
+            .map(|certificate| {
+                certificate
+                    .iter()
+                    .map(|premise| system.nodes[*premise].clone())
+                    .collect()
+            })
+            .collect();
+        sort_sets(&mut independent_named);
+        assert_eq!(
+            shipped[node], independent_named,
+            "independent certificate family differs for node {}",
+            system.nodes[node]
+        );
+        for certificate in &independent[node] {
+            counters.certificates_checked += 1;
+            assert!(
+                system.check_certificate(node, certificate),
+                "independent checker rejected an independent certificate"
+            );
+            assert!(
+                system.is_minimal_certificate(node, certificate),
+                "independent certificate is not inclusion-minimal"
+            );
         }
     }
-    true
+    (independent, shipped)
+}
+
+/// Compare every revocation/challenge configuration for one rule system.
+fn compare_configurations(
+    system: &System,
+    production: &RuleSystem,
+    independent: &[Vec<BTreeSet<usize>>],
+    shipped: &[Vec<BTreeSet<ClaimId>>],
+    counters: &mut Counters,
+) {
+    for revoked_mask in 0u8..8 {
+        let revoked: Vec<bool> = (0..system.nodes.len())
+            .map(|node| revoked_mask & (1u8 << node) != 0)
+            .collect();
+        let revoked_names = supported_names(&revoked, &system.nodes);
+
+        for challenged_mask in 0u8..8 {
+            counters.configurations += 1;
+            let challenged: Vec<bool> = (0..system.nodes.len())
+                .map(|node| challenged_mask & (1u8 << node) != 0)
+                .collect();
+            let challenged_names = supported_names(&challenged, &system.nodes);
+            let combined: Vec<bool> = revoked
+                .iter()
+                .zip(&challenged)
+                .map(|(left, right)| *left || *right)
+                .collect();
+            let combined_names: BTreeSet<ClaimId> =
+                revoked_names.union(&challenged_names).cloned().collect();
+
+            let (positive, admissible) = system.verdict_sets(&revoked, &challenged);
+            let shipped_result = evaluate(production, &revoked_names, &challenged_names);
+
+            assert_eq!(
+                shipped_result.positive,
+                supported_names(&positive, &system.nodes),
+                "positive support differs"
+            );
+            assert_eq!(
+                shipped_result.admissible,
+                supported_names(&admissible, &system.nodes),
+                "admissible support differs"
+            );
+
+            for (node, name) in system.nodes.iter().enumerate() {
+                if let Some(state) = shipped_result.states.get(name) {
+                    counters.verdict_state_comparisons += 1;
+                    assert_eq!(
+                        *state,
+                        expected_state(positive[node], admissible[node], challenged[node]),
+                        "verdict state differs for {name}"
+                    );
+                }
+            }
+
+            for node in 0..system.nodes.len() {
+                counters.node_comparisons += 1;
+                let by_certificate = independent[node]
+                    .iter()
+                    .any(|certificate| certificate.iter().all(|item| !combined[*item]));
+                assert_eq!(
+                    admissible[node], by_certificate,
+                    "independent certificate characterization differs"
+                );
+
+                counters.exact_cut_comparisons += 1;
+                assert_eq!(
+                    exact_cut(&shipped[node], &combined_names),
+                    System::exact_cut(&independent[node], &combined),
+                    "exact-cut predicate differs for node {}",
+                    system.nodes[node]
+                );
+            }
+        }
+    }
 }
 
 #[test]
-fn independent_evaluator_and_checker_agree_over_the_full_campaign() {
-    let nodes = ["a", "b", "c"];
-    let patterns = conformance_patterns(&nodes);
-    assert_eq!(patterns.len(), 12);
+fn independent_oracle_agrees_over_the_full_campaign() {
+    let systems = System::paper_universe();
+    assert_eq!(support_oracle::patterns(3).len(), 12);
+    assert_eq!(systems.len(), 1_728);
 
-    let empty = BTreeSet::new();
-    let mut configurations = 0usize;
-    let mut node_comparisons = 0usize;
-    let mut exact_cut_comparisons = 0usize;
-    let mut certificates_checked = 0usize;
-
-    for ia in 0..patterns.len() {
-        for ib in 0..patterns.len() {
-            for ic in 0..patterns.len() {
-                let system = conformance_system([ia, ib, ic], &nodes);
-
-                // Certificates are independent of the exclusion masks, so they
-                // are enumerated once per rule system.
-                let certificates_by_node: Vec<Vec<BTreeSet<ClaimId>>> = nodes
-                    .iter()
-                    .map(|node| certificates(&system, node, &empty, 256).unwrap())
-                    .collect();
-                for (node_index, node) in nodes.iter().enumerate() {
-                    for certificate in &certificates_by_node[node_index] {
-                        certificates_checked += 1;
-                        assert!(
-                            check_certificate(&system, node, certificate),
-                            "certificate checker rejected a shipped certificate for {node}"
-                        );
-                        assert!(
-                            is_minimal_certificate(&system, node, certificate),
-                            "shipped certificate for {node} is not minimal"
-                        );
-                    }
-                }
-
-                for revocation_mask in 0u16..8 {
-                    let revoked: BTreeSet<ClaimId> = nodes
-                        .iter()
-                        .enumerate()
-                        .filter(|(index, _)| revocation_mask & (1 << index) != 0)
-                        .map(|(_, node)| (*node).to_owned())
-                        .collect();
-                    let naive_positive = naive_fixed_point(&system, &revoked);
-                    let shipped_positive = evaluate(&system, &revoked, &empty);
-                    assert_eq!(
-                        shipped_positive.positive, naive_positive,
-                        "positive fixed point disagrees"
-                    );
-
-                    for challenge_mask in 0u16..8 {
-                        configurations += 1;
-                        let challenged: BTreeSet<ClaimId> = nodes
-                            .iter()
-                            .enumerate()
-                            .filter(|(index, _)| challenge_mask & (1 << index) != 0)
-                            .map(|(_, node)| (*node).to_owned())
-                            .collect();
-                        let mut exclusions = revoked.clone();
-                        exclusions.extend(challenged.iter().cloned());
-                        let naive_admissible = naive_fixed_point(&system, &exclusions);
-                        let shipped_admissible = evaluate(&system, &revoked, &challenged);
-                        assert_eq!(
-                            shipped_admissible.admissible, naive_admissible,
-                            "admissible fixed point disagrees"
-                        );
-
-                        for (node_index, node) in nodes.iter().enumerate() {
-                            node_comparisons += 1;
-                            let certificates = &certificates_by_node[node_index];
-                            let by_positive = certificates
-                                .iter()
-                                .any(|certificate| certificate.is_disjoint(&revoked));
-                            let by_admissible = certificates.iter().any(|certificate| {
-                                certificate.is_disjoint(&revoked)
-                                    && certificate.is_disjoint(&challenged)
-                            });
-                            assert_eq!(
-                                naive_positive.contains(*node),
-                                by_positive,
-                                "positive certificate characterization mismatch for {node}"
-                            );
-                            assert_eq!(
-                                naive_admissible.contains(*node),
-                                by_admissible,
-                                "admissible certificate characterization mismatch for {node}"
-                            );
-
-                            exact_cut_comparisons += 1;
-                            assert_eq!(
-                                exact_cut(certificates, &exclusions),
-                                !naive_admissible.contains(*node),
-                                "exact-cut characterization mismatch for {node}"
-                            );
-                        }
-                    }
-                }
-            }
-        }
+    let mut counters = Counters::default();
+    for system in &systems {
+        let production = to_production(system);
+        production.validate().expect("oracle system is valid");
+        let (independent, shipped) = compare_certificates(system, &production, &mut counters);
+        compare_configurations(system, &production, &independent, &shipped, &mut counters);
     }
 
-    assert_eq!(configurations, 110_592);
-    assert_eq!(node_comparisons, 331_776);
-    assert_eq!(exact_cut_comparisons, 331_776);
-    assert!(certificates_checked > 0);
+    // Exact paper-universe counts. See `tests/paper_corpus.rs` for the distinct
+    // paper-definition exact-revocation-cut count (17,712).
+    assert_eq!(counters.configurations, 110_592);
+    assert_eq!(counters.node_comparisons, 331_776);
+    assert_eq!(counters.exact_cut_comparisons, 331_776);
+    assert!(counters.verdict_state_comparisons > 0);
+    assert!(counters.verdict_state_comparisons <= 331_776);
+    assert!(counters.certificates_checked > 0);
 }
