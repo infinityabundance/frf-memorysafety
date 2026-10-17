@@ -11,7 +11,7 @@ with policy custody, a finite three-rule profile, and an honest CLI. Universal
 safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite profile and
 are always reported as `WITHHELD_NOT_RUN`.
 
-## Status (0.2.0, phase 2.2)
+## Status (0.3.0, phase 2)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -22,6 +22,9 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
 | `cargo test --locked --all-targets` | 114 passed, 0 failed, 0 ignored |
 | `cargo test --locked --release` | 114 passed, 0 failed, 0 ignored |
+
+Version 0.3.0 is the Phase 2 release. Release notes for Phase 1 (0.2.0) and
+Phase 2 (0.3.0) are in [`CHANGELOG.md`](CHANGELOG.md).
 
 The conformance tests **execute**; they are not ignored. The shipping engine is
 compared against a separately coded oracle in `tests/support_oracle/` over the
@@ -82,6 +85,19 @@ eight-case domain it is not established, because two cases have modeled
 conflicts and no adjudicated observation; this matches the original
 `research/paper/research/worked_bundle.py` results. The replay test checks the
 original counts and makes this scoping difference explicit.
+
+### Claim ceiling
+
+Every positive result in this README is limited to the named finite domain and
+the checks that were actually executed. The conformance campaign is a
+differential consistency result between the shipping engine and a separately
+coded oracle over the 12-pattern, three-node universe; it is not a proof of
+`SPEC.md`, because both implementations can share a specification error. Policy
+custody and historical verdicts are digest-bound and replay-bound, not
+authenticated; there is no signature or trusted execution root. No result here
+implies native Rust soundness, detector sensitivity, real-FFI coverage, or
+universal safe-interior soundness. `SAFE_COMPATIBLE` is never accepted by this
+build.
 
 ### NOT_RUN in this build
 
@@ -218,7 +234,8 @@ tests/            canonical vectors, support semantics, independent oracle,
 
 ## Non-transfer
 
-A finite compatibility or model result does not imply a sound safe interior.
+A finite compatibility or model result does not imply a sound safe interior. No
+finite-model result in this repository is a universal soundness claim.
 A sanitizer or Miri pass does not imply soundness. Absence of `unsafe` does not
 imply soundness. A bounded model result does not imply a universal native
 result. An authentic-looking JSON file is not proof of execution. A clean

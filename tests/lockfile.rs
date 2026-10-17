@@ -10,9 +10,10 @@ use std::path::PathBuf;
 #[test]
 fn cargo_lock_exists_and_names_this_package() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let version = env!("CARGO_PKG_VERSION");
     let cargo_toml = fs::read_to_string(root.join("Cargo.toml")).unwrap();
     assert!(cargo_toml.contains("name = \"frf-memorysafety\""));
-    assert!(cargo_toml.contains("version = \"0.2.0\""));
+    assert!(cargo_toml.contains(&format!("version = \"{version}\"")));
 
     let lock_path = root.join("Cargo.lock");
     assert!(
@@ -20,8 +21,9 @@ fn cargo_lock_exists_and_names_this_package() {
         "Cargo.lock is required for cargo test --locked"
     );
     let lock = fs::read_to_string(lock_path).unwrap();
-    assert!(lock.contains("name = \"frf-memorysafety\""));
-    assert!(lock.contains("version = \"0.2.0\""));
+    assert!(lock.contains(&format!(
+        "name = \"frf-memorysafety\"\nversion = \"{version}\""
+    )));
     assert!(lock.contains("name = \"serde\""));
     assert!(lock.contains("name = \"sha2\""));
     assert!(lock.contains("name = \"thiserror\""));
