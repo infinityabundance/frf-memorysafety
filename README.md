@@ -5,13 +5,13 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** It is phase-1
-infrastructure: strict encoding, typed evidence, support bookkeeping, a finite
-three-rule profile, and an honest CLI. Universal safe-interior soundness and
-`SAFE_COMPATIBLE` are outside the finite profile and are always reported as
-`WITHHELD_NOT_RUN`.
+**This build makes no memory-safety soundness claim.** It is phase-2
+bookkeeping infrastructure: strict encoding, typed evidence, founded support
+with policy custody, a finite three-rule profile, and an honest CLI. Universal
+safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite profile and
+are always reported as `WITHHELD_NOT_RUN`.
 
-## Status (0.2.0, phase 1)
+## Status (0.2.0, phase 2.1)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -20,12 +20,14 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 77 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 77 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets` | 110 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release` | 110 passed, 0 failed, 0 ignored |
 
-The conformance test **executes**; it is not ignored. It checks 110,592
-configurations and 331,776 node-certificate comparisons over the explicit
-12-pattern, three-node universe.
+The conformance tests **execute**; they are not ignored. Two courts check the
+110,592-configuration, 331,776-node-comparison campaign over the explicit
+12-pattern, three-node universe. One uses the shipping engine; the other uses a
+test-local naive fixed-point evaluator and an independent all-node certificate
+checker.
 
 ### Implemented
 
@@ -34,8 +36,14 @@ configurations and 331,776 node-certificate comparisons over the explicit
 - Domain-separated `ms1-` SHA-256 identities over twelve domains.
 - Typed claims, scope anchors, execution modes, epistemic statuses, hazards,
   obligations, detector outcomes, and opaque external FRF/FRF-Fuzz/Gemel IDs.
-- Least-fixed-point positive and admissible support; challenges, certificates,
-  exact cuts, incremental revocation, and policy-versioned reconstruction.
+- Least-fixed-point positive and admissible support with explicit leaf
+  admission, challenged premises, all-node certificates, exact node and rule
+  cuts, incremental revocation, and noninterference witnesses.
+- Digest-bound historical verdicts that replay under their original policy and
+  detect policy substitution, result tampering, or digest tampering.
+- The nine derivative §12.4 coverage/policy/support cases with exact expected
+  outcomes, plus wrong-greatest-fixed-point, hidden-intermediate,
+  shared-mapping, changed-policy, and implicit-leaf mutant courts.
 - The finite three-rule profile: exact enumeration, subset restriction, and
   same-domain conjunction, with nine named refusal checks.
 - A deterministic local buffer model with 24 records (8 scenarios for each of
@@ -179,12 +187,14 @@ lockfile or pinned toolchain is missing.
 ```text
 src/identity.rs   canonical encoding, limits, domain-separated identities
 src/model.rs      typed claims, scopes, obligations, hazards, external IDs
-src/support.rs    fixed-point support, challenges, certificates, exact cuts
+src/support.rs    fixed-point support, challenges, certificates, cuts, custody
+src/closure.rs    set-based declared/observed coverage comparison
+docs/             phase-2 requirement alignment and source citations
 src/profile.rs    finite three-rule profile and deterministic buffer model
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
-tests/            canonical vectors, support semantics, conformance,
-                  profile model/refusals, original-domain replay, CLI, lockfile
+tests/            canonical vectors, support semantics, independent conformance,
+                  §12.4 cases, mutant courts, profile model/refusals, replay, CLI
 ```
 
 ## Non-transfer
