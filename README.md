@@ -143,39 +143,36 @@ Exit 0 never means universal soundness was established.
 
 ## Verification
 
-All Rust builds and tests run in Docker, never on the host. The source mount is
-read-only except for the writable `target` volume, and every container is
-memory-, swap-, PID-, and CPU-bounded:
+`./ci/gate.sh` is the canonical gate runner. Every Rust build and test runs in
+the pinned `rust:1.85.0-slim` container, never on the host. A successful run
+prints `PASS` for each gate and writes full logs to `target/gate-logs/`.
+
+The four gates are:
 
 ```sh
-docker run --rm \
-  --memory=2g --memory-swap=2g --pids-limit=512 --cpus=2 \
-  -v "$PWD":/src:ro -v "$PWD/target":/src/target \
-  -v frf-cargo:/cargo -e CARGO_HOME=/cargo -w /src \
-  rust:1.85.0-slim cargo fmt --all -- --check
-
-docker run --rm \
-  --memory=2g --memory-swap=2g --pids-limit=512 --cpus=2 \
-  -v "$PWD":/src:ro -v "$PWD/target":/src/target \
-  -v frf-cargo:/cargo -e CARGO_HOME=/cargo -w /src \
-  rust:1.85.0-slim cargo clippy --all-targets --all-features -- -D warnings
-
-docker run --rm \
-  --memory=2g --memory-swap=2g --pids-limit=512 --cpus=2 \
-  -v "$PWD":/src:ro -v "$PWD/target":/src/target \
-  -v frf-cargo:/cargo -e CARGO_HOME=/cargo -w /src \
-  rust:1.85.0-slim cargo test --locked --all-targets
-
-docker run --rm \
-  --memory=2g --memory-swap=2g --pids-limit=512 --cpus=2 \
-  -v "$PWD":/src:ro -v "$PWD/target":/src/target \
-  -v frf-cargo:/cargo -e CARGO_HOME=/cargo -w /src \
-  rust:1.85.0-slim cargo test --locked --release
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --locked --all-targets
+cargo test --locked --release
 ```
 
-`Cargo.lock` is committed and the first test run uses `--locked`. The
-`tests/lockfile.rs` guard also fails if the lockfile or pinned toolchain is
-missing.
+Every container is hardened as follows:
+
+- `--memory=2g --memory-swap=2g` caps memory and swap together, so the
+  container is OOM-killed before the host is placed under memory pressure;
+  `--oom-score-adj=500` makes it the preferred OOM victim.
+- `--pids-limit=512 --cpus=2 --ulimit nofile=1024:1024` bound process count,
+  CPU quota, and file descriptors, and each gate has a 1800-second timeout.
+- `--cap-drop ALL` followed by only `DAC_OVERRIDE`, `CHOWN`, and `FOWNER`
+  restoration, plus `--security-opt no-new-privileges`, permits writing the
+  mounted build directory without granting broader privileges.
+- The repository is mounted read-only at `/src`; only `target/` and the
+  `frf-cargo` Cargo cache volume are writable.
+
+The host `target/` directory is generated state and is not tracked. Delete it
+for a clean-room run; the gate recreates it. `Cargo.lock` is committed and the
+test gates use `--locked`. The `tests/lockfile.rs` guard also fails if the
+lockfile or pinned toolchain is missing.
 
 ## Layout
 
