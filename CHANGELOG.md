@@ -9,6 +9,42 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased]
+
+Phase 3.1: conservative, syntax-only Rust source inventory. No version bump and
+no external publication.
+
+### Added
+
+- `src/source.rs`: bounded `syn` 2.0.119 (`full`, `visit`) AST inventory for
+  unsafe blocks/functions/impls/traits, `extern` blocks and FFI declarations and
+  name-matched calls, export/link attributes, raw-pointer types and operations,
+  `transmute`, unions, `MaybeUninit`/`UnsafeCell`/`NonNull`, allocation and
+  ownership calls, unresolved calls/methods/closures/callback candidates,
+  `cfg`/feature evidence, and `build.rs`/`Cargo.toml` build evidence.
+- File, byte, line, and column spans plus per-file and per-finding SHA-256
+  digests, deterministic ordering, and canonical
+  `frf-memorysafety.source-inventory.v1` JSON.
+- Hard limits for file bytes, file count, total bytes, syntax nodes, findings,
+  and unknowns; explicit invalid-UTF-8 rejection; symlinks are never followed.
+- `source scan PATH [--json]` with SPEC §14 exit statuses and capability/version
+  updates.
+- `tests/source_inventory.rs` fixtures for safe/unsafe/FFI/callback/cfg input,
+  allocations, malformed input, invalid UTF-8, every resource limit, symlink
+  escape, non-UTF-8 paths, deterministic canonical output, and CLI statuses.
+- `docs/phase3-source-inventory.md` with the claim ceiling, §12.4 distinction,
+  limits, and authoritative citations.
+- 19 new tests (17 integration, 2 unit), for 133 total in debug and release.
+
+### Claim ceiling
+
+This is syntactic inventory only. It is not a caller graph, alias analysis,
+footprint model, whole-program inventory, or memory-safety result. Unresolved
+calls, callback registrations, macro-generated code, external module bodies, and
+foreign dispatch remain explicit unknowns. Phase 3.2 (MIR/compiler-assisted
+edges) and phase 3.3 (alias/footprint/reference-interval semantics) are not
+implemented.
+
 ## [0.3.0] - 2026-10-17
 
 Phase 2: founded support, exact cuts, policy custody, independent conformance,

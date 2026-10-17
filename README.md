@@ -6,12 +6,13 @@ and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
 **This build makes no memory-safety soundness claim.** It is phase-2
-bookkeeping infrastructure: strict encoding, typed evidence, founded support
-with policy custody, a finite three-rule profile, and an honest CLI. Universal
-safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite profile and
-are always reported as `WITHHELD_NOT_RUN`.
+bookkeeping infrastructure plus a phase-3.1 syntax-only source inventory: strict
+encoding, typed evidence, founded support with policy custody, a finite
+three-rule profile, bounded `syn`-based source discovery, and an honest CLI.
+Universal safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite
+profile and are always reported as `WITHHELD_NOT_RUN`.
 
-## Status (0.3.0, phase 2)
+## Status (0.3.0, phase 2 + phase 3.1)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -20,8 +21,8 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 114 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 114 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets` | 133 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release` | 133 passed, 0 failed, 0 ignored |
 
 Version 0.3.0 is the Phase 2 release. Release notes for Phase 1 (0.2.0) and
 Phase 2 (0.3.0) are in [`CHANGELOG.md`](CHANGELOG.md).
@@ -65,6 +66,13 @@ ceiling.
 - An evaluator that replays each local-model case against the crate's own
   reconstruction, so a fabricated case outcome and its honestly rehashed
   observation are still refused.
+- A bounded, syntax-only Rust source inventory using pinned `syn` 2.0.119 with
+  `full` and `visit`: unsafe items, FFI declarations/calls, exported symbols,
+  raw pointers, `transmute`, unions, `MaybeUninit`/`UnsafeCell`/`NonNull`,
+  allocation/ownership sites, unresolved calls/methods/closures/callback
+  registrations, `cfg`/feature evidence, and `build.rs`/`Cargo.toml` evidence.
+- Hard source-scan limits, deterministic ordering, canonical JSON, explicit
+  parse/macro/module/symlink unknowns, and refusal to follow symlinks.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
 
@@ -94,10 +102,12 @@ differential consistency result between the shipping engine and a separately
 coded oracle over the 12-pattern, three-node universe; it is not a proof of
 `SPEC.md`, because both implementations can share a specification error. Policy
 custody and historical verdicts are digest-bound and replay-bound, not
-authenticated; there is no signature or trusted execution root. No result here
-implies native Rust soundness, detector sensitivity, real-FFI coverage, or
-universal safe-interior soundness. `SAFE_COMPATIBLE` is never accepted by this
-build.
+authenticated; there is no signature or trusted execution root. The source
+inventory is syntactic and bounded: unresolved calls, callbacks, macros,
+external module bodies, and foreign dispatch remain unknown, so it is not a
+caller graph, an alias analysis, or a coverage proof. No result here implies
+native Rust soundness, detector sensitivity, real-FFI coverage, or universal
+safe-interior soundness. `SAFE_COMPATIBLE` is never accepted by this build.
 
 ### NOT_RUN in this build
 
@@ -108,6 +118,8 @@ build.
 - Live Gemel publication
 - Live OpenSSL-Rust Safe-33 native courts
 - Native proof-checker adapters
+- MIR/compiler-resolved caller graphs and whole-program closure (phase 3.2/3.3)
+- Alias, footprint, and reference-interval semantics (phase 3.2/3.3)
 - Universal safe-interior or `SAFE_COMPATIBLE` acceptance
 
 FRF remains the only FRF receipt producer, FRF-Fuzz the only BLAKE3 finding
@@ -123,6 +135,7 @@ frf-memorysafety profile validate FILE
 frf-memorysafety profile enumerate --out DIR
 frf-memorysafety support evaluate FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
 frf-memorysafety support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
+frf-memorysafety source scan PATH [--json]
 frf-memorysafety evidence verify --root DIR
 frf-memorysafety report --case FILE --format json|markdown
 
@@ -166,6 +179,29 @@ digest or a missing policy identity exits 2.
 `evidence verify --root DIR` walks regular `*.json` files (skipping symlinks),
 requires each to parse strictly and be byte-canonical, and exits 3 if any file
 fails.
+
+### Phase 3.1 source inventory
+
+`source scan PATH [--json]` parses a Rust file or directory with pinned `syn`
+2.0.119 and emits canonical `frf-memorysafety.source-inventory.v1` JSON with no
+trailing newline. It records file byte/line spans, SHA-256 file and slice
+digests, unsafe constructs, FFI declarations/calls, attributes, raw-pointer
+operations, `transmute`, unions, `MaybeUninit`/`UnsafeCell`/`NonNull`,
+allocation and ownership calls, calls/methods/closures/callback candidates,
+`cfg`/feature/build-script evidence, and explicit unknowns.
+
+This is **syntactic inventory, not a caller graph, alias analysis, or
+whole-program knowledge**. Call targets, macro-generated code, external module
+bodies, and foreign dispatch remain unknown. A parsed inventory cannot establish
+conservative closure; the paper's §12.4 omission/not-falsified distinction is
+preserved. See [`docs/phase3-source-inventory.md`](docs/phase3-source-inventory.md)
+for the exact categories, limits, exit statuses, and citations.
+
+Default hard limits are 1 MiB per file, 2,048 files, 32 MiB total, 262,144
+syntax nodes, 4,096 findings, and 4,096 unknowns. Exceeding a limit exits 3.
+Invalid UTF-8 exits 3. Parse failures become explicit unknowns and the scan
+exits 0. Directory traversal skips non-Rust files and never follows symlinks;
+a symlink is reported as `symlink_not_followed`.
 
 ## Exit statuses
 
@@ -225,11 +261,13 @@ src/support.rs    fixed-point support, challenges, certificates, cuts, custody
 src/closure.rs    set-based declared/observed coverage comparison
 docs/             phase-2 requirement alignment, conformance methodology, citations
 src/profile.rs    finite three-rule profile and deterministic buffer model
+src/source.rs     bounded syn-based syntactic source inventory
+docs/phase3-source-inventory.md   phase 3.1 categories, limits, claim ceiling, citations
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
 tests/            canonical vectors, support semantics, independent oracle,
                   §12.4 cases, mutant courts, paper corpus, profile model/refusals,
-                  replay, CLI
+                  source inventory fixtures/limits/symlinks/CLI, replay, CLI
 ```
 
 ## Non-transfer
