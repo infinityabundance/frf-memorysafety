@@ -120,3 +120,20 @@ identities, not reconstructed copies of the paper's original files.
   recording is currently a library API (`HistoricVerdict`).
 - The paper's separate §6.7 nine adversarial refusal cases and 24
   candidate/scenario records are outside Phase 2.1 and were not modified.
+
+## Phase 2.2 update
+
+Superseded in part by `docs/phase2-conformance.md`:
+
+- The independent oracle now lives in `tests/support_oracle/` and does not call
+  the production evaluator, certificate enumerator, or exact-cut predicate. It
+  is compared over all 110,592 configurations.
+- The paper's `acceptance_cases.py` was located in
+  `research/paper/research/` (not the prototype zip). Its nine fixtures and
+  exact outcomes are transcribed in `tests/section_12_4.rs` with source
+  digests.
+- The 17,712 count is the paper's positively-supported-node cut denominator;
+  331,776 is all nodes times configurations. Both are pinned and the
+  exact-cut condition is checked on the 17,712 cases.
+- The CLI `support evaluate|explain` commands now bind a policy file, expected
+  digest, and expected version, and reject substitution.

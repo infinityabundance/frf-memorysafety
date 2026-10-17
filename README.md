@@ -11,7 +11,7 @@ with policy custody, a finite three-rule profile, and an honest CLI. Universal
 safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite profile and
 are always reported as `WITHHELD_NOT_RUN`.
 
-## Status (0.2.0, phase 2.1)
+## Status (0.2.0, phase 2.2)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -20,14 +20,17 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 110 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 110 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets` | 114 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release` | 114 passed, 0 failed, 0 ignored |
 
-The conformance tests **execute**; they are not ignored. Two courts check the
-110,592-configuration, 331,776-node-comparison campaign over the explicit
-12-pattern, three-node universe. One uses the shipping engine; the other uses a
-test-local naive fixed-point evaluator and an independent all-node certificate
-checker.
+The conformance tests **execute**; they are not ignored. The shipping engine is
+compared against a separately coded oracle in `tests/support_oracle/` over the
+explicit 12-pattern, three-node universe: 110,592 configurations, 331,776
+all-node certificate comparisons, and 331,776 all-node exact-cut comparisons.
+The paper's distinct counting definition, which checks only positively
+supported nodes before a challenge, is pinned at 17,712. See
+`docs/phase2-conformance.md` for the exact domain, methodology, and claim
+ceiling.
 
 ### Implemented
 
@@ -41,9 +44,16 @@ checker.
   cuts, incremental revocation, and noninterference witnesses.
 - Digest-bound historical verdicts that replay under their original policy and
   detect policy substitution, result tampering, or digest tampering.
-- The nine derivative §12.4 coverage/policy/support cases with exact expected
-  outcomes, plus wrong-greatest-fixed-point, hidden-intermediate,
-  shared-mapping, changed-policy, and implicit-leaf mutant courts.
+- The nine §12.4 coverage/policy/support cases transcribed from the paper's
+  original `acceptance_cases.py` fixtures and exact outcomes, plus
+  wrong-greatest-fixed-point, hidden-intermediate, shared-mapping,
+  changed-policy, and implicit-leaf mutant courts.
+- An independently written fixed-point/certificate/exact-cut oracle and a
+  paper-corpus test that aligns the 17,712 exact-revocation-cut definition with
+  the crate's all-node 331,776 comparisons.
+- CLI policy custody: `support evaluate` and `support explain` accept a policy
+  file, expected policy digest, and expected policy version, and reject
+  substitution with SPEC §14 exit statuses.
 - The finite three-rule profile: exact enumeration, subset restriction, and
   same-domain conjunction, with nine named refusal checks.
 - A deterministic local buffer model with 24 records (8 scenarios for each of
@@ -95,8 +105,8 @@ frf-memorysafety version [--json]
 frf-memorysafety capabilities [--json]
 frf-memorysafety profile validate FILE
 frf-memorysafety profile enumerate --out DIR
-frf-memorysafety support evaluate FILE
-frf-memorysafety support explain FILE
+frf-memorysafety support evaluate FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
+frf-memorysafety support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
 frf-memorysafety evidence verify --root DIR
 frf-memorysafety report --case FILE --format json|markdown
 
@@ -125,9 +135,17 @@ A support file has this shape:
   },
   "revoked": [],
   "challenged": [],
-  "claim": "q"
+  "claim": "q",
+  "policy": { "id": "example-policy", "version": "1" }
 }
 ```
+
+The optional `policy` identity binds the support file to a policy version. A
+policy file has the shape `{"id": ..., "version": ..., "rules": {...}}`.
+`--policy` additionally requires the policy file's rules to equal the support
+file's rules. `--expect-policy-digest` accepts the canonical `ms1-...` policy
+digest. Rule, digest, or version substitution exits 3; malformed expected
+digest or a missing policy identity exits 2.
 
 `evidence verify --root DIR` walks regular `*.json` files (skipping symlinks),
 requires each to parse strictly and be byte-canonical, and exits 3 if any file
@@ -189,12 +207,13 @@ src/identity.rs   canonical encoding, limits, domain-separated identities
 src/model.rs      typed claims, scopes, obligations, hazards, external IDs
 src/support.rs    fixed-point support, challenges, certificates, cuts, custody
 src/closure.rs    set-based declared/observed coverage comparison
-docs/             phase-2 requirement alignment and source citations
+docs/             phase-2 requirement alignment, conformance methodology, citations
 src/profile.rs    finite three-rule profile and deterministic buffer model
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
-tests/            canonical vectors, support semantics, independent conformance,
-                  §12.4 cases, mutant courts, profile model/refusals, replay, CLI
+tests/            canonical vectors, support semantics, independent oracle,
+                  §12.4 cases, mutant courts, paper corpus, profile model/refusals,
+                  replay, CLI
 ```
 
 ## Non-transfer
