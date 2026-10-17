@@ -18,6 +18,7 @@ pub type PremiseSet = BTreeSet<ClaimId>;
 /// One inference rule system. Empty premise sets are admitted leaves only when
 /// explicitly listed in [`RuleSystem::admitted_leaves`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct RuleSystem {
     /// Rules keyed by conclusion.
     pub rules: BTreeMap<ClaimId, Vec<PremiseSet>>,

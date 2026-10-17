@@ -1,7 +1,7 @@
 //! Finite three-rule profile: deterministic 24-record model and refusal checks.
 
 use frf_memorysafety::identity::{digest_bytes, IdentityDomain};
-use frf_memorysafety::model::Property;
+use frf_memorysafety::model::{ExecutionMode, Property};
 use frf_memorysafety::profile::{
     buffer_model_policy, canonical_bundle_bytes, evaluate_profile, evaluate_profile_json,
     local_buffer_bundle, local_buffer_claims, local_buffer_records, observation_digest,
@@ -108,6 +108,60 @@ fn refusal_check_01_provider_scope_mismatch() {
         &evaluation,
         ProfileRefusalKind::ProviderScopeMismatch
     ));
+}
+
+#[test]
+fn refusal_check_10_native_execution_mode_is_refused() {
+    let mut bundle = local_buffer_bundle();
+    claim_mut(&mut bundle, "c1-clear")
+        .evidence
+        .as_mut()
+        .unwrap()
+        .execution_mode = ExecutionMode::AuthenticNative;
+    let evaluation = evaluate_profile(&bundle);
+    assert!(has_refusal(
+        &evaluation,
+        ProfileRefusalKind::UniversalOrNativeClaim
+    ));
+    assert_eq!(
+        evaluation.claims["c1-clear"].disposition,
+        ClaimDisposition::Refused
+    );
+}
+
+#[test]
+fn refusal_check_11_rehashed_model_case_disagrees_with_local_replay() {
+    let mut bundle = local_buffer_bundle();
+    let evidence = claim_mut(&mut bundle, "c1-clear")
+        .evidence
+        .as_mut()
+        .unwrap();
+    let case_id = evidence.cases[0].id.clone();
+    let fabricated = "fabricated".to_owned();
+    evidence.cases[0].model_replay_outcome = fabricated.clone();
+    let observation = evidence
+        .observations
+        .iter_mut()
+        .find(|observation| observation.case_id == case_id)
+        .unwrap();
+    observation.recorded_outcome = fabricated.clone();
+    observation.payload_digest = observation_digest(&case_id, &fabricated);
+
+    let evaluation = evaluate_profile(&bundle);
+    assert!(has_refusal(
+        &evaluation,
+        ProfileRefusalKind::RehashedObservationMismatch
+    ));
+    // The observation was rehashed honestly; only the independent model
+    // replay exposes the fabrication.
+    assert!(!has_refusal(
+        &evaluation,
+        ProfileRefusalKind::ObservationDigestMismatch
+    ));
+    assert_eq!(
+        evaluation.claims["c1-clear"].disposition,
+        ClaimDisposition::Refused
+    );
 }
 
 #[test]

@@ -385,6 +385,12 @@ pub fn canonical_bytes(value: &Value) -> Result<Vec<u8>, IdentityError> {
     enforce_limits(value)?;
     let mut out = Vec::new();
     encode_value(value, "$", &mut out)?;
+    if out.len() > MAX_BYTES {
+        return Err(IdentityError::TooLarge {
+            actual: out.len(),
+            limit: MAX_BYTES,
+        });
+    }
     Ok(out)
 }
 

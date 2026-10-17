@@ -162,6 +162,26 @@ fn support_evaluate_and_explain_work() {
 }
 
 #[test]
+fn support_evaluate_rejects_unknown_nested_fields() {
+    let temp = TempDir::new("support-unknown");
+    let path = temp.path().join("support.json");
+    write_canonical(
+        &path,
+        &serde_json::json!({
+            "schema": "frf-memorysafety.support.v1",
+            "spec": "frf-memorysafety-spec-v1",
+            "rules": {
+                "rules": {"q": [["a"]]},
+                "admitted_leaves": ["a"],
+                "unexpected": true
+            },
+            "claim": "q"
+        }),
+    );
+    assert_eq!(run(&["support", "evaluate", path.to_str().unwrap()]), 3);
+}
+
+#[test]
 fn evidence_verify_detects_noncanonical_files() {
     let temp = TempDir::new("evidence");
     write_canonical(&temp.path().join("good.json"), &serde_json::json!({"a": 1}));

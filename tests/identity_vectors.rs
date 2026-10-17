@@ -29,6 +29,29 @@ fn canonical_vector_is_byte_exact_and_utf16_ordered() {
 }
 
 #[test]
+fn invalid_utf8_is_rejected_as_an_encoding_error() {
+    assert!(matches!(
+        parse_strict(&[0xff]),
+        Err(IdentityError::InvalidUtf8)
+    ));
+}
+
+#[test]
+fn canonical_encoder_enforces_the_encoded_byte_limit() {
+    let value = json!({
+        "a": "a".repeat(MAX_STRING_BYTES),
+        "b": "b".repeat(MAX_STRING_BYTES),
+        "c": "c".repeat(MAX_STRING_BYTES),
+        "d": "d".repeat(MAX_STRING_BYTES),
+        "e": "e".repeat(MAX_STRING_BYTES),
+    });
+    assert!(matches!(
+        canonical_bytes(&value),
+        Err(IdentityError::TooLarge { .. })
+    ));
+}
+
+#[test]
 fn duplicate_keys_and_floats_are_rejected() {
     assert!(parse_strict(br#"{"a":1,"a":2}"#).is_err());
     assert!(parse_strict(br#"{"a":1,"\u0061":2}"#).is_err());

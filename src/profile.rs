@@ -627,6 +627,18 @@ const fn rows_for(variant: BufferVariant) -> [ScenarioRow; SCENARIOS_PER_VARIANT
     }
 }
 
+/// Look up the independently reconstructed outcome of a local-model case.
+///
+/// The returned row is the crate's own record of the deterministic model, not a
+/// value supplied by evidence. It is used to detect evidence that rehashes a
+/// fabricated case outcome consistently with its observation.
+fn local_model_row(variant: BufferVariant, scenario: &str) -> Option<ScenarioRow> {
+    rows_for(variant)
+        .iter()
+        .copied()
+        .find(|row| row.scenario == scenario)
+}
+
 fn case_prefix(variant: BufferVariant) -> &'static str {
     match variant {
         BufferVariant::C0 => "c0",
@@ -1394,6 +1406,47 @@ fn validate_enumeration(
                 format!("duplicate case identifier {:?}", case.id),
             );
             ok = false;
+        }
+    }
+
+    // For the built-in local model, replay every case from the crate's own
+    // reconstruction rather than trusting the evidence's case table. Without
+    // this, an evidence provider could change a case outcome and its matching
+    // observation together and pass the observation-versus-case check.
+    if policy.deterministic_model == BUFFER_MODEL_ID {
+        for case in &evidence.cases {
+            match local_model_row(case.variant, &case.scenario) {
+                None => {
+                    refusal(
+                        refusals,
+                        ProfileRefusalKind::InexactCoverage,
+                        claim_ref,
+                        format!("case {:?} is not part of {BUFFER_MODEL_ID}", case.id),
+                    );
+                    ok = false;
+                }
+                Some(row) => {
+                    let expected_violation = row
+                        .violation
+                        .then(|| format!("{}: interval/model conflict", case.variant.as_str()));
+                    if case.adjudicable != row.adjudicable
+                        || case.model_violation != expected_violation
+                        || case.model_replay_outcome != row.replay
+                        || case.stipulated_oracle_outcome != row.oracle
+                    {
+                        refusal(
+                            refusals,
+                            ProfileRefusalKind::RehashedObservationMismatch,
+                            claim_ref,
+                            format!(
+                                "case {:?} disagrees with independent {BUFFER_MODEL_ID} replay",
+                                case.id
+                            ),
+                        );
+                        ok = false;
+                    }
+                }
+            }
         }
     }
     let mut observation_ids = BTreeSet::new();

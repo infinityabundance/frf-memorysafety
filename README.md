@@ -20,8 +20,8 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 69 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 69 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets` | 77 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release` | 77 passed, 0 failed, 0 ignored |
 
 The conformance test **executes**; it is not ignored. It checks 110,592
 configurations and 331,776 node-certificate comparisons over the explicit
@@ -39,7 +39,11 @@ configurations and 331,776 node-certificate comparisons over the explicit
 - The finite three-rule profile: exact enumeration, subset restriction, and
   same-domain conjunction, with nine named refusal checks.
 - A deterministic local buffer model with 24 records (8 scenarios for each of
-  C0/C1/C2) and 5 requested claims per variant.
+  C0/C1/C2) and 5 requested claims per variant, plus a separately written Rust
+  replay of the original eight-case model in `tests/original_domain_replay.rs`.
+- An evaluator that replays each local-model case against the crate's own
+  reconstruction, so a fabricated case outcome and its honestly rehashed
+  observation are still refused.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
 
@@ -54,6 +58,12 @@ configurations and 331,776 node-certificate comparisons over the explicit
 C0 models an interval held across a successful replacement. C1 models the
 interval acquired after the callback. C2 accepts all identities. These are
 finite local model results, not native execution and not universal soundness.
+
+The C0 `Parity` result is scoped to the six adjudicable cases. Over the full
+eight-case domain it is not established, because two cases have modeled
+conflicts and no adjudicated observation; this matches the original
+`research/paper/research/worked_bundle.py` results. The replay test checks the
+original counts and makes this scoping difference explicit.
 
 ### NOT_RUN in this build
 
@@ -177,7 +187,7 @@ src/profile.rs    finite three-rule profile and deterministic buffer model
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
 tests/            canonical vectors, support semantics, conformance,
-                  profile model/refusals, CLI, lockfile
+                  profile model/refusals, original-domain replay, CLI, lockfile
 ```
 
 ## Non-transfer
