@@ -15,7 +15,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::identity::{
-    canonical_bytes, digest_bytes, digest_value, parse_strict, IdentityDomain, IdentityError, MsId,
+    canonical_bytes, digest_bytes, parse_strict, IdentityDomain, IdentityError, MsId,
 };
 use crate::model::{ExecutionMode, Property, Quantifier, ScopeAnchors};
 
@@ -1750,14 +1750,6 @@ pub fn canonical_bundle_bytes(bundle: &ProfileBundle) -> Result<Vec<u8>, Identit
     let value =
         serde_json::to_value(bundle).map_err(|error| IdentityError::Json(error.to_string()))?;
     canonical_bytes(&value)
-}
-
-/// Compute the policy-identity anchor used by the local fixture.
-#[must_use]
-pub fn buffer_model_policy_digest() -> MsId {
-    let value = serde_json::to_value(buffer_model_policy()).unwrap_or(serde_json::Value::Null);
-    digest_value(IdentityDomain::Policy, &value)
-        .unwrap_or_else(|error| digest_bytes(IdentityDomain::Policy, error.to_string().as_bytes()))
 }
 
 #[cfg(test)]
