@@ -1,16 +1,30 @@
-//! The nine constructed acceptance cases described in paper §12.4.
+//! The nine constructed acceptance checks from paper §12.4.
 //!
-//! Group A compares declared and observed edge sets. Group B separates evidence
-//! bytes, policy identity, and verdict. Group C exercises alternative support
-//! through a shared mapping premise. All expected outcomes are exact.
+//! Provenance: these fixtures and expected outcomes are transcribed from the
+//! paper's original executable oracle, not newly invented cases:
+//!
+//! * `research/paper/research/acceptance_cases.py`
+//!   SHA-256 `3a577b985868d087db9ebb655a40da64d2e8844f7e75c2d2a14263777aa6e997`
+//! * `research/paper/research/claim_model.py`
+//!   SHA-256 `41eb75d88deb735313fda6c1f0c43129ee7179936340e2b12b1a416ac81ea23f`
+//! * `research/paper/research/acceptance-cases-results.json`
+//!   SHA-256 `abc4e0c2a080d2c918ce971e91caabcd7871ed70f14ac210d678d1d17665a2d5`
+//!
+//! The recorded results were produced with Python 3.14.7. This test does not
+//! execute the Python oracle; it replays the identical inputs through the Rust
+//! engine and asserts the same exact outcomes. Agreement is a consistency
+//! result, not authenticated historical execution or independent authorship of
+//! the original cases.
 
 use std::collections::BTreeSet;
 
 use frf_memorysafety::closure::{compare_inventory, CoverageOutcome, EdgeKey};
+use frf_memorysafety::identity::canonical_bytes;
 use frf_memorysafety::support::{
     certificates, evaluate, exact_cut, reconstruct_recorded_verdict, HistoricVerdict, RuleSystem,
-    SupportPolicy,
+    SupportPolicy, SupportResult,
 };
+use sha2::{Digest, Sha256};
 
 fn edges(items: &[(&str, &str)]) -> BTreeSet<EdgeKey> {
     items
@@ -23,6 +37,56 @@ fn set(items: &[&str]) -> BTreeSet<String> {
     items.iter().map(|item| (*item).to_owned()).collect()
 }
 
+fn declared() -> BTreeSet<EdgeKey> {
+    edges(&[("entry", "read")])
+}
+
+// Group A: observed versus declared edges. Only an observed omission falsifies.
+
+#[test]
+fn observed_omission_falsifies_the_inventory() {
+    let observed = edges(&[("entry", "callback")]);
+    let outcome = compare_inventory(&declared(), &observed);
+    assert!(outcome.is_falsified());
+    assert!(!outcome.is_conservative_closure());
+    assert_eq!(
+        outcome,
+        CoverageOutcome::Falsified {
+            observed_omissions: edges(&[("entry", "callback")]),
+        }
+    );
+}
+
+#[test]
+fn unexercised_callback_is_not_falsified_and_not_closure() {
+    let outcome = compare_inventory(&declared(), &BTreeSet::new());
+    assert!(!outcome.is_falsified());
+    assert!(!outcome.is_conservative_closure());
+    assert_eq!(
+        outcome,
+        CoverageOutcome::NotFalsified {
+            matched: BTreeSet::new(),
+            unobserved_declared: declared(),
+        }
+    );
+}
+
+#[test]
+fn observed_declared_edge_is_not_falsified_and_not_closure() {
+    let outcome = compare_inventory(&declared(), &declared());
+    assert!(!outcome.is_falsified());
+    assert!(!outcome.is_conservative_closure());
+    assert_eq!(
+        outcome,
+        CoverageOutcome::NotFalsified {
+            matched: declared(),
+            unobserved_declared: BTreeSet::new(),
+        }
+    );
+}
+
+// Group B: identical evidence bytes, changed policy identity, historical replay.
+
 fn policy(version: &str, rules: RuleSystem) -> SupportPolicy {
     SupportPolicy {
         id: "section-12-4-policy".to_owned(),
@@ -31,149 +95,137 @@ fn policy(version: &str, rules: RuleSystem) -> SupportPolicy {
     }
 }
 
+fn policy_pair() -> (SupportPolicy, SupportPolicy) {
+    let mut original_rules = RuleSystem::new();
+    original_rules.admit_leaf("e");
+    original_rules.add_rule("q", ["e".to_owned()]).unwrap();
+
+    let mut revised_rules = RuleSystem::new();
+    revised_rules.admit_leaf("e");
+
+    (
+        policy("original", original_rules),
+        policy("revised", revised_rules),
+    )
+}
+
+fn decision_bytes(
+    evidence_sha256: &str,
+    policy: &SupportPolicy,
+    result: &SupportResult,
+) -> Vec<u8> {
+    let policy_digest = policy.digest().unwrap();
+    let value = serde_json::json!({
+        "evidence_sha256": evidence_sha256,
+        "policy_sha256": policy_digest.as_str(),
+        "supported": result.positive.iter().collect::<Vec<_>>(),
+    });
+    canonical_bytes(&value).unwrap()
+}
+
 #[test]
-fn a1_observed_omission_falsifies_the_declared_inventory() {
-    let declared = edges(&[("timer", "cb_a"), ("timer", "cb_b")]);
-    let observed = edges(&[("timer", "cb_a"), ("timer", "cb_b"), ("timer", "cb_c")]);
-    let outcome = compare_inventory(&declared, &observed);
-    assert!(outcome.is_falsified());
-    assert!(!outcome.is_conservative_closure());
+fn old_policy_supports_the_conclusion() {
+    let (original, _) = policy_pair();
+    let result = evaluate(&original.rules, &BTreeSet::new(), &BTreeSet::new());
+    assert_eq!(result.positive, set(&["e", "q"]));
+}
+
+#[test]
+fn new_policy_withholds_the_conclusion_under_identical_evidence() {
+    let (_, revised) = policy_pair();
+    let evidence = b"{\"candidate\":\"abstract-C\",\"kind\":\"stipulated_leaf\",\"value\":7}";
+    let evidence_before = evidence.to_vec();
+    let result = evaluate(&revised.rules, &BTreeSet::new(), &BTreeSet::new());
+
+    assert_eq!(result.positive, set(&["e"]));
     assert_eq!(
-        outcome,
-        CoverageOutcome::Falsified {
-            observed_omissions: edges(&[("timer", "cb_c")]),
-        }
+        &evidence[..],
+        evidence_before.as_slice(),
+        "the policy change does not alter evidence bytes"
     );
 }
 
 #[test]
-fn a2_declared_but_unobserved_callback_is_not_falsified_and_not_closure() {
-    let declared = edges(&[("timer", "cb_a"), ("timer", "cb_b")]);
-    let observed = edges(&[("timer", "cb_a")]);
-    let outcome = compare_inventory(&declared, &observed);
-    assert!(!outcome.is_falsified());
-    assert!(!outcome.is_conservative_closure());
-    assert_eq!(
-        outcome,
-        CoverageOutcome::NotFalsified {
-            matched: edges(&[("timer", "cb_a")]),
-            unobserved_declared: edges(&[("timer", "cb_b")]),
-        }
-    );
-}
+fn historical_decision_is_reconstructed_under_its_original_policy() {
+    let (original, revised) = policy_pair();
+    let evidence = b"{\"candidate\":\"abstract-C\",\"kind\":\"stipulated_leaf\",\"value\":7}";
+    let evidence_sha256 = format!("{:x}", Sha256::digest(evidence));
+    let evidence_before = evidence.to_vec();
 
-#[test]
-fn a3_observed_declared_callback_is_not_falsified_and_not_closure() {
-    let declared = edges(&[("timer", "cb_a")]);
-    let observed = edges(&[("timer", "cb_a")]);
-    let outcome = compare_inventory(&declared, &observed);
-    assert!(!outcome.is_falsified());
-    assert!(!outcome.is_conservative_closure());
-    assert_eq!(
-        outcome,
-        CoverageOutcome::NotFalsified {
-            matched: declared,
-            unobserved_declared: BTreeSet::new(),
-        }
-    );
-}
+    let original_result = evaluate(&original.rules, &BTreeSet::new(), &BTreeSet::new());
+    let historical_bytes = decision_bytes(&evidence_sha256, &original, &original_result);
+    let history = HistoricVerdict::record(&original, &BTreeSet::new(), &BTreeSet::new()).unwrap();
+    let reconstructed = reconstruct_recorded_verdict(&history, &original, &revised).unwrap();
 
-fn policy_change_policies() -> (SupportPolicy, SupportPolicy) {
-    let mut old_rules = RuleSystem::new();
-    old_rules.admit_leaf("e");
-    old_rules.add_rule("q", ["e".to_owned()]).unwrap();
-
-    let mut new_rules = RuleSystem::new();
-    new_rules.admit_leaf("e");
-
-    (policy("1", old_rules), policy("2", new_rules))
-}
-
-#[test]
-fn b1_identical_evidence_loses_support_under_the_new_rule() {
-    let (old_policy, new_policy) = policy_change_policies();
-    let evidence_bytes = b"identical evidence bytes".to_vec();
-    let old_result = evaluate(&old_policy.rules, &BTreeSet::new(), &BTreeSet::new());
-    let new_result = evaluate(&new_policy.rules, &BTreeSet::new(), &BTreeSet::new());
-
-    assert!(!evidence_bytes.is_empty());
-    assert!(old_result.is_supported("q"));
-    assert!(!new_result.is_supported("q"));
-
-    let history = HistoricVerdict::record(&old_policy, &BTreeSet::new(), &BTreeSet::new()).unwrap();
-    history.verify(&old_policy).unwrap();
-    assert!(history.verify(&new_policy).is_err());
-}
-
-#[test]
-fn b2_identical_bytes_do_not_hide_a_policy_identity_change() {
-    let (old_policy, new_policy) = policy_change_policies();
-    let old_history =
-        HistoricVerdict::record(&old_policy, &BTreeSet::new(), &BTreeSet::new()).unwrap();
-    let new_history =
-        HistoricVerdict::record(&new_policy, &BTreeSet::new(), &BTreeSet::new()).unwrap();
-
-    assert_ne!(old_policy.digest().unwrap(), new_policy.digest().unwrap());
-    assert_ne!(old_history.policy_digest, new_history.policy_digest);
-    assert_ne!(old_history.verdict_digest, new_history.verdict_digest);
-    assert!(old_history.result.is_supported("q"));
-    assert!(!new_history.result.is_supported("q"));
-}
-
-#[test]
-fn b3_reconstruction_under_the_original_policy_is_byte_identical() {
-    let (old_policy, new_policy) = policy_change_policies();
-    let history = HistoricVerdict::record(&old_policy, &BTreeSet::new(), &BTreeSet::new()).unwrap();
-    let reconstructed = reconstruct_recorded_verdict(&history, &old_policy, &new_policy).unwrap();
-
-    assert_eq!(reconstructed.historical, history.result);
-    assert!(reconstructed.historical.is_supported("q"));
-    assert!(!reconstructed.current.is_supported("q"));
     assert!(reconstructed.byte_identical_historical);
+    assert_eq!(
+        decision_bytes(&evidence_sha256, &original, &reconstructed.historical),
+        historical_bytes,
+        "historical decision bytes are unchanged"
+    );
+    assert_eq!(reconstructed.historical.positive, set(&["e", "q"]));
+    assert_eq!(reconstructed.current.positive, set(&["e"]));
+    assert_ne!(
+        original.digest().unwrap(),
+        revised.digest().unwrap(),
+        "the policies have different identities"
+    );
+    assert_eq!(&evidence[..], evidence_before.as_slice());
+    assert!(
+        history.verify(&revised).is_err(),
+        "the revised policy cannot be substituted for the recorded one"
+    );
 }
+
+// Group C: two routes sharing one mapping premise, then an independent route.
 
 fn shared_mapping_system() -> RuleSystem {
     let mut system = RuleSystem::new();
     system.admit_leaf("m");
     system.add_rule("a", ["m".to_owned()]).unwrap();
     system.add_rule("b", ["m".to_owned()]).unwrap();
+    system.admit_leaf("c");
     system.add_rule("q", ["a".to_owned()]).unwrap();
     system.add_rule("q", ["b".to_owned()]).unwrap();
     system
 }
 
+fn alternate_support_system() -> RuleSystem {
+    let mut system = shared_mapping_system();
+    system.add_rule("q", ["c".to_owned()]).unwrap();
+    system
+}
+
 #[test]
-fn c1_excluding_the_shared_mapping_blocks_both_routes() {
+fn shared_mapping_defeats_both_routes() {
     let system = shared_mapping_system();
     let excluded = set(&["m"]);
-    assert!(!evaluate(&system, &excluded, &BTreeSet::new()).is_supported("q"));
+    let result = evaluate(&system, &excluded, &BTreeSet::new());
+    assert_eq!(result.positive, set(&["c"]));
 
     let certs = certificates(&system, "q", &BTreeSet::new(), 16).unwrap();
-    assert_eq!(certs, vec![set(&["a", "m", "q"]), set(&["b", "m", "q"])]);
     assert!(exact_cut(&certs, &excluded));
 }
 
 #[test]
-fn c2_an_independent_third_route_survives_the_shared_mapping_cut() {
-    let mut system = shared_mapping_system();
-    system.admit_leaf("d");
-    system.add_rule("q", ["d".to_owned()]).unwrap();
+fn support_without_the_failed_mapping_survives() {
+    let system = alternate_support_system();
     let excluded = set(&["m"]);
+    let result = evaluate(&system, &excluded, &BTreeSet::new());
+    assert_eq!(result.positive, set(&["c", "q"]));
 
-    assert!(evaluate(&system, &excluded, &BTreeSet::new()).is_supported("q"));
     let certs = certificates(&system, "q", &BTreeSet::new(), 16).unwrap();
     assert!(!exact_cut(&certs, &excluded));
-    assert!(certs.contains(&set(&["d", "q"])));
+    assert!(certs.contains(&set(&["c", "q"])));
 }
 
 #[test]
-fn c3_revoking_the_independent_premise_blocks_the_conclusion_again() {
-    let mut system = shared_mapping_system();
-    system.admit_leaf("d");
-    system.add_rule("q", ["d".to_owned()]).unwrap();
-    let excluded = set(&["d", "m"]);
+fn all_available_routes_blocked() {
+    let system = alternate_support_system();
+    let excluded = set(&["m", "c"]);
+    let result = evaluate(&system, &excluded, &BTreeSet::new());
+    assert_eq!(result.positive, BTreeSet::new());
 
-    assert!(!evaluate(&system, &excluded, &BTreeSet::new()).is_supported("q"));
     let certs = certificates(&system, "q", &BTreeSet::new(), 16).unwrap();
     assert!(exact_cut(&certs, &excluded));
 }
