@@ -6,13 +6,15 @@ and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
 **This build makes no memory-safety soundness claim.** It is phase-2
-bookkeeping infrastructure plus a phase-3.1 syntax-only source inventory: strict
-encoding, typed evidence, founded support with policy custody, a finite
-three-rule profile, bounded `syn`-based source discovery, and an honest CLI.
+bookkeeping infrastructure, a phase-3.1 syntax-only source inventory, and a
+phase-3.2 explicit-input path-effect model: strict encoding, typed evidence,
+founded support with policy custody, a finite three-rule profile, bounded
+`syn`-based source discovery, typed alias/footprint/reference-interval
+qualification, and an honest CLI.
 Universal safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite
 profile and are always reported as `WITHHELD_NOT_RUN`.
 
-## Status (0.3.0, phase 2 + phase 3.1)
+## Status (0.3.0, phase 2 + phases 3.1–3.2)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -21,11 +23,13 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 133 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 133 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets` | 155 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release` | 155 passed, 0 failed, 0 ignored |
 
-Version 0.3.0 is the Phase 2 release. Release notes for Phase 1 (0.2.0) and
-Phase 2 (0.3.0) are in [`CHANGELOG.md`](CHANGELOG.md).
+Version 0.3.0 is the Phase 2 release. The Phase 3.1 inventory and Phase 3.2
+path-effect work are unreleased additions; no version bump or publication is
+implied. Release notes for Phase 1 (0.2.0) and Phase 2 (0.3.0) plus the
+unreleased Phase 3 entries are in [`CHANGELOG.md`](CHANGELOG.md).
 
 The conformance tests **execute**; they are not ignored. The shipping engine is
 compared against a separately coded oracle in `tests/support_oracle/` over the
@@ -73,6 +77,18 @@ ceiling.
   registrations, `cfg`/feature evidence, and `build.rs`/`Cargo.toml` evidence.
 - Hard source-scan limits, deterministic ordering, canonical JSON, explicit
   parse/macro/module/symlink unknowns, and refusal to follow symlinks.
+- A typed Phase 3.2 path-effect model over explicit finite objects, aliases,
+  footprints, reference intervals, events, callbacks, and providers.
+- Exact-object, descendant/subrange, shared-mapping, and top/unknown aliases;
+  exact, descendant, and top footprints; read/write/none access modes.
+- Typed `observed_conflict`, `omission`, `not_falsified`, and
+  `compatible_within_finite_footprint` outcomes with evidence and explicit
+  unknowns. These are never collapsed into a boolean.
+- C callback qualification for legal synchronous callbacks, retained pointers,
+  deferred invocation, callback-after-free, and foreign/provider dynamic
+  dispatch. Foreign and provider behavior is never promoted to safe or unsafe.
+- `path analyze FILE [--json]` over explicit JSON or a Phase 3.1 source
+  inventory, with deterministic canonical reports and SPEC §14 exit statuses.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
 
@@ -105,9 +121,13 @@ custody and historical verdicts are digest-bound and replay-bound, not
 authenticated; there is no signature or trusted execution root. The source
 inventory is syntactic and bounded: unresolved calls, callbacks, macros,
 external module bodies, and foreign dispatch remain unknown, so it is not a
-caller graph, an alias analysis, or a coverage proof. No result here implies
-native Rust soundness, detector sensitivity, real-FFI coverage, or universal
-safe-interior soundness. `SAFE_COMPATIBLE` is never accepted by this build.
+caller graph, an alias analysis, or a coverage proof. The path-effect model is
+finite and explicit-input only: it does not extract aliases from source or MIR,
+observe native callbacks, model concurrency, or establish whole-program
+closure. A `compatible_within_finite_footprint` outcome is not universal
+aliasing compatibility. No result here implies native Rust soundness, detector
+sensitivity, real-FFI coverage, or universal safe-interior soundness.
+`SAFE_COMPATIBLE` is never accepted by this build.
 
 ### NOT_RUN in this build
 
@@ -118,8 +138,10 @@ safe-interior soundness. `SAFE_COMPATIBLE` is never accepted by this build.
 - Live Gemel publication
 - Live OpenSSL-Rust Safe-33 native courts
 - Native proof-checker adapters
-- MIR/compiler-resolved caller graphs and whole-program closure (phase 3.2/3.3)
-- Alias, footprint, and reference-interval semantics (phase 3.2/3.3)
+- MIR/compiler-resolved caller graphs and whole-program closure (phase 3.3+)
+- Source/MIR-extracted alias, footprint, and reference-interval semantics
+  (phase 3.3+)
+- Native C callback observation and retained-pointer lifecycle recording
 - Universal safe-interior or `SAFE_COMPATIBLE` acceptance
 
 FRF remains the only FRF receipt producer, FRF-Fuzz the only BLAKE3 finding
@@ -136,6 +158,7 @@ frf-memorysafety profile enumerate --out DIR
 frf-memorysafety support evaluate FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
 frf-memorysafety support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
 frf-memorysafety source scan PATH [--json]
+frf-memorysafety path analyze FILE [--json]
 frf-memorysafety evidence verify --root DIR
 frf-memorysafety report --case FILE --format json|markdown
 
@@ -203,6 +226,34 @@ Invalid UTF-8 exits 3. Parse failures become explicit unknowns and the scan
 exits 0. Directory traversal skips non-Rust files and never follows symlinks;
 a symlink is reported as `symlink_not_followed`.
 
+### Phase 3.2 path effects
+
+`path analyze FILE [--json]` consumes either an explicit
+`frf-memorysafety.path-effects-input.v1` trace or a Phase 3.1
+`frf-memorysafety.source-inventory.v1` file and emits a canonical
+`frf-memorysafety.path-effects-report.v1` report. Explicit input declares
+objects, aliases (`exact_object`, `descendant`, `shared_mapping`,
+`top_unknown`), reference intervals, events (`creation`, `reborrow`, `escape`,
+`callback`, `free`, `use`), callbacks, and foreign/provider behavior.
+
+The report does not produce a boolean. It records typed
+`observed_conflict`, `omission`, `not_falsified`, and
+`compatible_within_finite_footprint` outcomes with event evidence and explicit
+unknowns. A definite overlap, use-after-free, double free, or reference-interval
+violation is an observed conflict; an unresolved alias, footprint, callback, or
+provider is not falsified; an unobserved callback that is declared legally
+absent is an omission; compatibility is limited to the declared finite
+footprint. This preserves the paper's §12.4 omission/not-falsified distinction.
+
+Inventory input has no alias or dispatch identity, so the adapter uses a
+`top_unknown` alias and a foreign-dispatch provider. An inventory-derived
+report is therefore never compatibility evidence. Default limits are 1,024
+events, 1,048,576 pair checks, 65,536 outcomes, and the 4 MiB canonical cap;
+exceeding a limit exits 3. An observed conflict is a finding, not a command
+failure, so the command exits 0 with that status in the report. See
+[`docs/phase3-path-effects.md`](docs/phase3-path-effects.md) for the algebra,
+qualification rules, seal controls, claim ceiling, and citations.
+
 ## Exit statuses
 
 Following SPEC.md §14:
@@ -262,12 +313,15 @@ src/closure.rs    set-based declared/observed coverage comparison
 docs/             phase-2 requirement alignment, conformance methodology, citations
 src/profile.rs    finite three-rule profile and deterministic buffer model
 src/source.rs     bounded syn-based syntactic source inventory
+src/path_effect.rs finite explicit-input aliases, footprints, intervals, outcomes
 docs/phase3-source-inventory.md   phase 3.1 categories, limits, claim ceiling, citations
+docs/phase3-path-effects.md       phase 3.2 algebra, qualification, citations
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
 tests/            canonical vectors, support semantics, independent oracle,
                   §12.4 cases, mutant courts, paper corpus, profile model/refusals,
-                  source inventory fixtures/limits/symlinks/CLI, replay, CLI
+                  source inventory fixtures/limits/symlinks/CLI, path-effect
+                  alias/UnsafeCell/callback seal controls, replay, CLI
 ```
 
 ## Non-transfer

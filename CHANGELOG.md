@@ -11,8 +11,9 @@ universal memory-safety soundness, and no release below makes such a claim.
 
 ## [Unreleased]
 
-Phase 3.1: conservative, syntax-only Rust source inventory. No version bump and
-no external publication.
+Phase 3.1: conservative, syntax-only Rust source inventory. Phase 3.2: finite
+explicit-input path effects and qualified outcomes. No version bump and no
+external publication.
 
 ### Added
 
@@ -34,16 +35,45 @@ no external publication.
   escape, non-UTF-8 paths, deterministic canonical output, and CLI statuses.
 - `docs/phase3-source-inventory.md` with the claim ceiling, §12.4 distinction,
   limits, and authoritative citations.
-- 19 new tests (17 integration, 2 unit), for 133 total in debug and release.
+- `src/path_effect.rs`: typed explicit-input model for exact-object,
+  descendant/subrange, shared-mapping, and top/unknown aliases; exact,
+  descendant, and top footprints; reference intervals over explicit program
+  points; creation, reborrow, escape, callback, free, and use events.
+- Typed `observed_conflict`, `omission`, `not_falsified`, and
+  `compatible_within_finite_footprint` outcomes with event evidence and
+  explicit unknowns. The distinctions are never collapsed into a boolean.
+- C callback qualification for legal synchronous callbacks, retained/escaped
+  pointers, deferred callbacks, callback-after-free, and foreign/provider
+  dynamic dispatch. Foreign behavior is never promoted to safe or unsafe.
+- `path analyze FILE [--json]`, consuming either explicit
+  `frf-memorysafety.path-effects-input.v1` JSON or a Phase 3.1 source inventory,
+  with deterministic `frf-memorysafety.path-effects-report.v1` canonical JSON
+  and SPEC §14 exit statuses.
+- `tests/path_effects.rs`: exact-vs-descendant, descendant-vs-top, wrong
+  shared-mapping, omitted-alias, benign `UnsafeCell`, independent-allocation,
+  synchronous/retained/deferred/after-free callback, foreign/provider,
+  reference-interval, §12.4 omission-vs-not-falsified, inventory-adapter, CLI,
+  and canonical-determinism controls. No test is ignored.
+- `docs/phase3-path-effects.md` with the model, event/footprint algebra,
+  qualification rules, seal controls, claim ceiling, and authoritative
+  citations.
+- 22 new tests (4 unit in `path_effect`, 18 integration), for 155 total in
+  debug and release.
 
 ### Claim ceiling
 
-This is syntactic inventory only. It is not a caller graph, alias analysis,
-footprint model, whole-program inventory, or memory-safety result. Unresolved
-calls, callback registrations, macro-generated code, external module bodies, and
-foreign dispatch remain explicit unknowns. Phase 3.2 (MIR/compiler-assisted
-edges) and phase 3.3 (alias/footprint/reference-interval semantics) are not
-implemented.
+The source inventory is syntactic only. It is not a caller graph, alias
+analysis, footprint model, whole-program inventory, or memory-safety result.
+Unresolved calls, callback registrations, macro-generated code, external module
+bodies, and foreign dispatch remain explicit unknowns.
+
+The path-effect model is finite and explicit-input only. It does not extract
+aliases, footprints, or intervals from source or MIR; does not observe native
+callback registration, invocation, retention, or after-free use; does not model
+concurrency or synchronization; and does not establish whole-program closure.
+`compatible_within_finite_footprint` is not universal alias compatibility, and
+`not_falsified` is not a weak compatibility result. Phase 3.3
+(source/MIR-extracted semantics and native observation) is not implemented.
 
 ## [0.3.0] - 2026-10-17
 
