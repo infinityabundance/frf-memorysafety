@@ -1,12 +1,23 @@
 # Phase 7.1: native provider discovery and bridge foundation
 
+> **Phase 7.2 status:** this document is the Phase 7.1 discovery and foundation
+> record. The FRF-Fuzz build blocker was resolved with the pinned
+> `rust:1.98-slim` + `nightly-2026-07-24` image, and a real FRF-Fuzz -> FRF ->
+> Gemel chain with exact replay, loader-map closure, re-execution, and six seal
+> controls was produced. See [`phase7-live-chain.md`](phase7-live-chain.md) for
+> the Phase 7.2 evidence, commands, and updated claim ceiling. The blockers in
+> §9 are retained as the Phase 7.1 historical record; §9 items 1-3 are now
+> resolved.
+
 Snapshot: `staging` at `4cf3416` (tag `v0.7.0`), crate
-`frf-memorysafety 0.7.0`, no version bump. Phase 7.1 adds discovery, exact
+`frf-memorysafety 0.7.0`, no version bump. Phase 7.1 added discovery, exact
 pinning, opaque external identities, fail-closed bundle verification, and the
-custody pipeline. **Phase 7 is not complete.** No authentic native
-FRF -> FRF-Fuzz -> Gemel custody chain was produced, because the pinned
-FRF-Fuzz provider cannot be built in the mandated `rust:1.85.0-slim` container
-and no provider was executed by the bridge.
+custody pipeline. **At the Phase 7.1 snapshot Phase 7 was not complete:** no
+authentic native FRF -> FRF-Fuzz -> Gemel custody chain had been produced,
+because the pinned FRF-Fuzz provider could not be built in the mandated
+`rust:1.85.0-slim` container and no provider was executed by the bridge. Phase
+7.2 resolved that with the dedicated external image; see
+`phase7-live-chain.md`.
 
 ## 1. Discovery
 
@@ -175,7 +186,7 @@ docker run --rm \
 |---|---|---|---|
 | FRF | `cargo build --release --locked` | `Finished ... in 50.12s` | `0728aac10c4198717e04097201db55c2fbe3801e3917bc36160fc97da2a28f8b` |
 | Gemel | `cargo build --release --locked` | `Finished ... in 47.97s` | `01b7f4cc2281a33dee3ecfe9a747845cef3a8b3c3a4c71078c3ecf8a29bf7696` |
-| FRF-Fuzz | `cargo build --release --locked` | **blocked**, exit 101 | not built |
+| FRF-Fuzz | `cargo build --release --locked` | **built in Phase 7.2** with `rust:1.98-slim`; see `phase7-live-chain.md` | `fa45c704d804146f069190e7d74b8f08e3e067a64c6253ae42c260fa2e700512` |
 
 FRF and Gemel ran live for version probes:
 
@@ -256,8 +267,8 @@ The only admission path is `verify_bundle_bytes`, and admission requires:
 The crate reports `generated_identities: 0` on every report. It never emits an
 `OpenReceipt`, a finding, a GCE object, or a GID. A digest match binds bytes; it
 is not authentication. `authentic_native` is a **declared** provenance label
-that must also match the recorded executable digest and a declared matched
-re-execution. There is no signature, transparency log, or trusted build root.
+that must also match the recorded executable digest, the actual loader-map
+closure, and a recorded matched independent re-execution (Phase 7.2 capture). There is no signature, transparency log, or trusted build root.
 
 The older `model.rs` `FrfReceiptId`, `FuzzContentId`, and `GemelGid` remain as
 textual label types for the Phase 1 claim model. They are not used by the
@@ -288,9 +299,9 @@ substitute          substitute provider; refused
 modeled             local model; refused
 ```
 
-The `authentic_native` path is implemented but not demonstrated end to end in
-this environment. Tests deliberately use only `modeled`, `modified_provider`,
-and `substitute` observations.
+The `authentic_native` path is implemented and demonstrated end to end in
+Phase 7.2 (`docs/phase7-live-chain.md`). The Phase 7.1 tests deliberately used
+only `modeled`, `modified_provider`, and `substitute` observations.
 
 ## 6. Evidence bundle schema
 
@@ -327,7 +338,9 @@ refused) before typed decoding.
 ## 7. Seal controls
 
 `tests/bridge.rs` adds 17 executing tests; `src/bridge.rs` adds 3 unit tests.
-None is ignored. They use only explicitly non-authentic evidence.
+None is ignored. Phase 7.2 adds `tests/bridge_live.rs` (one test that asserts
+`Complete` with a live bundle or typed `NOT_RUN` without one) and the
+`ci/bridge-gate.sh` live seal controls.
 
 | Control | Expected outcome | Exit |
 |---|---|---|
@@ -358,6 +371,10 @@ configured, which is the default.
 ```text
 bridge status [--json]
 bridge verify FILE [--json] [--candidate SHA256]
+bridge capture OUT --candidate P --finding P --receipt P --gemel P \
+  --gemel-evidence P --gemel-repo DIR --frf-root DIR --frf-run ID \
+  --frf-bin P --frf-fuzz-bin P --gemel-bin P --frf-map P \
+  --frf-fuzz-map P --gemel-map P --probe P [--json]
 ```
 
 Exit statuses follow `SPEC.md` §14:
@@ -388,19 +405,17 @@ installation observation, not an execution or sensitivity claim.
 
 ## 9. Blockers
 
-1. **FRF-Fuzz cannot be built under the mandated toolchain.** Its coordinator
+1. **FRF-Fuzz build blocker (resolved in Phase 7.2).** Its coordinator
    requires Rust 1.98 and its instrumented target requires
-   `nightly-2026-07-24`; the hard rule permits only `rust:1.85.0-slim`.
-   `bridge status` reports this as `blocked`; `native_confirm` cannot be
-   demonstrated from an FRF-Fuzz finding.
-2. **No authentic native chain was captured.** The bridge validates supplied
-   bundles; it has no `bridge run`/`bridge capture` command. Producing the
-   three-provider chain requires executing the providers and recording their
-   exact outputs, which is Phase 7.2 work.
-3. **The FRF golden demo is not fully green in `rust:1.85.0-slim`.** The core
-   court/receipt/replay path succeeds, but `python3` is absent, so extension
-   steps (external minimizer, witness, high-assurance independence) report
-   `NOT_RUN`.
+   `nightly-2026-07-24`; the default project gate remains
+   `rust:1.85.0-slim`, and `ci/bridge-gate.sh` uses the pinned
+   `rust:1.98-slim` image plus the pinned nightly for the external tools.
+2. **No authentic native chain was captured (resolved in Phase 7.2).** The
+   bridge now has `bridge capture`, and `ci/bridge-gate.sh` produced the full
+   chain. See `phase7-live-chain.md`.
+3. **The FRF golden demo is not fully green in `rust:1.85.0-slim` (resolved in
+   Phase 7.2).** The external gate runs the demo with a Python 3.11 image; it
+   passed.
 4. **Provenance is not authenticated.** A bundle can declare
    `authentic_native`; the bridge checks the pin, executable digest, DSO
    declaration, candidate, and re-execution declaration, but it cannot prove a
@@ -442,23 +457,19 @@ It does **not** establish:
 
 ## 11. Remaining work for Phase 7.2
 
-1. Obtain authorization for a second hardened image (or an explicit toolchain
-   exception) that can build FRF-Fuzz with Rust 1.98 and the pinned
-   `nightly-2026-07-24`; otherwise record Phase 7 as blocked rather than
-   complete.
-2. Add an opt-in native capture command that invokes only the pinned
-   `frf`, `frf-fuzz`, and `gemel` executables with explicit argv, a cleared
-   environment, bounded time/output, and the same hardened container limits.
-3. Capture one real candidate-bound chain:
-   FRF-Fuzz finding -> deliberate replay -> FRF court/receipt ->
-   Gemel `evidence`/`court_receipt` ingestion.
-4. Independently re-execute the candidate and record a real matched
-   re-execution, not a declared flag.
-5. Record and validate the loader/DSO closure of the provider executables so
-   `dso_binding` reflects observed libraries instead of a declaration.
+1. ~~Obtain authorization for a second hardened image ...~~ Done: Phase 7.2 uses
+   the pinned `rust:1.98-slim` + `nightly-2026-07-24` image.
+2. ~~Add an opt-in native capture command ...~~ Done: `bridge capture`.
+3. ~~Capture one real candidate-bound chain ...~~ Done: see
+   `phase7-live-chain.md`.
+4. ~~Independently re-execute ...~~ Done: two identical runs per provider are
+   recorded and required.
+5. ~~Record and validate the loader/DSO closure ...~~ Done: actual
+   `/proc/self/maps` closures are hashed and rederived.
 6. Add the FRF semantic conformance subset and the Gemel full evidence schema
-   to the bridge, or explicitly cap validation as it is now.
-7. Keep the current claim ceiling until 2-5 produce authentic evidence.
+   to the bridge, or explicitly cap validation as it is now. (Still capped.)
+7. Keep the current claim ceiling until 2-5 produce authentic evidence. (The
+   ceiling is updated, not removed: provenance is an execution record.)
 
 ## 12. References
 

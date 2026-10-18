@@ -32,19 +32,22 @@ typed `NOT_RUN` when an instrument is unavailable. Proof checking is limited to
 the checked-in finite Coq theorem and its negative controls; it is not a proof
 of the crate and is not a universal soundness claim.
 
-Phase 7.1 (unreleased on `staging`; no version bump) adds exact discovery and
-pinning of the real FRF, FRF-Fuzz, and Gemel repositories, opaque provider-typed
-identities that cannot be built from arbitrary strings, a fail-closed evidence
-bundle verifier, and the custody pipeline
-`discover -> reconstruct -> native_confirm -> frf_receipt -> gemel_custody`.
-**Phase 7 is not complete.** FRF 0.1.86 and Gemel 0.12.0 build and ran live for
-version/contract probes in the hardened container, but pinned FRF-Fuzz 0.8.3
-requires Rust 1.98 and nightly-2026-07-24 and is `NOT_RUN` under the mandated
-`rust:1.85.0-slim` rule. No authentic FRF -> FRF-Fuzz -> Gemel custody chain was
-produced, and the bridge never writes an `OpenReceipt`, finding, GCE object, or
-GID. See [`docs/phase7-bridge-discovery.md`](docs/phase7-bridge-discovery.md).
+Phase 7.1 added exact discovery and pinning of the real FRF, FRF-Fuzz, and
+Gemel repositories, opaque provider-typed identities, and the fail-closed
+custody pipeline. Phase 7.2 (unreleased on `staging`; no version bump)
+unblocks pinned FRF-Fuzz with a dedicated `rust:1.98-slim` +
+`nightly-2026-07-24` image and produces a real
+`FRF-Fuzz finding -> FRF court/exact replay/OpenReceipt -> Gemel evidence/GID`
+chain. The live chain records the exact candidate, real provider executables,
+two independent executions per provider, and the actual loader-map closure,
+and it passes stale-candidate, tampered-candidate, substituted-DSO,
+re-execution-mismatch, and tampered-object seals. The default
+`./ci/gate.sh` remains `rust:1.85.0-slim` and asserts the typed `NOT_RUN` path;
+`./ci/bridge-gate.sh` runs the live chain. The bridge never writes an
+`OpenReceipt`, finding, GCE object, or GID. See
+[`docs/phase7-live-chain.md`](docs/phase7-live-chain.md).
 
-## Status (0.7.0 / phase 6 + phase 7.1 bridge foundation)
+## Status (0.7.0 / phase 6 + phase 7.2 live chain)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -53,17 +56,20 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 310 base tests passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 310 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 311 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 311 base tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
+| `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` |
 
-The default gate executes all 310 tests, including the six proof-live tests on
-their typed `checker_unavailable` path and the 17 bridge seal tests plus 3
-bridge unit tests. `./ci/proof-gate.sh` re-runs those same
-six tests against live Coq; the live count is a subset of the base total, not
-additional to it.
+The default gate executes all 311 tests, including the six proof-live tests on
+their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
+unit tests, and the 1 live/`NOT_RUN` chain test. `./ci/proof-gate.sh` re-runs
+those same six tests against live Coq; the live count is a subset of the base
+total, not additional to it. `./ci/bridge-gate.sh` builds and runs the three
+pinned providers and executes the same chain test with
+`FRF_BRIDGE_LIVE_BUNDLE` set.
 
 The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5/6 changes; the MIR
 path is unchanged from 0.4.0. The default gates above were run in the pinned
@@ -91,9 +97,10 @@ Phase 4 (0.5.0), Phase 5 (0.6.0), and Phase 6 (0.7.0) are in
 | `detector calibrate FILE [--json]` | Implemented; refuses dead, misconfigured, harmless, mock-provider, and fake-marker evidence |
 | Live detector calibration (`detector calibrate --live --detector KIND`) | Implemented for closed checked-in fixtures when the instrument is installed and `FRF_DETECTOR_LIVE=1`; otherwise `NOT_RUN`, exit 6 |
 | `proof verify MANIFEST [--live] [--json]` | Implemented; validates manifest, closure, admission, and separate correspondence; `--live` invokes pinned Coq and returns `checker_unavailable`, exit 6, when it is absent |
-| `bridge verify FILE [--json]` | Implemented; validates a supplied evidence bundle, opaque identities, schemas, digests, candidate binding, provenance, DSO binding, and declared re-execution; never executes a provider |
+| `bridge verify FILE [--json]` | Implemented; validates a supplied evidence bundle, opaque identities, schemas, digests, candidate binding, provenance, live-capture closure, and re-execution records; does not execute a provider |
+| `bridge capture OUT ... [--json]` | Implemented; executes only the pinned providers named on the command line and records exact bytes, executable/closure hashes, candidate binding, and two independent runs |
 | `bridge status [--json]` | Implemented; reports exact pins, recorded builds, and executable availability; exit 6 unless every provider executable matches its recorded digest |
-| Live FRF/FRF-Fuzz/Gemel custody chain | Not complete; no authentic chain was produced. FRF and Gemel were built and probed live, FRF-Fuzz is blocked by its Rust 1.98/nightly-2026-07-24 requirement |
+| Live FRF/FRF-Fuzz/Gemel custody chain | Implemented in `./ci/bridge-gate.sh`: real finding `9eea3400...`, receipt `receipt-run-frf-fuzz-4f7755...-debbf8...`, GID `evidence.2cae082c...`, candidate `b594c294...`; 6 of 6 seals PASS |
 | Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
@@ -363,13 +370,13 @@ FFI implementations.
   refused, the runtime is unsupported, or `FRF_DETECTOR_LIVE` is unset
 - Constant-time/secret-lifecycle measurement (the OpenSSL control is a
   SHA-256 known-answer and signature-verification control, not a leakage oracle)
-- Live FRF court / `OpenReceipt` verification (bridge accepts supplied receipts only)
-- Live FRF-Fuzz coordinator and native finding replay (blocked by its Rust
-  1.98/nightly-2026-07-24 requirement under the 1.85 container rule)
-- Live Gemel publication (bridge accepts supplied GCE evidence only)
-- An authentic FRF -> FRF-Fuzz -> Gemel custody chain
-- Authentication of `authentic_native` provenance (it is a declared,
-  digest-checked label, not a signature or trust root)
+- Live providers in the default `./ci/gate.sh` path (the live chain runs in
+  `./ci/bridge-gate.sh`; the default gate asserts typed `NOT_RUN`)
+- Authentication of `authentic_native` provenance (a capture record binds
+  exact bytes, executable/closure hashes, and two runs, but it is not a
+  signature, transparency log, or trusted build root)
+- Full FRF semantic conformance and full Gemel evidence-schema conformance
+  beyond the bridge's checked fields
 - Live OpenSSL-Rust Safe-33 native courts
 - Live Lean/Isabelle proof-checker invocation
 - Live Coq proof checking when `coqc` is absent (`checker_unavailable`, exit 6)
@@ -763,10 +770,11 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-default gate executes 310 base tests (including the 11 detector-live tests,
-the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, and
-the 17 bridge seal tests plus 3 bridge unit tests) and the native gate executes
-17 live native tests; none is ignored or filtered out.
+The default gate executes 311 base tests (including the 11 detector-live tests,
+the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, the
+17 bridge seal tests, the 3 bridge unit tests, and the 1 live/`NOT_RUN` chain
+test) and the native gate executes 17 live native tests; none is ignored or
+filtered out.
 
 `./ci/detector-gate.sh` is a separate live gate for Phase 5.2. It uses the same
 hardened Docker flags, installs only `gcc`, `libc6-dev`, `openssl`, `curl`, and
@@ -787,6 +795,19 @@ the checked-in manifests. The expected results are `accepted_within_scope`
 for the five negative seals. It then runs the six live tests. The gate does not
 weaken any container limit.
 
+`./ci/bridge-gate.sh` is the Phase 7.2 live native-chain gate. It uses the same
+hardened Docker flags but a pinned `rust:1.98-slim` image for FRF-Fuzz and the
+pinned `nightly-2026-07-24` toolchain, while FRF, Gemel, and this crate build in
+`rust:1.85.0-slim`. It runs a fixed-seed bounded FRF-Fuzz campaign, selects a
+real verified finding, replays the FRF run exactly twice, ingests real Gemel
+evidence, captures the actual loader maps, and verifies the bundle. It then
+exercises stale-candidate, tampered-candidate, substituted-DSO,
+re-execution-mismatch, and tampered-object seals. The reported run passed 6 of
+6 seals with zero authentic native identity on every failure. The default gate
+still executes the same test with no external tools and asserts typed
+`NOT_RUN`; no test is ignored. The Python image defaults to
+`python:3.11-slim` and can be overridden with `FRF_PYTHON_IMAGE`.
+
 `./ci/mir-gate.sh` is a separate optional gate. It uses the same hardened
 flags plus a `frf-rustup` volume, attempts to install the pinned minimal
 `nightly-2025-02-20`, builds the binary, and runs `mir scan` against
@@ -800,7 +821,9 @@ Every container is hardened as follows:
   container is OOM-killed before the host is placed under memory pressure;
   `--oom-score-adj=500` makes it the preferred OOM victim.
 - `--pids-limit=512 --cpus=2 --ulimit nofile=1024:1024` bound process count,
-  CPU quota, and file descriptors, and each gate has a 1800-second timeout.
+  CPU quota, and file descriptors, and each gate has a bounded timeout
+  (1800 seconds for the default gate; longer for the external build/chain
+  stages).
 - `--cap-drop ALL` followed by only `DAC_OVERRIDE`, `CHOWN`, and `FOWNER`
   restoration, plus `--security-opt no-new-privileges`, permits writing the
   mounted build directory without granting broader privileges.
@@ -827,10 +850,17 @@ src/mir.rs        optional pinned MIR adapter and conservative text parser
 src/court.rs      responsibility tokens, races, and transcript verification
 src/native.rs     test-only isolated native fixture recording and replay
 src/proof.rs      Phase 6 manifest, closure, admission, correspondence, live Coq adapter
-src/bridge.rs     Phase 7.1 provider pins, opaque identities, custody, bundle verification
+src/bridge.rs     Phase 7.1/7.2 provider pins, opaque identities, custody,
+                  bundle verification, live capture, and loader closure
 docs/phase6-proof-adapter.md      proof schema, closure, taxonomy, correspondence, citations
 docs/phase6-live-checker.md       install, invocation, theorem, seals, claim ceiling, citations
-docs/phase7-bridge-discovery.md   exact repos/commits/schemas, builds, identity boundary, seals, blockers
+docs/phase7-bridge-discovery.md   Phase 7.1 repos/commits/schemas, builds, identity boundary, seals
+docs/phase7-live-chain.md         Phase 7.2 images/toolchains, campaign, chain IDs, seals, ceiling
+ci/bridge-gate.sh                 Phase 7.2 external-tool and live-chain gate
+ci/fixtures/bridge_abort_target.rs checked-in deterministic FRF-Fuzz fixture target
+ci/fixtures/dso_probe.c           actual loader-map capture probe
+ci/fixtures/dso_substitute.c      substituted-DSO control
+tests/bridge_live.rs              live bundle Complete or default typed NOT_RUN
 tests/proof/coq/                  checked-in Coq fixtures, evidence, canonical manifests
 tests/proof_live.rs               live/unavailable seal tests
 src/detector/mod.rs  typed detector evidence and calibration refusal rules
@@ -871,7 +901,9 @@ semantic refinement. A live Coq run establishes only that the checked-in small
 finite two-claim support fixed-point theorem compiled and was reported closed;
 it does not prove the crate, arbitrary FFI implementations, or universal
 soundness. A verified bridge bundle establishes exact pins, external byte
-identities, schema tokens, candidate binding, and declared provenance; it does
-not establish that a native provider executed, and `authentic_native` is not an
-authenticated claim. See `SPEC.md` §1 and
-[`docs/phase7-bridge-discovery.md`](docs/phase7-bridge-discovery.md).
+identities, schema tokens, candidate binding, live-capture loader closures, and
+recorded re-execution; it does not establish that `authentic_native` provenance
+is authenticated, and a capture record is not a signature or trusted build
+root. See `SPEC.md` §1,
+[`docs/phase7-bridge-discovery.md`](docs/phase7-bridge-discovery.md), and
+[`docs/phase7-live-chain.md`](docs/phase7-live-chain.md).

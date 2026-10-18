@@ -11,40 +11,68 @@ universal memory-safety soundness, and no release below makes such a claim.
 
 ## [Unreleased]
 
-Phase 7.1: native provider discovery, exact pinning, opaque external
-identities, and the custody bridge. No version bump and no publish. **Phase 7
-is not complete:** no authentic FRF -> FRF-Fuzz -> Gemel chain was produced,
-and pinned FRF-Fuzz cannot be built under the mandated 1.85 container.
+Phase 7.2: live native chain and seals. No version bump and no publish.
+**Phase 7 is complete for the defined FRF-Fuzz -> FRF -> Gemel chain:** the
+pinned `rust:1.98-slim` + `nightly-2026-07-24` image unblocks FRF-Fuzz, and
+`ci/bridge-gate.sh` produces a real candidate-bound chain with exact replay,
+actual loader-map closure, two independent runs per provider, and six PASS
+seals. The default `ci/gate.sh` remains on `rust:1.85.0-slim` and asserts typed
+`NOT_RUN` without the external tools.
 
 ### Added
 
-- Discovery and exact pinning of `infinityabundance/frf`
+- `bridge capture OUT ...`: live capture of exact provider bytes, executable
+  digests, repository/commit pins, candidate binding, actual
+  `/proc/self/maps` closures with recomputed hashes, and two independent
+  executions per provider.
+- Real chain in `ci/bridge-gate.sh`: FRF-Fuzz finding
+  `9eea3400...`, FRF receipt `receipt-run-frf-fuzz-4f7755...-debbf8...`,
+  Gemel evidence `evidence.2cae082c...`, candidate `b594c294...`.
+- Checked-in `ci/fixtures/bridge_abort_target.rs` deterministic FRF-Fuzz
+  target, `dso_probe.c` loader-map probe, and `dso_substitute.c` control.
+- `tests/bridge_live.rs`: one test that requires `Complete` with
+  `FRF_BRIDGE_LIVE_BUNDLE` or asserts typed `NOT_RUN` without it; no
+  `#[ignore]`.
+- Seal controls for stale candidates, tampered candidates, substituted DSOs,
+  re-execution mismatches, and tampered finding objects; every failure reports
+  zero authentic native identities and generates no external identity.
+- `docs/phase7-live-chain.md` with exact images/toolchains, commands, schemas,
+  IDs, closure hashes, seal results, and the claim ceiling.
+
+### Changed
+
+- The FRF-Fuzz provider pin now records the real build: `fa45c704d804...` in
+  `rust:1.98-slim`.
+- `authentic_native_identities` is zero on every non-Complete outcome.
+- Gemel admission requires the GCE's own subject (field `0x03`) to match the
+  retained receipt and the result outcome to be `pass`.
+- The FRF-Fuzz finding input SHA-256 must be an FRF receipt fixture hash.
+
+### Phase 7.1 foundation retained
+
+- Exact pins for `infinityabundance/frf`
   (`ce461ce311bfe10fe90d2be03fba6217a6e8ba28`),
   `infinityabundance/frf-fuzz`
   (`054b45cda974852ccce62bc14dbeacb5fef0336b`), and
   `infinityabundance/gemel`
-  (`54fc581bff09e67b9d4cc533d157a8c9fc575424`), with visibility, branch,
-  license, schema token, and build outcome.
-- `src/bridge.rs`: provider-typed opaque identities with private fields and no
-  public string constructor; admission only through exact-byte, schema,
-  provider-pin, identity-form, and digest verification.
-- Custody pipeline `discover -> reconstruct -> native_confirm -> frf_receipt ->
-  gemel_custody` with typed `NOT_RUN`, refusal, and integrity reasons.
-- Fail-closed controls for modeled/modified/substitute evidence, missing or
-  mismatched schemas, tampered receipts/findings/GCE objects, stale candidates,
-  substituted DSOs, and independent re-execution mismatch.
-- `bridge verify FILE [--json] [--candidate SHA256]` and `bridge status
-  [--json]` with SPEC §14 exit statuses.
-- `docs/phase7-bridge-discovery.md` with exact contracts, build/run outputs,
-  identity boundary, seals, blockers, and claim ceiling.
+  (`54fc581bff09e67b9d4cc533d157a8c9fc575424`).
+- Provider-typed opaque identities with private fields and no public string
+  constructor; admission only through exact-byte, schema, provider-pin,
+  identity-form, and digest verification.
+- Custody pipeline with typed `NOT_RUN`, refusal, and integrity reasons, and
+  fail-closed controls for modeled/modified/substitute evidence, missing or
+  mismatched schemas, tampered objects, stale candidates, substituted DSOs,
+  and re-execution mismatch.
+- `bridge verify` and `bridge status` with SPEC §14 exit statuses.
 
-### Known blockers
+### Known limitations
 
-- FRF-Fuzz 0.8.3 requires Rust 1.98 and `nightly-2026-07-24`; the mandated
-  `rust:1.85.0-slim` image refuses the build (exit 101).
-- The bridge performs no provider execution and produces no authentic custody
-  chain; supplied `authentic_native` provenance is declared and digest-checked,
-  not authenticated.
+- Provenance is an execution record, not a signature, transparency log, or
+  trusted build root; the bridge still performs no authentication.
+- A modified DSO placed in the provider executable's own directory would pass
+  the path-based binding rule; the seal exercises an out-of-tree preload.
+- Full FRF semantic and Gemel full-schema conformance remain capped at the
+  bridge's checked subset.
 
 ## [0.7.0] - 2026-10-18
 
