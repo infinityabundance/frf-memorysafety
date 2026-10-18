@@ -18,12 +18,17 @@
 //! transcript, or bookkeeping results only. Phase 6 adds a typed proof
 //! manifest with digest-bound proof files, a declared theorem/assumption
 //! closure, an admission taxonomy, a separate Rust/FFI
-//! implementation-correspondence gate, and a live pinned Coq adapter.
+//! implementation-correspondence gate, and a live pinned Coq adapter. Phase
+//! 7.1 adds exact provider discovery, opaque native identities, and a
+//! fail-closed custody bridge for FRF, FRF-Fuzz, and Gemel. The bridge
+//! verifies external bytes, schemas, identity digests, candidate binding,
+//! provenance, DSO binding, and declared re-execution; it does not execute a
+//! provider, and it never writes an `OpenReceipt`, finding, GCE object, or GID.
 //!
 //! # What this build does not establish
 //!
 //! No live FRF court, FRF-Fuzz, Gemel, or native proof-checker run is
-//! performed. Phase 5.2 adds opt-in live detector adapters for a closed set of
+//! performed by the default build. Phase 5.2 adds opt-in live detector adapters for a closed set of
 //! checked-in fixtures: pinned Miri, gcc ASan/LSan/TSan, loom, Kani, and an
 //! OpenSSL SHA-256 known-answer/signature control. Those adapters run only when
 //! `FRF_DETECTOR_LIVE=1` and the instrument is installed; otherwise the typed
@@ -37,13 +42,17 @@
 //! `proof verify --live` invokes only an installed pinned `coqc`; when the
 //! checker is absent the command returns `checker_unavailable` (exit 6), and
 //! parser success is never proof acceptance. Lean, Isabelle, and other proof
-//! checkers are not invoked. Universal Rust soundness and `SAFE_COMPATIBLE` are
-//! outside the finite profile and are always withheld.
+//! checkers are not invoked. Phase 7.1 performs no live FRF court, FRF-Fuzz
+//! replay, or Gemel publication: it validates caller-supplied evidence bundles
+//! against exact pins, and a declared `authentic_native` provenance is not
+//! authenticated beyond that contract. Universal Rust soundness and
+//! `SAFE_COMPATIBLE` are outside the finite profile and are always withheld.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 #![warn(clippy::pedantic)]
 
+pub mod bridge;
 pub mod cli;
 pub mod closure;
 pub mod court;
@@ -59,6 +68,16 @@ pub mod proof;
 pub mod source;
 pub mod support;
 
+pub use bridge::{
+    native_provider_contracts, provider_availability, verify_bundle_bytes, BridgeIntegrity,
+    BridgeNotRun, BridgeOutcome, BridgeRefusal, BridgeReport, BridgeStatus, CustodyStage,
+    DsoBinding, EvidenceBundle, EvidenceProvenance, ExternalObservation, ExternalProvider,
+    FrfFuzzFindingId as BridgeFrfFuzzFindingId, FrfReceiptId as BridgeFrfReceiptId,
+    GemelGceId as BridgeGemelGceId, ObservationSummary, ProviderAvailability, ProviderBuild,
+    ProviderContract, Reexecution, BRIDGE_BUNDLE_SCHEMA, BRIDGE_CLAIM_CEILING,
+    BRIDGE_REPORT_SCHEMA, BRIDGE_SPEC, BRIDGE_STATUS_SCHEMA, MAX_BUNDLE_BYTES,
+    MAX_EXTERNAL_OBJECT_BYTES, MAX_OBSERVATIONS,
+};
 pub use closure::{compare_inventory, CoverageOutcome, EdgeKey};
 pub use court::{
     parse_transcript, verify_transcript, verify_transcript_json, BorrowKind, CallbackOutcome,
@@ -216,6 +235,11 @@ pub fn capabilities() -> Capabilities {
             "live Coq checker adapter with explicit argv, private 0700 staging, cleared environment, bounded time/output, executable digest, and node-locked kind/version/executable",
             "proof verify MANIFEST --live [--json] compiling digest-bound proof files in order and binding a completed authentic run to CheckerContext::Recorded",
             "checker-reported theorem statuses from Coq Print Assumptions; only Closed under the global context is treated as proved",
+            "exact FRF, FRF-Fuzz, and Gemel provider discovery with pinned commits and schema tokens",
+            "opaque FRF receipt, FRF-Fuzz finding, and Gemel GCE/GID identities with private fields and no public string constructor",
+            "custody pipeline discover -> reconstruct -> native_confirm -> frf_receipt -> gemel_custody with typed NOT_RUN and refusal reasons",
+            "fail-closed bridge verification of external bytes, schemas, digests, candidate identity, provenance, DSO binding, and re-execution",
+            "bridge verify FILE [--json] and bridge status [--json] with SPEC.md section 14 exit statuses",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
@@ -228,9 +252,10 @@ pub fn capabilities() -> Capabilities {
             "live Coq proof checking when coqc is absent; proof verify --live reports checker_unavailable (exit 6)",
             "arbitrary native C/Rust event recording and `court run` over caller-supplied programs",
             "real-scheduler concurrency observation and native callback tracing beyond the checked-in fixtures",
-            "live FRF court and OpenReceipt verification",
-            "live FRF-Fuzz coordinator",
-            "live Gemel publication",
+            "live FRF court and OpenReceipt verification (Phase 7.1 validates supplied receipts only)",
+            "live FRF-Fuzz coordinator and native finding replay (the pinned provider is not buildable in the 1.85 container)",
+            "live Gemel publication (Phase 7.1 validates supplied GCE evidence only)",
+            "authenticated provenance for bridge evidence; authentic_native is a declared, digest-checked label, not a signature or trust root",
             "live OpenSSL-Rust Safe-33 native courts",
             "live proof checking of a theorem outside the manifest's declared finite scope",
             "semantic proof of the implementation-correspondence evidence; the correspondence gate remains an independent digest-bound review",

@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::bridge::{verify_bundle_bytes, BridgeStatus, BRIDGE_BUNDLE_SCHEMA};
 use crate::court::{
     verify_transcript_json, CourtError, CourtErrorCategory, COURT_REPORT_SCHEMA,
     NATIVE_EVENT_TRANSCRIPT_SCHEMA,
@@ -75,6 +76,8 @@ Commands:
   mir scan FILE [--json] [--toolchain NAME]
   court verify FILE [--json]
   proof verify MANIFEST [--live] [--json]
+  bridge verify FILE [--json] [--candidate SHA256]
+  bridge status [--json]
   detector calibrate FILE [--json]
   detector calibrate --live --detector KIND [--json]
   evidence verify --root DIR
@@ -130,6 +133,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "report" => command_report(&args[1..]),
         "court" => command_court(&args[1..]),
         "proof" => Ok(command_proof(&args[1..])),
+        "bridge" => Ok(command_bridge(&args[1..])),
         "detector" => command_detector(&args[1..]),
         "frf" => command_not_run("frf promote", args),
         "gemel" => command_not_run("gemel publish", args),
@@ -1146,6 +1150,146 @@ fn command_proof_verify(rest: &[String]) -> i32 {
         return EXIT_HARNESS;
     }
     report.outcome.exit_code()
+}
+
+fn command_bridge(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("status") => command_bridge_status(&rest[1..]),
+        Some("verify") => command_bridge_verify(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: bridge verify FILE [--json] [--candidate SHA256] | bridge status [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_bridge_status(rest: &[String]) -> i32 {
+    if !only_flags(rest, &["--json"]) {
+        eprintln!("usage: bridge status [--json]");
+        return EXIT_USAGE;
+    }
+    let status = BridgeStatus::observe();
+    if rest.iter().any(|argument| argument == "--json") {
+        if let Err(error) = emit_json(&status) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        let mut output = format!(
+            "bridge status: {}\nclaim ceiling: {}\nproviders:\n",
+            if status.all_live_available {
+                "all providers live"
+            } else {
+                "native providers NOT_RUN"
+            },
+            status.claim_ceiling
+        );
+        for provider in &status.providers {
+            output.push_str(&format!(
+                "  {} {}@{} schema {} accessible={} live={} executable={}\n",
+                provider.provider,
+                provider.repository,
+                provider.commit,
+                provider.schema,
+                provider.accessible,
+                provider.live_available,
+                provider
+                    .configured_executable
+                    .as_deref()
+                    .unwrap_or("<not configured>"),
+            ));
+            output.push_str(&format!(
+                "    build: {}\n",
+                serde_json::to_string(&provider.build).unwrap_or_default()
+            ));
+        }
+        if let Err(error) = std::io::stdout().write_all(output.as_bytes()) {
+            eprintln!("cannot write bridge status: {error}");
+            return EXIT_HARNESS;
+        }
+    }
+    status.exit_code()
+}
+
+fn command_bridge_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut candidate = None;
+    let mut arguments = rest.iter();
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--json" => json = true,
+            "--candidate" => {
+                let Some(value) = arguments.next() else {
+                    eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+                    return EXIT_USAGE;
+                };
+                candidate = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = verify_bundle_bytes(&bytes, candidate.as_deref());
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        let detail =
+            serde_json::to_string(&report.outcome).unwrap_or_else(|_| "<unavailable>".to_owned());
+        let mut output = format!(
+            "bridge: {}\nstage: {}\nbundle schema: {}\nobservations:\n",
+            report.outcome.as_str(),
+            report.stage.as_str(),
+            BRIDGE_BUNDLE_SCHEMA,
+        );
+        for observation in &report.observations {
+            output.push_str(&format!(
+                "  {} provenance={} schema={} identity={} digest_verified={} authentic_native={}\n",
+                observation.provider,
+                observation.provenance.as_str(),
+                observation.schema,
+                observation.identity,
+                observation.digest_verified,
+                observation.authentic_native,
+            ));
+        }
+        output.push_str(&format!(
+            "authentic native identities retained: {}\nidentities generated by this crate: {}\noutcome: {detail}\nclaim ceiling: {}\n",
+            report.authentic_native_identities,
+            report.generated_identities,
+            report.claim_ceiling,
+        ));
+        if let Err(error) = std::io::stdout().write_all(output.as_bytes()) {
+            eprintln!("cannot write bridge report: {error}");
+            return EXIT_HARNESS;
+        }
+    }
+    report.exit_code()
 }
 
 fn proof_error_exit(category: ProofErrorCategory) -> i32 {
