@@ -59,6 +59,7 @@
 pub mod bridge;
 pub mod cli;
 pub mod closure;
+pub mod conversion;
 pub mod court;
 pub mod detector;
 pub mod identity;
@@ -84,6 +85,14 @@ pub use bridge::{
     MAX_OBSERVATIONS,
 };
 pub use closure::{compare_inventory, CoverageOutcome, EdgeKey};
+pub use conversion::{
+    reuse_evidence, AllowedCBehavior, BoundaryId, BoundaryKind, BoundaryScope, CandidateIdentity,
+    ConversionError, ConversionEvidence, ConversionProperty, DependencyClosure, DependencyVersion,
+    DiscoveryClaim, DsoIdentity, EvidenceRequest, FaultRepairRevision, GitCommit,
+    LoaderClosureEvidence, MechanismEvidence, MechanismId, NativeWitness, ReuseDecision,
+    RevocationReason, Sha256Digest, ToolIdentity, WitnessOrigin, CONVERSION_CLAIM_CEILING,
+    CONVERSION_SPEC, MAX_OPAQUE_ID_BYTES,
+};
 pub use court::{
     parse_transcript, verify_transcript, verify_transcript_json, BorrowKind, CallbackOutcome,
     CaseLegality, CourtError, CourtErrorCategory, CourtReport, Event, Finding, FindingClass,
@@ -246,6 +255,10 @@ pub fn capabilities() -> Capabilities {
             "fail-closed bridge verification of external bytes, schemas, digests, candidate identity, provenance, DSO binding, and re-execution",
             "bridge verify FILE [--json], bridge capture OUT ... [--json], and bridge status [--json] with SPEC.md section 14 exit statuses",
             "opt-in live FRF-Fuzz -> FRF court/exact replay/OpenReceipt -> Gemel evidence/GID chain in ci/bridge-gate.sh, with actual loader-map closure and two independent runs per provider",
+            "typed conversion-court bookkeeping for owner, allocator, and callback boundaries",
+            "conversion evidence binds property, candidate, boundary, native witness provenance, loader closure, fault/repaired revisions, and dependency versions",
+            "conversion evidence reuse revokes on property, candidate, boundary, dependency, tool, loader, or revision change",
+            "synthetic seeded witnesses are rejected when presented as organic discoveries, and unconfirmed mechanisms are rejected",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
@@ -261,7 +274,11 @@ pub fn capabilities() -> Capabilities {
             "live FRF, FRF-Fuzz, or Gemel execution in the default ci/gate.sh path; the default gate asserts typed NOT_RUN, and ci/bridge-gate.sh is the opt-in live path",
             "authenticated provenance for bridge evidence; authentic_native is a recorded, digest-checked execution label, not a signature or trust root",
             "full FRF semantic conformance and full Gemel evidence-schema conformance beyond the bridge's checked fields",
-            "live OpenSSL-Rust Safe-33 native courts",
+            "live OpenSSL-Rust Safe-33 native courts and consumer workflows in this crate's gate",
+            "organic vulnerability discovery or a native OpenSSL-Rust boundary witness from the Phase 8.1 conversion module",
+            "a rebuilt OpenSSL-Rust candidate under the 2 GiB gate limit; rustc is killed while compiling the target crate",
+            "live consumer (curl/nginx/HAProxy/Redis/OpenSSH) replay against a newly built candidate",
+            "evidence reuse across an OpenSSL-Rust toolchain, loader, authority, or dependency change beyond the typed revocation record",
             "live proof checking of a theorem outside the manifest's declared finite scope",
             "semantic proof of the implementation-correspondence evidence; the correspondence gate remains an independent digest-bound review",
             "MIR edges: available only when pinned nightly-2025-02-20 is present; otherwise NOT_RUN (exit 6)",
