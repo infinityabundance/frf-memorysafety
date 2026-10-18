@@ -11,7 +11,55 @@ universal memory-safety soundness, and no release below makes such a claim.
 
 ## [Unreleased]
 
-No unreleased changes.
+Phase 4.1: responsibility-token lifecycle, generation, failure, and race
+semantics plus a native event-transcript verifier. No version bump and no
+publish; Phase 4.2 native recording/replay is not implemented.
+
+### Added
+
+- `src/court.rs`: typed responsibility tokens bound to object, owner, and
+  generation; create, transfer, failed transfer, shared/mutable borrow,
+  reborrow, borrow-end, escape, reallocate, free, use, callback entry/exit,
+  poison, and abort transitions.
+- Failure semantics for allocation refusal, partial initialization, callback
+  failure, poisoned tokens, and aborted lifecycles; failed transfers preserve
+  the sender.
+- Generation semantics: reallocation and post-free reuse advance the
+  generation; stale tokens are rejected after reallocation or free.
+- Concurrency semantics: strictly increasing per-thread event order, explicit
+  `synchronizes_with` edges, deterministic topological ordering, vector-clock
+  happens-before, and the race rule "same object, different threads, unordered,
+  at least one write, not both atomic". Atomic-atomic conflicts are permitted;
+  atomic-versus-non-atomic conflicts are races.
+- `native-event-transcript.v1` strict parsing with required origin,
+  tool/library versions, executable and fixture digests, case legality, scope,
+  and completeness claims.
+- Typed outcomes `verified_compatible_within_transcript`, `observed_violation`,
+  `incomplete_transcript`, `unresolved`, and `illegal_case` with SPEC §14 exit
+  statuses 0/4/5/4/4.
+- A seeded skipped-event detector: missing create, free, borrow-end, generation
+  transition, required callback, or event-count fact yields
+  `incomplete_transcript`; a completeness claim with gaps or unknown provider
+  edges yields `fictitious_completeness`.
+- `court verify FILE [--json]` emitting canonical
+  `frf-memorysafety.court-verification.v1`; `court run` remains `NOT_RUN`
+  (exit 6) until Phase 4.2.
+- `tests/court.rs`: 39 tests covering positive/negative ownership transfer,
+  use-after-free, mutable alias, stale generation, allocation failure, callback
+  failure, partial initialization, failed transfer, reborrow, escape, abort,
+  data race, atomic control, seeded skipped events, malformed/duplicate-field
+  input, deterministic canonical reports, and CLI statuses. None is ignored.
+- `docs/phase4-ownership.md`: token algebra, transition legality, race rule,
+  completeness criterion, claim ceiling, remaining Phase 4.2 work, and
+  citations.
+- Capability, version, and usage documentation for the court verifier.
+
+### Verification
+
+- `cargo fmt --all -- --check`: clean
+- `cargo clippy --all-targets --all-features -- -D warnings`: clean
+- `cargo test --locked --all-targets`: 207 passed, 0 failed, 0 ignored
+- `cargo test --locked --release`: 207 passed, 0 failed, 0 ignored
 
 ## [0.4.0] - 2026-10-18
 
