@@ -37,6 +37,7 @@
 pub mod cli;
 pub mod closure;
 pub mod court;
+pub mod detector;
 pub mod identity;
 pub mod mir;
 pub mod model;
@@ -56,6 +57,16 @@ pub use court::{
     TranscriptRequirements, COURT_CLAIM_CEILING, COURT_REPORT_SCHEMA, COURT_SPEC, MAX_FINDINGS,
     MAX_OBJECTS, MAX_SYNC_EDGES, MAX_THREADS, MAX_TRANSCRIPT_EVENTS,
     NATIVE_EVENT_TRANSCRIPT_SCHEMA,
+};
+pub use detector::{
+    evaluate_calibration, evaluate_calibration_json, parse_evidence, BuildIdentity,
+    CalibrationCase, CalibrationOutcome, CalibrationRefusal, CalibrationRefusalCode,
+    CalibrationReport, CalibrationRole, CalibrationScore, CaptureStream, CapturedStream,
+    CaseProvenance, ControlStatus, DetectorError, DetectorErrorCategory, DetectorEvidence,
+    DetectorIdentity, DetectorOrigin, ObservedFinding, RawCapture, RefusalSeverity,
+    CALIBRATION_CLAIM_CEILING, CALIBRATION_REPORT_SCHEMA, DETECTOR_EVIDENCE_SCHEMA, DETECTOR_SPEC,
+    MAX_ARGV, MAX_CALIBRATION_CASES, MAX_CAPTURE_BYTES, MAX_DURATION_MS, MAX_ENABLEMENT, MAX_FLAGS,
+    MAX_IDENTITY_BYTES,
 };
 pub use identity::{
     canonical_bytes, digest_bytes, digest_value, parse_strict, require_canonical, IdentityDomain,
@@ -158,6 +169,9 @@ pub fn capabilities() -> Capabilities {
             "court verify CLI with typed outcomes and SPEC.md §14 exit statuses",
             "test-only isolated native harness over a closed registry of checked-in C and Rust fixtures",
             "native event capture with cleared environment, process group, rlimits, bounded output, digests, and identical-replay requirement",
+            "typed detector evidence: identity, bounded capture, provenance, known-bad and known-good cases",
+            "detector calibration adjudication refusing dead, misconfigured, harmless, mock-provider, and fake-marker evidence",
+            "detector calibrate FILE [--json] canonical calibration reports with SPEC.md section 14 exit statuses",
             "detector calibration receipt adjudication types",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
@@ -166,6 +180,7 @@ pub fn capabilities() -> Capabilities {
         not_run: vec![
             "live Miri/ASan/LSan/TSan execution",
             "live Kani/Loom execution",
+            "live detector calibration (detector calibrate --live)",
             "arbitrary native C/Rust event recording and `court run` over caller-supplied programs",
             "real-scheduler concurrency observation and native callback tracing beyond the checked-in fixtures",
             "live FRF court and OpenReceipt verification",

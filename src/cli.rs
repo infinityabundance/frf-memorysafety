@@ -16,6 +16,10 @@ use crate::court::{
     verify_transcript_json, CourtError, CourtErrorCategory, COURT_REPORT_SCHEMA,
     NATIVE_EVENT_TRANSCRIPT_SCHEMA,
 };
+use crate::detector::{
+    evaluate_calibration_json, CalibrationOutcome, CalibrationReport, DetectorErrorCategory,
+    RefusalSeverity,
+};
 use crate::identity::{parse_strict, require_canonical, MsId, MAX_BYTES};
 use crate::mir::{
     MirAdapter, MirError, MirErrorCategory, MirScanOutcome, MIR_NOT_RUN_SCHEMA,
@@ -62,6 +66,7 @@ Commands:
   path analyze FILE [--json]
   mir scan FILE [--json] [--toolchain NAME]
   court verify FILE [--json]
+  detector calibrate FILE [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -1042,15 +1047,138 @@ fn command_detector(rest: &[String]) -> Result<i32, String> {
         if rest.iter().any(|arg| arg == "--live") {
             not_run("detector calibrate --live")
         } else {
-            eprintln!(
-                "detector calibrate without --live is not implemented; live runs are NOT_RUN"
-            );
-            Ok(EXIT_USAGE)
+            Ok(command_detector_calibrate(&rest[1..]))
         }
     } else {
-        eprintln!("usage: detector calibrate --live ...");
+        eprintln!("usage: detector calibrate FILE [--json] | detector calibrate --live");
         Ok(EXIT_USAGE)
     }
+}
+
+fn command_detector_calibrate(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: detector calibrate FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: detector calibrate FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: detector calibrate FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match evaluate_calibration_json(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return detector_error_exit(&error);
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return detector_error_exit(&error);
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write calibration report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else if let Err(error) = write_calibration_summary(&report) {
+        eprintln!("cannot write calibration summary: {error}");
+        return EXIT_HARNESS;
+    }
+    calibration_exit_code(&report)
+}
+
+fn detector_error_exit(error: &crate::detector::DetectorError) -> i32 {
+    match error.category() {
+        DetectorErrorCategory::Integrity => EXIT_INTEGRITY,
+        DetectorErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn calibration_exit_code(report: &CalibrationReport) -> i32 {
+    if report.integrity_failed() {
+        EXIT_INTEGRITY
+    } else if report.outcome == CalibrationOutcome::Refused {
+        EXIT_DETECTOR
+    } else {
+        EXIT_OK
+    }
+}
+
+fn write_calibration_summary(report: &CalibrationReport) -> Result<(), String> {
+    let outcome = match report.outcome {
+        CalibrationOutcome::Calibrated => "CALIBRATED",
+        CalibrationOutcome::Refused => "REFUSED",
+    };
+    let status = |value: crate::detector::ControlStatus| match value {
+        crate::detector::ControlStatus::Pass => "PASS",
+        crate::detector::ControlStatus::Fail => "FAIL",
+        crate::detector::ControlStatus::NotEvaluated => "NOT_EVALUATED",
+    };
+    let mut output = format!(
+        "calibration: {outcome}\ndetector: {}\nmechanisms: {}\nsensitivity: {}/{}\nspecificity: {}/{}\nbuild_separation: {}\nauthenticity: {}\n",
+        kind_label(&report.detector_kind),
+        report.mechanisms.join(","),
+        report.sensitivity.passed,
+        report.sensitivity.total,
+        report.specificity.passed,
+        report.specificity.total,
+        status(report.build_separation),
+        status(report.authenticity),
+    );
+    if report.refusals.is_empty() {
+        output.push_str("refusals: none\n");
+    } else {
+        output.push_str("refusals:\n");
+        for refusal in &report.refusals {
+            let severity = match refusal.severity {
+                RefusalSeverity::Integrity => "integrity",
+                RefusalSeverity::Detector => "detector",
+            };
+            let case = refusal.case_id.as_deref().unwrap_or("-");
+            let code = serde_json::to_value(refusal.code)
+                .ok()
+                .and_then(|value| value.as_str().map(str::to_owned))
+                .unwrap_or_else(|| format!("{:?}", refusal.code));
+            output.push_str(&format!(
+                "  {severity} {code} case={case} {}\n",
+                refusal.detail
+            ));
+        }
+    }
+    std::io::stdout()
+        .write_all(output.as_bytes())
+        .map_err(|error| error.to_string())
+}
+
+fn kind_label(kind: &crate::model::DetectorKind) -> String {
+    serde_json::to_value(kind)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .unwrap_or_else(|| format!("{kind:?}"))
 }
 
 fn command_not_run(expected: &str, args: &[String]) -> Result<i32, String> {

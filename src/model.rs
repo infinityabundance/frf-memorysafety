@@ -433,6 +433,8 @@ pub enum DetectorKind {
     LeakSanitizer,
     /// Thread sanitizer.
     ThreadSanitizer,
+    /// A constant-time or secret-lifecycle oracle (for example ctgrind or dudect).
+    CryptoSecretOracle,
     /// Kani.
     Kani,
     /// Loom.
