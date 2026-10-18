@@ -1,10 +1,19 @@
 # Phase 8.1: real OpenSSL-Rust discovery and conversion-court foundation
 
-Status: **discovery and evidence foundation complete; live Phase 8 witness not
-produced in this environment.** Phase 8 is **not complete**. This document
-records what was found, pinned, inspected, and attempted. It does not claim a
-memory-safety result, a compatibility result, an organic vulnerability, or a
-completed OpenSSL-Rust Safe-33 court.
+Status: **discovery and evidence foundation complete; the live Phase 8
+witness was not produced in this environment at the 2 GiB cap.** Phase 8 is
+**not complete under this 8.1 record**. This document records what was found,
+pinned, inspected, and attempted. It does not claim a memory-safety result, a
+compatibility result, an organic vulnerability, or a completed OpenSSL-Rust
+Safe-33 court.
+
+> **Phase 8.2 update.** The 2 GiB `SIGKILL` was an envelope limit, not a target
+> defect: the pinned candidate builds and runs under a 4g hard cap on a host
+> with 134.7 GB RAM. The live witness, repaired revision, curl workload, loader
+> closure, and typed live capture are recorded in
+> [`phase8-live-conversion.md`](phase8-live-conversion.md). This document
+> remains the 8.1 discovery record and is superseded only for the live-run
+> blocker.
 
 Snapshot: `staging` at `593f0d1` (tag `v0.8.0`), crate `frf-memorysafety 0.8.0`,
 no version bump. The target repository is gitignored under

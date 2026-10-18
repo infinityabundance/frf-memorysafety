@@ -11,6 +11,32 @@ universal memory-safety soundness, and no release below makes such a claim.
 
 ## [Unreleased]
 
+Phase 8.2: live OpenSSL-Rust Safe-33 conversion witness and repair. The pinned
+`openssl-rs` candidate builds under a 4g hard cap; `ci/conversion-gate.sh`
+runs the real boundary tests, reproduces the `up_ref` overflow fault and its
+`checked_add` repair, builds and runs unmodified curl 8.22.0 against the
+candidate prefix with TLS 1.3 positive/negative cases, captures the candidate
+loader closure, and feeds the exact files through a typed live-capture model.
+No version bump and no `SAFE_COMPATIBLE` claim.
+
+### Added
+
+- Live conversion capture (`capture_live`, `capture_live_from_env`) that
+  computes source, DSO, tool, loader, mechanism, and dependency digests from
+  exact files, requires authentic-native provenance, and returns typed
+  `NOT_RUN` without `FRF_CONVERSION_CAPTURE`.
+- `ci/conversion-gate.sh` and its fixtures: the real `up_ref` fault/repaired
+  witness, the curl TLS 1.3 workload, the Phase-2 loader courts, and the
+  live-capture/reuse test.
+
+### Changed
+
+- Evidence reuse now also revokes on witness provenance, command, output,
+  mechanism, and DSO-byte changes.
+- `./ci/gate.sh` now runs 341 tests; the 30 conversion-court tests include the
+  live-capture and revocation cases and execute the typed `NOT_RUN` path
+  without the external repository.
+
 ## [0.8.0] - 2026-10-18
 
 Phase 7: pinned native provider contracts, opaque external identities, a

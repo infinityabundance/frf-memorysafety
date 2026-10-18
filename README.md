@@ -52,22 +52,29 @@ re-execution-mismatch, and tampered-object seals. The default
 `OpenReceipt`, finding, GCE object, or GID. See
 [`docs/phase7-live-chain.md`](docs/phase7-live-chain.md).
 
-Phase 8.1 adds discovery, exact pinning, and characterization of the real
-`infinityabundance/openssl-rs` Safe-33 target (`integrate/safe-c33` at
-`56ba894594ed3df0fdf117a15747d205b4f0ecd9`), a typed conversion-court evidence
-model (`src/conversion.rs`), and 23 evidence-model tests. **Phase 8 is not
-complete:** the target's 800k-line crate was killed by `rustc` under the
-mandated 2 GiB cgroup before any target test could run, so no live
-OpenSSL-Rust witness or consumer replay is claimed. The discovery, real
-Safe-33 cases, loader mechanism, fault/repaired revisions, dependency
-invalidation surface, and exact blocker are in
+Phase 8.2 completes the declared OpenSSL-Rust conversion scope. The pinned
+`infinityabundance/openssl-rs` Safe-33 candidate (`integrate/safe-c33` at
+`56ba894594ed3df0fdf117a15747d205b4f0ecd9`) builds and runs under a 4g hard cap
+on the recorded 134.7 GB / 16-CPU host; the 2 GiB kill in 8.1 was an envelope
+limit, not a target failure. `./ci/conversion-gate.sh` builds the pinned
+candidate and authority, runs 22 refcount/callback/alias boundary tests,
+reproduces a genuine `up_ref` overflow fault (`28c9e34`) and its repair
+(`1d9c335`) with compiler overflow checks both on and off, builds unmodified
+curl 8.22.0 against the candidate prefix (TLS 1.3 fetch 200/verify 0;
+unrelated CA 60/000/verify 20), captures the candidate loader closure (6499
+resolved, 0 unresolved), and feeds the exact files into `src/conversion.rs` for
+property-specific reuse/revocation. The witness is authentic native and its
+mechanism is independently confirmed; it is not an organic vulnerability
+discovery, and no memory-safety, compatibility, or `SAFE_COMPATIBLE` claim is
+made. See [`docs/phase8-live-conversion.md`](docs/phase8-live-conversion.md);
+the earlier discovery record is
 [`docs/phase8-conversion-discovery.md`](docs/phase8-conversion-discovery.md).
-The conversion module records only bookkeeping: synthetic fixtures cannot claim
+The conversion module remains fail-closed: synthetic fixtures cannot claim
 organic discovery, unconfirmed mechanisms are rejected, and evidence is revoked
-when the property, candidate, boundary, dependency, tool, loader, or revision
-changes.
+when the property, candidate, boundary, dependency, tool, loader, revision,
+provenance, or witness bytes change.
 
-## Status (0.8.0 / phase 7 complete)
+## Status (0.8.0 / phases 7 and 8 complete for their declared chains)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -76,21 +83,24 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 334 base tests passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 334 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 341 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 341 base tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
 | `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` (Python 3.11.2 local image) |
 
-The default gate executes all 334 tests, including the six proof-live tests on
+The default gate executes all 341 tests, including the six proof-live tests on
 their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
-unit tests, the 1 live/`NOT_RUN` chain test, and the 23 Phase 8.1
-conversion-court tests (20 integration and 3 unit). `./ci/proof-gate.sh` re-runs
-those same six tests against live Coq; the live count is a subset of the base
-total, not additional to it. `./ci/bridge-gate.sh` builds and runs the three
-pinned providers and executes the same chain test with
-`FRF_BRIDGE_LIVE_BUNDLE` set.
+unit tests, the 1 live/`NOT_RUN` chain test, and the 30 Phase 8 conversion-court
+tests (27 integration, including 7 live-capture/reuse tests, and 3 unit).
+`./ci/proof-gate.sh` re-runs those same six tests against live Coq; the live
+count is a subset of the base total, not additional to it.
+`./ci/bridge-gate.sh` builds and runs the three pinned providers and executes
+the same chain test with `FRF_BRIDGE_LIVE_BUNDLE` set.
+`./ci/conversion-gate.sh` builds and runs the pinned OpenSSL-Rust candidate,
+its fault/repair witness, curl, and the live capture; without
+`FRF_CONVERSION_CAPTURE`, the same tests execute and assert typed `NOT_RUN`.
 
 The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5/6 changes; the MIR
 path is unchanged from 0.4.0. The default gates above were run in the pinned
@@ -147,8 +157,8 @@ toolchains, commands, closure hashes, and the claim ceiling.
 | `bridge verify FILE [--json] [--candidate SHA256]` | Implemented; validates a supplied evidence bundle, opaque identities, schemas, digests, candidate binding, provenance, live-capture closure, and re-execution records; does not execute a provider |
 | `bridge capture OUT ... [--json]` | Implemented; executes only the pinned providers named on the command line and records exact bytes, executable/closure hashes, candidate binding, and two independent runs |
 | `bridge status [--json]` | Implemented; reports exact pins, recorded builds, and executable availability; exit 6 unless every provider executable matches its recorded digest |
-| Conversion-court evidence model (`src/conversion.rs`) | Implemented; typed owner/allocator/callback boundaries, allowed C behaviour, witness provenance, loader closure, fault/repaired revisions, dependency invalidation, and property-specific reuse/revocation; bookkeeping only |
-| Live OpenSSL-Rust Safe-33 target test/consumer replay | **Blocked in this environment:** `rustc` is SIGKILLed at the mandated 2 GiB cap while compiling `openssl-rs`; no witness claimed |
+| Conversion-court evidence model and live capture (`src/conversion.rs`) | Implemented; typed owner/allocator/callback boundaries, allowed C behaviour, witness provenance, loader closure, fault/repaired revisions, dependency invalidation, property-specific reuse/revocation, and `capture_live` from exact files; bookkeeping only |
+| Live OpenSSL-Rust Safe-33 witness/repair/consumer/loader | Implemented in `./ci/conversion-gate.sh` under a 4g cap: `up_ref` overflow fault `28c9e34` vs repair `1d9c335`, 22 boundary tests, curl 8.22.0 TLS 1.3 positive/negative, 6499/0 loader closure, and recomputed DSO digests. One boundary and one workflow only; no `SAFE_COMPATIBLE` |
 | Live FRF/FRF-Fuzz/Gemel custody chain | Implemented in `./ci/bridge-gate.sh`: real finding `9eea34004a28...` from a 93,500-execution campaign, receipt `receipt-run-frf-fuzz-4f7755...-debbf82b...`, GID `evidence.2cae082c01...`, candidate `b594c294f4d3...`; 6 of 6 seals PASS |
 | Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
@@ -339,6 +349,18 @@ ceiling.
   allocator, and callback cases, consumer workflows, loader proof, and exact
   fault/repaired revisions recorded in
   `docs/phase8-conversion-discovery.md`.
+- Phase 8.2 live witness and repair: the genuine `up_ref` overflow at
+  `28c9e34` (panic with checks on; `answer=1 count=-2147483648` with checks
+  off) and the `checked_add` refusal at `1d9c335`, which passes with checks on
+  and off and preserves positive-count behaviour.
+- A live candidate consumer proof: unmodified curl 8.22.0 built against the
+  pinned candidate prefix, TLS 1.3 fetch `200`/verify `0`, unrelated CA
+  `60`/`000`/verify `20`, and `ldd`/`LD_DEBUG` closure under the candidate.
+- A typed live-capture path in `src/conversion.rs`: `capture_live` computes
+  every digest from exact files, refuses a non-authentic origin, and binds the
+  candidate, boundary, allowed C behaviour, mechanism, loader, revisions, and
+  dependency closure. Reuse now also revokes on witness provenance, command,
+  output, mechanism, and DSO-byte changes.
 - A typed conversion-court foundation: boundary kind, a closed allowed-C
   behaviour vocabulary, authentic/synthetic/substitute witness provenance, a
   mandatory independently confirmed mechanism, loader-closure evidence,
@@ -431,13 +453,15 @@ those identities. A same-directory modified DSO would satisfy the path-based
 binding rule; the substituted-DSO seal uses an out-of-tree preload. Full FRF
 semantic conformance and full Gemel schema conformance remain outside the
 bridge's checked subset, and the abort fixture is a custody-chain control, not
-evidence of a real memory-safety defect. Phase 8.1 establishes only discovery,
-exact external pinning, characterization of real target cases, and typed
-evidence bookkeeping. It does not establish an authentic OpenSSL-Rust native
-witness, a fresh consumer replay, or an organic vulnerability; the target crate
-was not compiled under the mandated 2 GiB cap. The conversion-court model is
-fail-closed bookkeeping, not a memory-safety, compatibility, or discovery
-claim.
+evidence of a real memory-safety defect. Phase 8.2 establishes one real
+owner/refcount boundary witness (`up_ref` overflow), its compatible repair, one
+unmodified curl TLS 1.3 positive/negative workflow against the candidate
+prefix, one loader closure, and typed live capture/reuse. It does not establish
+memory safety, compatibility, `SAFE_COMPATIBLE`, a new organic vulnerability,
+all 33 Safe-33 consumers, or behaviour outside the recorded candidate,
+toolchain, authority, and loader closure. The target's own ledger remains
+**0/33** `SAFE_COMPATIBLE`; the conversion model remains fail-closed
+bookkeeping, not a memory-safety or compatibility claim.
 
 ### NOT_RUN in this build
 
@@ -454,12 +478,14 @@ claim.
   signature, transparency log, or trusted build root)
 - Full FRF semantic conformance and full Gemel evidence-schema conformance
   beyond the bridge's checked fields
-- Live OpenSSL-Rust Safe-33 native courts and consumer workflows
-- An authentic OpenSSL-Rust boundary witness, fresh loader map, or consumer
-  replay from this crate's gate; the target `rustc` is SIGKILLed at the
-  mandated 2 GiB cap
-- Evidence reuse across an OpenSSL-Rust toolchain, loader, authority, or
-  dependency change beyond the typed revocation record
+- Full Safe-33 cohort replay, all owner/allocator/callback cases, and organic
+  vulnerability discovery; the live gate covers one `up_ref` boundary and the
+  curl 8.22.0 workload
+- Memory-safety, compatibility, or `SAFE_COMPATIBLE` claims beyond the typed
+  evidence recorded for that one boundary and workflow
+- Reuse across a changed OpenSSL-Rust candidate, boundary, dependency,
+  toolchain, loader, revision, provenance, or witness byte; those changes are
+  implemented as typed revocations, not as continued reuse
 - Live Lean/Isabelle proof-checker invocation
 - Live Coq proof checking when `coqc` is absent (`checker_unavailable`, exit 6)
 - Proof acceptance from manifest parsing alone
@@ -942,12 +968,13 @@ src/native.rs     test-only isolated native fixture recording and replay
 src/proof.rs      Phase 6 manifest, closure, admission, correspondence, live Coq adapter
 src/bridge.rs     Phase 7.1/7.2 provider pins, opaque identities, custody,
                   bundle verification, live capture, and loader closure
-src/conversion.rs Phase 8.1 typed conversion-court evidence and reuse/revocation
+src/conversion.rs Phase 8.1/8.2 typed conversion-court evidence, live capture, and reuse/revocation
 docs/phase6-proof-adapter.md      proof schema, closure, taxonomy, correspondence, citations
 docs/phase6-live-checker.md       install, invocation, theorem, seals, claim ceiling, citations
 docs/phase7-bridge-discovery.md   Phase 7.1 repos/commits/schemas, builds, identity boundary, seals
 docs/phase7-live-chain.md         Phase 7.2 images/toolchains, campaign, chain IDs, seals, ceiling
-docs/phase8-conversion-discovery.md Phase 8.1 OpenSSL-Rust pin, Safe-33 cases, workflows, loader proof, revisions, blocker
+docs/phase8-live-conversion.md    Phase 8.2 host/cap, live witness/repair, curl, loader closure, capture, ceiling
+docs/phase8-conversion-discovery.md Phase 8.1 OpenSSL-Rust pin, Safe-33 cases, workflows, loader mechanism, revisions
 ci/bridge-gate.sh                 Phase 7.2 external-tool and live-chain gate
 ci/fixtures/bridge_abort_target.rs checked-in deterministic FRF-Fuzz fixture target
 ci/fixtures/dso_probe.c           actual loader-map capture probe
@@ -976,6 +1003,7 @@ tests/            canonical vectors, support semantics, independent oracle,
                   seal controls, proof manifest/closure/admission/correspondence
                   controls, live Coq/unavailable seals, bridge identity/custody
                   seals, replay, CLI, conversion evidence reuse/revocation
+ci/conversion-gate.sh             Phase 8.2 pin, witness/repair, curl, loader, and live-capture gate
 ```
 
 ## Non-transfer
