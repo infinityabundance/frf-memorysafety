@@ -77,7 +77,7 @@ organic discovery, unconfirmed mechanisms are rejected, and evidence is revoked
 when the property, candidate, boundary, dependency, tool, loader, revision,
 provenance, or witness bytes change.
 
-## Status (0.9.0 / phases 7 and 8 complete; Phase 9.1 evaluation measured)
+## Status (0.9.0 / phases 7 and 8 complete; Phase 9.2 paper published)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -86,20 +86,21 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 350 tests passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 350 tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 351 tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 351 tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
 | `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` (Python 3.11.2 local image) |
 | `./ci/conversion-gate.sh` | pin built; 22 boundary tests passed; fault/repair 4/4; curl positive/negative PASS; ABI-LOAD 6499/0; 27 live crate tests passed |
 | `./ci/eval-gate.sh` | 60/60 receipts pass; 20 held-out / 11 development; 11/11 claims supported; fresh and committed receipts deterministic-identical |
+| `./ci/reconstruction-gate.sh` | independent standard-library reconstruction passes: 60/60 receipts, 20/11 split, 11/11 protocol claims, 18/18 paper claims mapped |
 
-The default gate executes all 350 tests, including the six proof-live tests on
+The default gate executes all 351 tests, including the six proof-live tests on
 their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
 unit tests, the 1 live/`NOT_RUN` chain test, the 30 Phase 8 conversion-court
-tests (27 integration, including 7 live-capture/reuse tests, and 3 unit), and the
-9 Phase 9.1 evaluation tests.
+tests (27 integration, including 7 live-capture/reuse tests, and 3 unit), the
+9 Phase 9.1 evaluation tests, and the Phase 9.2 paper claim-table test.
 `./ci/proof-gate.sh` re-runs those same six tests against live Coq; the live
 count is a subset of the base total, not additional to it.
 `./ci/bridge-gate.sh` builds and runs the three pinned providers and executes
@@ -472,7 +473,8 @@ bookkeeping, not a memory-safety or compatibility claim.
 
 ### Phase 9.1 evaluation surface
 
-Phase 9.1 is pre-registration and measurement only; `PAPER.md` is Phase 9.2.
+Phase 9.1 was pre-registration and measurement; Phase 9.2 publishes `PAPER.md`,
+the claim ledger, the limitations ledger, and the independent reconstructor.
 [`evaluation/PRE-REGISTRATION.md`](evaluation/PRE-REGISTRATION.md) fixes the
 hypotheses, metrics, thresholds, ablation definitions, held-out rule, blocked
 controls, resource accounting, and claim-to-receipt rule. The machine-readable
@@ -499,6 +501,61 @@ detectors, live Coq checking, and an authentic native FRF/FRF-Fuzz/Gemel chain
 are typed `NOT_RUN` in the default evaluation image, not passes. The measured
 false-accept/false-refuse counts, negative findings, and limitations are in
 [`evaluation/METHOD.md`](evaluation/METHOD.md).
+
+### Phase 9.2 publication
+
+Phase 9.2 publishes the pre-registered evaluation without changing the measured
+receipts or the 0.9.0 version.
+
+- [`PAPER.md`](PAPER.md) is the reproducible technical paper: claim ceiling,
+  definitions, architecture, prior-art comparison, pre-registered design,
+  held-out/leakage control, ablations, measured tables, resource accounting,
+  negative findings, threats to validity, and exact commands.
+- [`evaluation/CLAIMS.json`](evaluation/CLAIMS.json) has one entry per paper
+  claim (18 claims) with the prespecified hypothesis, metric, expected
+  direction/threshold, receipt ids, observed value, and supported/unsupported
+  status.
+- [`evaluation/LIMITATIONS.md`](evaluation/LIMITATIONS.md) is an 18-entry
+  numbered ledger covering finite domains, the same-repository oracle,
+  selection leakage versus temporal holdout, synthetic fixtures, digest-bound
+  provenance, mechanism-specific detectors, the finite Coq theorem and reviewed
+  correspondence, recorded native execution, Phase 8 scope, missing third-party
+  replication, and the artifact-level (not semantic) reconstructor.
+- [`evaluation/reconstruct.py`](evaluation/reconstruct.py) is an independent
+  standard-library reconstructor. It does not import or execute the crate; it
+  recomputes the canonical digests, coverage, held-out split, tables, and
+  claim-to-receipt mappings from `protocol.json`, `MANIFEST.json`, and the
+  receipts, and fails on missing, extra, non-canonical, tampered, unsupported,
+  or unmapped artifacts.
+- [`ci/reconstruction-gate.sh`](ci/reconstruction-gate.sh) runs the
+  reconstructor in hardened `python:3.11-slim` with the same pid, CPU, file
+  descriptor, capability, OOM, and no-new-privileges settings as the other
+  gates, plus a 512 MiB memory/swap cap, a read-only repository mount, and no
+  network.
+- [`tests/paper.rs`](tests/paper.rs) scans the paper's claim table and fails if
+  a claim has no receipt mapping.
+
+Headline measured results are unchanged: 60/60 receipts match their
+pre-registered expected observation; 20 held-out and 11 development cases;
+11/11 protocol claims supported; production arms make 0 false accepts and
+0 false refuses on 18 held-out decision receipts; naive baselines show false
+accepts and false refuses. Five naive arms (`over_cut`, `boolean_aliasing`,
+`top_as_exact`, `provider_ignored`, and `origin_ignored`) have no held-out
+discriminator in this corpus and are reported as negative findings or
+downgraded contrasts; the affected contrasts are not presented as held-out
+advantages. Live Miri/Coq and the authentic
+native chain remain typed `NOT_RUN` in the default evaluation image. The claim
+ceiling remains finite and explicit: no population inference, universal
+memory-safety soundness, detector accuracy, proof soundness, whole-program alias
+completeness, compatibility, or `SAFE_COMPATIBLE` claim is made.
+
+Exact reproduction commands:
+
+```sh
+./ci/gate.sh
+./ci/eval-gate.sh
+./ci/reconstruction-gate.sh
+```
 
 ### NOT_RUN in this build
 
@@ -928,7 +985,7 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-The default gate executes 350 tests (including the 11 detector-live tests,
+The default gate executes 351 tests (including the 11 detector-live tests,
 the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, the
 17 bridge seal tests, the 3 bridge unit tests, the 1 live/`NOT_RUN` chain test,
 and the 9 Phase 9.1 evaluation tests) and the native gate executes 17 live native
@@ -983,6 +1040,17 @@ is absent, an observation digest is stale, or a claim does not map to an
 observed receipt. Live detector, live Coq, and authentic-chain arms remain typed
 `NOT_RUN` in this default path.
 
+`./ci/reconstruction-gate.sh` is the Phase 9.2 independent reconstruction gate.
+It runs `evaluation/reconstruct.py` with Python's standard library only in
+hardened `python:3.11-slim` (512 MiB memory and equal swap cap, the same pid,
+CPU, file-descriptor, capability, OOM, and no-new-privileges settings, a
+read-only repository mount, and no network). It recomputes the canonical
+digests, manifest binding, receipt coverage, held-out split, per-hypothesis and
+per-arm tables, decision-quality counts, resource totals, blocked controls,
+negative findings, and both the protocol and paper claim-to-receipt mappings. It
+fails on missing, extra, non-canonical, tampered, unsupported, or unmapped
+artifacts. It does not import or execute the Rust crate.
+
 Every container is hardened as follows:
 
 - `--memory=2g --memory-swap=2g` caps memory and swap together, so the
@@ -1024,11 +1092,18 @@ src/conversion.rs Phase 8.1/8.2 typed conversion-court evidence, live capture, a
 src/evaluation.rs Phase 9.1 protocol, isolated ablation harness, receipts, and claim verification
 src/bin/frf-eval.rs Phase 9.1 harness CLI
 ci/eval-gate.sh                  Phase 9.1 receipt, measurement, and claim gate
+ci/reconstruction-gate.sh        Phase 9.2 independent standard-library reconstruction gate
+PAPER.md                         Phase 9.2 pre-registered evaluation paper
+LIMITATIONS.md                   Phase 9.2 numbered limitations ledger
+evaluation/CLAIMS.json           Phase 9.2 paper claims with receipt mappings and observed values
+evaluation/reconstruct.py        Phase 9.2 independent reconstructor (Python standard library only)
 evaluation/PRE-REGISTRATION.md   frozen hypotheses, metrics, thresholds, held-out rule, and blocked controls
 evaluation/protocol.json         machine-readable frozen protocol
 evaluation/METHOD.md             methodology, ablations, measured results, negative findings, limitations
+evaluation/LIMITATIONS.md         numbered limitations ledger
 evaluation/receipts/             committed canonical receipts and deterministic manifest
 tests/evaluation.rs              protocol freeze, measurement refusal, fabrication, missing-receipt, and claim tests
+tests/paper.rs                   paper claim-table receipt-mapping test
 docs/phase6-proof-adapter.md      proof schema, closure, taxonomy, correspondence, citations
 docs/phase6-live-checker.md       install, invocation, theorem, seals, claim ceiling, citations
 docs/phase7-bridge-discovery.md   Phase 7.1 repos/commits/schemas, builds, identity boundary, seals
