@@ -6,17 +6,19 @@ and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
 **This build makes no memory-safety soundness claim.** Version 0.4.0 remains
-the published release. This branch adds Phase 4.1 to the phase-2/phase-3
-bookkeeping core: strict encoding, typed evidence, founded support with policy
-custody, a finite three-rule profile, bounded `syn`-based source discovery,
-typed alias/footprint/reference-interval qualification, conservative MIR edge
-observations when the pinned toolchain is present, responsibility-token
-lifecycle and race semantics, a native event-transcript verifier, and an honest
-CLI. Universal safe-interior soundness and `SAFE_COMPATIBLE` are outside the
-finite profile and are always reported as `WITHHELD_NOT_RUN`. Phase 4.1 does
-not yet record or execute native C/Rust programs; that is Phase 4.2.
+the published release. This branch adds Phase 4.1 and Phase 4.2 to the
+phase-2/phase-3 bookkeeping core: strict encoding, typed evidence, founded
+support with policy custody, a finite three-rule profile, bounded `syn`-based
+source discovery, typed alias/footprint/reference-interval qualification,
+conservative MIR edge observations when the pinned toolchain is present,
+responsibility-token lifecycle and race semantics, a native event-transcript
+verifier, a test-only harness that records and replays checked-in native
+fixtures, and an honest CLI. Universal safe-interior soundness and
+`SAFE_COMPATIBLE` are outside the finite profile and are always reported as
+`WITHHELD_NOT_RUN`. The harness cannot run arbitrary C/Rust input; `court run`
+remains `NOT_RUN`.
 
-## Status (0.4.0 + phase 4.1)
+## Status (0.4.0 + phase 4.1 + phase 4.2)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -25,12 +27,15 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 207 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 207 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets` | 224 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release` | 224 passed, 0 failed, 0 ignored |
+| `./ci/native-gate.sh` | 17 live native tests passed |
 
-The optional `ci/mir-gate.sh` was not rerun for this Phase 4.1 change; the MIR
-path is unchanged. The four gates above were run in the pinned container after
-the Phase 4.1 changes.
+The optional `ci/mir-gate.sh` was not rerun for the Phase 4.1/4.2 changes; the
+MIR path is unchanged. The four default gates above were run in the pinned
+container. The same container image is used by the native gate after installing
+only `gcc` and `libc6-dev`; its 17 tests are the same tests that assert typed
+`NOT_RUN` when the live flag is unset in the default gate.
 
 Version 0.4.0 is the Phase 3 release. Phase 4.1 is an unreleased branch
 addition; release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), and Phase 3
@@ -46,8 +51,9 @@ entry records this change.
 | `path analyze` aliases, footprints, reference intervals, C callbacks | Implemented; explicit-input and finite only |
 | `mir scan` MIR text observations | Available only with pinned `nightly-2025-02-20`; otherwise `NOT_RUN`, exit 6 |
 | Responsibility-token lifecycle, generation, failure, and race semantics | Implemented; caller-supplied finite transcript only |
-| `court verify` native event-transcript verification | Implemented; rejects incomplete/fictitious evidence; no native execution |
-| Native C/Rust event recording and replay | Not implemented (Phase 4.2); `NOT_RUN` |
+| `court verify` native event-transcript verification | Implemented; rejects incomplete/fictitious evidence |
+| Native event recording and replay | Test-only checked-in C/Rust fixtures through `src/native.rs`; identical replay or `unresolved` |
+| Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
 | MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
 | Live Miri/sanitizers/Kani/Loom, FRF, FRF-Fuzz, Gemel, native proof checkers | `NOT_RUN`, exit 6 |
 | Universal safe-interior soundness and `SAFE_COMPATIBLE` | Withheld; `WITHHELD_NOT_RUN` |
@@ -147,6 +153,22 @@ ceiling.
   rejected as fictitious completeness.
 - `court verify FILE [--json]` with canonical
   `frf-memorysafety.court-verification.v1` reports and SPEC §14 exit statuses.
+- A test-only native harness over a closed registry of checked-in C and Rust
+  fixtures: explicit `cc`/`rustc` argv with no shell, bounded compilation and
+  output, a private `0700` working directory, cleared environment, null stdin,
+  a new process group, and per-child `prlimit` bounds (address space, CPU,
+  NPROC, FSIZE, core=0) in addition to the container caps.
+- Authentic-native event recording with exact compiler/linker versions,
+  fixture and executable SHA-256 digests, case id, `test_only` legality, scope,
+  completeness, and recording metadata.
+- Two-run replay of identical executable input with byte-identical canonical
+  transcripts required; any difference is reported as `unresolved` with a
+  `replay_mismatch` finding.
+- Native positive/negative pairs for legal transfer/free, use-after-free,
+  mutable alias, stale generation after reallocation, synchronous callback,
+  deferred callback after free, data race, and an atomic control, plus
+  seeded skipped-event, fictitious-completeness, output-bound, and
+  nondeterminism controls.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
 
@@ -184,11 +206,15 @@ caller graph, an alias analysis, or a coverage proof. The path-effect model is
 finite and explicit-input only: it does not extract aliases from source or MIR,
 observe native callbacks, model concurrency, or establish whole-program
 closure. A `compatible_within_finite_footprint` outcome is not universal
-aliasing compatibility. The court verifier is transcript-scoped: it does not
-record, execute, or authenticate native C/Rust events, and a
-`verified_compatible_within_transcript` result is not native evidence, Rust
-borrow validity, C object-lifetime legality, replay fidelity, or memory safety.
-Authentic-native provenance is a declaration, not a trust root. The optional
+aliasing compatibility. The court verifier is transcript-scoped: even when the
+Phase 4.2 harness supplies the transcript, a
+`verified_compatible_within_transcript` result is not memory safety, Rust borrow
+validity, C object-lifetime legality, or a universal result. The harness
+establishes only that a checked-in fixture emitted the recorded finite stream
+twice under the recorded isolation. It does not observe a real scheduler, trace
+all events, authenticate its digests, or provide signed provenance; the
+fixtures use a scripted deterministic schedule. Arbitrary native input is not
+recorded. The optional
 MIR adapter consumes only the
 human-readable, unstable `-Zunpretty=mir` text: it does not resolve symbols,
 types, traits, generics, macros, external crates, aliases, provenance, or
@@ -212,8 +238,11 @@ build.
   semantics
 - MIR edge extraction when the pinned `nightly-2025-02-20` toolchain is absent
   (`NOT_RUN`, exit 6)
-- Native C callback observation and retained-pointer lifecycle recording
-- Native C/Rust event recording, replay, and recorder provenance (Phase 4.2)
+- Native C callback observation and retained-pointer lifecycle recording beyond
+  the checked-in scripted fixtures
+- Arbitrary caller-supplied native C/Rust recording (`court run`)
+- Signed provenance attestations, transparency logs, or a trusted build root
+- Real-scheduler race observation, sanitizer evidence, or whole-program closure
 - Universal safe-interior or `SAFE_COMPATIBLE` acceptance
 
 FRF remains the only FRF receipt producer, FRF-Fuzz the only BLAKE3 finding
@@ -358,9 +387,10 @@ subset, bounds, instability, and citations.
 ### Phase 4.1 responsibility tokens and transcript verification
 
 `court verify FILE [--json]` consumes a strict `native-event-transcript.v1`
-file and emits a canonical `frf-memorysafety.court-verification.v1` report. It
-does **not** record or execute native C/Rust programs; Phase 4.2 will supply
-that recorder. The verifier checks responsibility-token lifecycle transitions,
+file and emits a canonical `frf-memorysafety.court-verification.v1` report. The
+command itself does not execute native code; the separate Phase 4.2 test-only
+harness supplies authentic-native transcripts for its checked-in fixtures. The
+verifier checks responsibility-token lifecycle transitions,
 failure and generation semantics, per-thread order, explicit
 `synchronizes_with` edges, and the race rule "same object, different threads,
 unordered, at least one write, not both atomic".
@@ -379,6 +409,39 @@ those gaps or an unknown provider edge is explicitly rejected as fictitious
 completeness. See [`docs/phase4-ownership.md`](docs/phase4-ownership.md) for the
 token algebra, transition legality, race rule, completeness criterion, claim
 ceiling, and citations.
+
+### Phase 4.2 isolated native recording and replay
+
+`src/native.rs` is a **test-only harness** over a closed registry of checked-in
+fixtures. It is compiled only with the non-default `native-harness` feature, is
+not available through the CLI, and does not accept a caller-supplied source
+file or executable. With `FRF_NATIVE_HARNESS=1` it:
+
+* compiles `tests/native/fixtures/` with explicit `cc`/`rustc` argv and no shell;
+* runs each executable in a unique `0700` temporary directory with a cleared
+  environment, null stdin, its own process group, and per-child `prlimit`
+  bounds for address space, CPU, NPROC, FSIZE, and core dumps;
+* captures a bounded JSONL event stream and rejects oversized output;
+* records authentic-native provenance, compiler and linker versions, fixture
+  and executable SHA-256 digests, case id, `test_only` legality, scope, and
+  recording metadata;
+* executes the identical input twice and requires byte-identical canonical
+  transcripts; a difference is `unresolved` with a `replay_mismatch` finding.
+
+The registry covers legal transfer/free in C and Rust, C use-after-free,
+mutable alias, stale generation after reallocation, a synchronous callback, a
+deferred callback after free, a data race, an atomic control, a seeded skipped
+free, a pid/clock-dependent nondeterminism control, and an oversized-output
+control. The skipped-event fixture is `incomplete_transcript`; the same
+transcript with an overridden completeness claim is rejected as
+`fictitious_completeness`. Without `FRF_NATIVE_HARNESS`, `tests/native.rs`
+executes and asserts the typed `NOT_RUN` path; no test is ignored.
+
+This is authentic emission of a **scripted deterministic schedule**, not
+real-scheduler concurrency, sanitizer evidence, or memory-safety proof.
+`court run` for arbitrary input remains `NOT_RUN` (exit 6). See
+[`docs/phase4-native.md`](docs/phase4-native.md) for isolation, provenance,
+the replay rule, exact commands, claim ceiling, and citations.
 
 ## Exit statuses
 
@@ -407,9 +470,21 @@ The four gates are:
 ```sh
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
-cargo test --locked --all-targets
-cargo test --locked --release
+cargo test --locked --all-targets --features native-harness
+cargo test --locked --release --features native-harness
 ```
+
+The `native-harness` feature is not enabled by default; only the gates enable
+it. The default gate installs no C toolchain. The native tests therefore execute and
+assert the typed `NOT_RUN` path unless `FRF_NATIVE_HARNESS=1` is set.
+
+`./ci/native-gate.sh` is a separate live gate. It uses the same hardened Docker
+flags, installs only `gcc` and `libc6-dev` inside the pinned image (apt runs as
+root because the reduced capability set prevents its `_apt` sandbox user from
+switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests.
+It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
+OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
+OOM and resource caps belong in the gate invocation, not in an image.
 
 `./ci/mir-gate.sh` is a separate optional gate. It uses the same hardened
 flags plus a `frf-rustup` volume, attempts to install the pinned minimal
@@ -449,17 +524,20 @@ src/source.rs     bounded syn-based syntactic source inventory
 src/path_effect.rs finite explicit-input aliases, footprints, intervals, outcomes
 src/mir.rs        optional pinned MIR adapter and conservative text parser
 src/court.rs      responsibility tokens, races, and transcript verification
+src/native.rs     test-only isolated native fixture recording and replay
 docs/phase3-source-inventory.md   phase 3.1 categories, limits, claim ceiling, citations
 docs/phase3-path-effects.md       phase 3.2 algebra, qualification, citations
 docs/phase3-mir.md                phase 3.3 pin, invocation, subset, instability, citations
 docs/phase4-ownership.md          phase 4.1 token algebra, races, completeness, citations
+docs/phase4-native.md              phase 4.2 isolation, provenance, replay, citations
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
 tests/            canonical vectors, support semantics, independent oracle,
                   §12.4 cases, mutant courts, paper corpus, profile model/refusals,
                   source inventory fixtures/limits/symlinks/CLI, path-effect
                   alias/UnsafeCell/callback seal controls, MIR fixtures/adapter,
-                  court token/race/completeness/CLI controls, replay, CLI
+                  court token/race/completeness/CLI controls, native fixture
+                  pairs/skipped-event/replay controls, replay, CLI
 ```
 
 ## Non-transfer

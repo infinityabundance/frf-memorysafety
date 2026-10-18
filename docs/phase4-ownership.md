@@ -2,8 +2,10 @@
 
 Snapshot: branch `staging`, crate `frf-memorysafety 0.4.0` (no version bump).
 This document describes the Phase 4.1 semantic core and transcript verifier.
-Phase 4.2 (native C/Rust event recording and replay) is **not** implemented
-here.
+Phase 4.2 adds a restricted, test-only native harness over a closed registry of
+checked-in fixtures; see [`phase4-native.md`](phase4-native.md). The verifier
+below still consumes a finite caller-supplied transcript and remains
+independent of native execution.
 
 ## Claim ceiling
 
@@ -206,8 +208,9 @@ remains, the verifier adds `fictitious_completeness` and returns
 
 Malformed input, duplicate keys, unknown fields, invalid digests, or structural
 inconsistency is an evidence-integrity failure (exit 3). Usage errors are exit
-2; internal encoding failures are exit 7. `court run` remains `NOT_RUN`
-(exit 6) until Phase 4.2.
+2; internal encoding failures are exit 7. `court run` over caller-supplied
+programs remains `NOT_RUN` (exit 6); native recording is restricted to the
+checked-in Phase 4.2 test fixtures.
 
 ## CLI
 
@@ -234,18 +237,20 @@ form.
   transcripts.
 * Deterministic canonical report bytes and CLI exit statuses 0/2/3/4/5/6.
 
-## Remaining Phase 4.2 work
+## Phase 4.2 status
 
-* Compile and execute real test-only C and Rust fixtures in the hardened
-  container.
-* Capture authentic native events, executable/fixture digests, tool/library
-  versions, and recorder identity rather than accepting declarations.
-* Record and replay the exact same executable input reproducibly, or mark the
-  observation `unresolved`.
-* Produce paired native positive/negative scenarios and demonstrate that the
-  seeded skipped-event detector fires on a recorder that omits events.
-* Keep native execution and recording separate from this finite verifier; the
-  verdict remains transcript-scoped.
+Phase 4.2 now provides a test-only harness (`src/native.rs`) that compiles and
+executes a closed registry of checked-in C and Rust fixtures under the hardened
+container, records authentic native events, captures compiler/linker versions,
+executable and fixture digests, case id, legality, and scope, and requires two
+byte-identical canonical transcripts. Paired positive/negative cases, a seeded
+skipped-event case, a fictitious-completeness case, a replay-mismatch control,
+and an oversized-output control are exercised by `tests/native.rs` and
+`ci/native-gate.sh`. Native execution remains separate from this finite
+verifier, the verdict remains transcript-scoped, and arbitrary native input is
+still `NOT_RUN`. See [`phase4-native.md`](phase4-native.md) for isolation,
+provenance fields, the replay rule, exact commands, claim ceiling, and
+citations.
 
 ## Citations
 

@@ -12,8 +12,10 @@ universal memory-safety soundness, and no release below makes such a claim.
 ## [Unreleased]
 
 Phase 4.1: responsibility-token lifecycle, generation, failure, and race
-semantics plus a native event-transcript verifier. No version bump and no
-publish; Phase 4.2 native recording/replay is not implemented.
+semantics plus a native event-transcript verifier. Phase 4.2: a test-only
+isolated native harness that compiles, records, replays, and verifies checked-in
+C and Rust fixtures. No version bump and no publish; arbitrary caller-supplied
+native execution (`court run`) remains `NOT_RUN`.
 
 ### Added
 
@@ -42,24 +44,48 @@ publish; Phase 4.2 native recording/replay is not implemented.
   `incomplete_transcript`; a completeness claim with gaps or unknown provider
   edges yields `fictitious_completeness`.
 - `court verify FILE [--json]` emitting canonical
-  `frf-memorysafety.court-verification.v1`; `court run` remains `NOT_RUN`
-  (exit 6) until Phase 4.2.
+  `frf-memorysafety.court-verification.v1`; `court run` over caller-supplied
+  programs remains `NOT_RUN` (exit 6).
 - `tests/court.rs`: 39 tests covering positive/negative ownership transfer,
   use-after-free, mutable alias, stale generation, allocation failure, callback
   failure, partial initialization, failed transfer, reborrow, escape, abort,
   data race, atomic control, seeded skipped events, malformed/duplicate-field
   input, deterministic canonical reports, and CLI statuses. None is ignored.
 - `docs/phase4-ownership.md`: token algebra, transition legality, race rule,
-  completeness criterion, claim ceiling, remaining Phase 4.2 work, and
-  citations.
+  completeness criterion, claim ceiling, Phase 4.2 status, and citations.
 - Capability, version, and usage documentation for the court verifier.
+- `src/native.rs`: test-only harness, compiled only with the non-default
+  `native-harness` feature, over a closed registry of checked-in C and Rust
+  fixtures. Explicit `cc`/`rustc` argv with no shell, bounded compilation
+  and capture, private `0700` working directories, cleared environment, null
+  stdin, a new process group, and per-child `prlimit` bounds for address space,
+  CPU, NPROC, FSIZE, and core dumps in addition to the container caps.
+- Authentic-native provenance with exact compiler/linker versions, fixture and
+  executable SHA-256 digests, case id, `test_only` legality, scope,
+  completeness, and recording metadata.
+- Two-run replay of identical executable input requiring byte-identical
+  canonical transcripts; a difference is `unresolved` with a `replay_mismatch`
+  finding and is never reported as success.
+- `tests/native/fixtures/` positive/negative pairs for legal transfer/free in C
+  and Rust, use-after-free, mutable alias, stale generation after reallocation,
+  synchronous callback, deferred callback after free, data race, and an atomic
+  control; plus seeded skipped-free, fictitious-completeness, nondeterministic
+  pid/clock, and oversized-output controls.
+- `tests/native.rs`: 17 tests. Without `FRF_NATIVE_HARNESS` they execute and
+  assert the typed `NOT_RUN` path; with the flag they exercise the live path.
+  None is ignored.
+- `ci/native-gate.sh`: the same hardened container flags as `ci/gate.sh`, an
+  in-container install of only `gcc` and `libc6-dev`, and the live native tests.
+- `docs/phase4-native.md`: isolation, provenance, replay rule, fixture legality,
+  exact commands, claim ceiling, and citations.
 
 ### Verification
 
 - `cargo fmt --all -- --check`: clean
 - `cargo clippy --all-targets --all-features -- -D warnings`: clean
-- `cargo test --locked --all-targets`: 207 passed, 0 failed, 0 ignored
-- `cargo test --locked --release`: 207 passed, 0 failed, 0 ignored
+- `cargo test --locked --all-targets`: 224 passed, 0 failed, 0 ignored
+- `cargo test --locked --release`: 224 passed, 0 failed, 0 ignored
+- `ci/native-gate.sh`: 17 live native tests passed
 
 ## [0.4.0] - 2026-10-18
 
