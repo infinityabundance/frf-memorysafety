@@ -12,18 +12,21 @@
 //! identities, the typed claim/obligation model, least-fixed-point support with
 //! certificates and exact cuts, policy-versioned reconstruction, the finite
 //! three-rule profile with a deterministic local buffer model, a syntax-only
-//! source inventory, finite path effects, and an optional pinned MIR text
-//! adapter. Those results are finite-model, textual, or bookkeeping results
-//! only.
+//! source inventory, finite path effects, an optional pinned MIR text
+//! adapter, responsibility-token lifecycle and race semantics, and a native
+//! event-transcript verifier. Those results are finite-model, textual,
+//! transcript, or bookkeeping results only.
 //!
 //! # What this build does not establish
 //!
 //! No live Miri, sanitizer, Kani, Loom, FRF court, FRF-Fuzz, Gemel, or native
 //! proof-checker run is performed. The optional MIR adapter observes unresolved
 //! textual edges from an unstable compiler format; it does not resolve symbols,
-//! aliases, types, provenance, or whole-program closure. Universal Rust
-//! soundness and `SAFE_COMPATIBLE` are outside the finite profile and are always
-//! withheld.
+//! aliases, types, provenance, or whole-program closure. The court verifier
+//! consumes a caller-supplied transcript and does not record or execute native
+//! C/Rust programs; native recording and replay remain Phase 4.2 work. Universal
+//! Rust soundness and `SAFE_COMPATIBLE` are outside the finite profile and are
+//! always withheld.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -31,6 +34,7 @@
 
 pub mod cli;
 pub mod closure;
+pub mod court;
 pub mod identity;
 pub mod mir;
 pub mod model;
@@ -40,6 +44,15 @@ pub mod source;
 pub mod support;
 
 pub use closure::{compare_inventory, CoverageOutcome, EdgeKey};
+pub use court::{
+    parse_transcript, verify_transcript, verify_transcript_json, BorrowKind, CallbackOutcome,
+    CaseLegality, CourtError, CourtErrorCategory, CourtReport, Event, Finding, FindingClass,
+    LibraryVersion, NativeEventTranscript, ProviderUnknown, RaceWitness, RecordingMetadata,
+    SyncEdge, ThreadTrace, TranscriptOrigin, TranscriptOutcome, TranscriptProvenance,
+    TranscriptRequirements, COURT_CLAIM_CEILING, COURT_REPORT_SCHEMA, COURT_SPEC, MAX_FINDINGS,
+    MAX_OBJECTS, MAX_SYNC_EDGES, MAX_THREADS, MAX_TRANSCRIPT_EVENTS,
+    NATIVE_EVENT_TRANSCRIPT_SCHEMA,
+};
 pub use identity::{
     canonical_bytes, digest_bytes, digest_value, parse_strict, require_canonical, IdentityDomain,
     IdentityError, MsId, CANONICAL_SCHEMA,
@@ -133,7 +146,12 @@ pub fn capabilities() -> Capabilities {
             "conservative MIR text parser: functions, unresolved call edges, dereferences, storage/lifetime markers, drops, and unknowns",
             "mir scan CLI with typed NOT_RUN and SPEC.md §14 exit status 6",
             "footprint and reference-interval conflict classification types",
-            "lifecycle responsibility trace types",
+            "responsibility tokens: create, transfer, borrow, reborrow, escape, reallocate, free, use, callback, poison, and abort transitions",
+            "generation bumps and stale-token detection after reallocation or free",
+            "per-thread event order with explicit synchronizes-with edges and vector-clock race detection",
+            "atomic-access modeling and atomic-versus-non-atomic conflict rules",
+            "native event-transcript verifier with seeded skipped-event and fictitious-completeness rejection",
+            "court verify CLI with typed outcomes and SPEC.md §14 exit statuses",
             "detector calibration receipt adjudication types",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
@@ -142,6 +160,7 @@ pub fn capabilities() -> Capabilities {
         not_run: vec![
             "live Miri/ASan/LSan/TSan execution",
             "live Kani/Loom execution",
+            "native C/Rust event recording and replay (Phase 4.2)",
             "live FRF court and OpenReceipt verification",
             "live FRF-Fuzz coordinator",
             "live Gemel publication",
