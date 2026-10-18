@@ -1,0 +1,545 @@
+{
+  "schema": "frf-memorysafety.evaluation-protocol.v1",
+  "spec": "frf-memorysafety-spec-v1",
+  "protocol_version": "phase9.1-v1",
+  "frozen": "2026-10-18",
+  "held_out_rule": "A case is held_out iff the first byte of SHA-256(UTF-8('frf-ms-eval-v1' + NUL + case_id)) is >= 0x80; otherwise it is development. The rule is fixed before measurement. It is a selection-leakage control, not a temporal holdout.",
+  "resource_metrics": [
+    "wall_time_ms: parent-measured monotonic elapsed time around the isolated child",
+    "peak_rss_kb: Maximum resident set size reported by /usr/bin/time -v (ru_maxrss on Linux), falling back to /proc/self/status VmHWM",
+    "output_bytes: exact byte length of the child's canonical observation"
+  ],
+  "receipt_rule": "A receipt is emitted only when wall_time_ms, peak_rss_kb (>0), output_bytes, input_sha256, observed_sha256, toolchain, image, and exact command are present. Every reported advantage must name at least one receipt whose observed field equals the claimed observation.",
+  "blocked_controls": [
+    "D6-detector-live-miri: live detector execution is NOT_RUN in the default image; it is never counted as a pass.",
+    "R5-proof-live-coq: live Coq checking is NOT_RUN in the default image; manifest parsing is not proof acceptance.",
+    "E6-discovery-authentic-chain: an authentic native FRF/FRF-Fuzz/Gemel chain is NOT_RUN without FRF_BRIDGE_LIVE_BUNDLE; modeled/substitute evidence is not a substitute."
+  ],
+  "hypotheses": [
+    {
+      "id": "H1",
+      "name": "founded-graph-support",
+      "claim": "Least-fixed-point support rejects ungrounded cycles, all-node certificates expose hidden intermediate and shared-mapping dependencies, and exact cuts preserve unrelated support, whereas greatest-fixed-point, root-only-certificate, direct-premise, and over-cut baselines do not.",
+      "decision_rule": "Every production support arm matches its preregistered expected observation on every held-out support case. Each named naive support arm fails at least one preregistered discriminator on a held-out case.",
+      "cases": ["S1-grounded-cycle", "S2-ungrounded-self-cycle", "S3-ungrounded-mutual-cycle", "S4-hidden-intermediate-cut", "S5-shared-mapping-cut", "S6-exact-cut-unrelated-survives", "S7-exact-cut-required-cut"]
+    },
+    {
+      "id": "H2",
+      "name": "path-alias-semantics",
+      "claim": "Exact, descendant, shared-mapping, and top aliases produce distinct qualified outcomes, and omission is distinguished from not-falsified; boolean aliasing and absence-collapsing baselines lose at least one of those distinctions.",
+      "decision_rule": "Every production path arm matches its preregistered expected observation on every held-out path case. Each named naive path arm diverges from production on at least one preregistered held-out discriminator.",
+      "cases": ["P1-path-exact-whole-conflicts", "P2-path-descendant-disjoint", "P3-path-shared-mapping-disjoint", "P4-path-descendant-vs-top", "P5-path-omission-vs-not-falsified", "P6-path-foreign-provider", "P7-path-independent-allocations"]
+    },
+    {
+      "id": "H3",
+      "name": "calibrated-detector",
+      "claim": "Calibrated detector evidence accepts authentic known-bad/known-good receipts and refuses raw-stdout acceptance without a typed finding, dead detectors, misconfigured builds, and mock-provider transport; job-success, raw-stdout, and origin-ignoring baselines accept at least one such invalid receipt.",
+      "decision_rule": "The production detector arm refuses every preregistered adversarial receipt on held-out cases. At least one named naive detector baseline accepts a held-out adversarial receipt. Live detector execution is reported as typed NOT_RUN, never as a pass.",
+      "cases": ["D1-detector-authentic-calibrated", "D2-detector-raw-stdout-no-finding", "D3-detector-dead", "D4-detector-misconfigured", "D5-detector-mock-provider", "D6-detector-live-miri"]
+    },
+    {
+      "id": "H4",
+      "name": "proof-closure-correspondence",
+      "claim": "Closure plus the separate implementation-correspondence gate rejects an unchecked FFI wrapper and a missing reentrant transition, while a parser-only baseline accepts the same manifests.",
+      "decision_rule": "The production proof arm rejects every preregistered invalid manifest on held-out cases. The parser-only baseline accepts at least one held-out invalid manifest. No live-checker acceptance is claimed without a live checker run.",
+      "cases": ["R1-proof-approved", "R2-proof-unchecked-wrapper", "R3-proof-admitted-dependency", "R4-proof-missing-transition", "R5-proof-live-coq"]
+    },
+    {
+      "id": "H5",
+      "name": "empirical-discovery",
+      "claim": "Bridge verification refuses modeled and substitute providers, stale candidates, and tampered external objects; provenance-ignoring and schema-only baselines accept at least one such invalid bundle. An authentic native chain is typed NOT_RUN when unavailable, not synthesized.",
+      "decision_rule": "The production bridge arm refuses or correctly not-runs every preregistered bundle. At least one named naive discovery baseline accepts a held-out invalid bundle. The authentic-chain control is reported as typed NOT_RUN.",
+      "cases": ["E1-discovery-modeled-provider", "E2-discovery-substitute-provider", "E3-discovery-stale-candidate", "E4-discovery-tampered-finding", "E5-discovery-missing-finding", "E6-discovery-authentic-chain"]
+    },
+    {
+      "id": "H6",
+      "name": "decision-quality",
+      "claim": "On the preregistered known-bad and known-good control families, production arms make no false-accept or false-refuse decisions on held-out cases, while at least one naive baseline makes a false-accept or false-refuse decision somewhere in the corpus.",
+      "decision_rule": "For cases with truth=reject, a production arm is a false accept iff its observed label is in the case's accept_outcomes. For truth=accept, it is a false refuse iff its observed label is not in accept_outcomes and is not NOT_RUN. NOT_RUN cases are censored and reported separately. Production false_accept and false_refuse must both be zero on held-out cases. At least one named naive baseline must have false_accept + false_refuse > 0 across the corpus (development or held-out). Baselines with zero false decisions are reported as negative findings, not hidden. A baseline with no decision case anywhere is reported as not_evaluated.",
+      "cases": ["S2-ungrounded-self-cycle", "S3-ungrounded-mutual-cycle", "S4-hidden-intermediate-cut", "S5-shared-mapping-cut", "S6-exact-cut-unrelated-survives", "S7-exact-cut-required-cut", "P1-path-exact-whole-conflicts", "P2-path-descendant-disjoint", "P3-path-shared-mapping-disjoint", "P6-path-foreign-provider", "P7-path-independent-allocations", "D1-detector-authentic-calibrated", "D2-detector-raw-stdout-no-finding", "D3-detector-dead", "D4-detector-misconfigured", "D5-detector-mock-provider", "R1-proof-approved", "R2-proof-unchecked-wrapper", "R3-proof-admitted-dependency", "R4-proof-missing-transition", "E1-discovery-modeled-provider", "E2-discovery-substitute-provider", "E3-discovery-stale-candidate", "E4-discovery-tampered-finding"]
+    }
+  ],
+  "cases": [
+    {
+      "id": "S1-grounded-cycle",
+      "hypothesis": "H1",
+      "category": "support",
+      "description": "Grounded cycle: admitted leaf a supports p, p and q support each other.",
+      "truth": "accept",
+      "accept_outcomes": ["supported"],
+      "arms": [
+        {"id": "lfp", "kind": "production", "expected": "supported"},
+        {"id": "gfp", "kind": "baseline", "expected": "supported"}
+      ]
+    },
+    {
+      "id": "S2-ungrounded-self-cycle",
+      "hypothesis": "H1",
+      "category": "support",
+      "description": "Self-cycle q <- q with no admitted entry point.",
+      "truth": "reject",
+      "accept_outcomes": ["supported"],
+      "arms": [
+        {"id": "lfp", "kind": "production", "expected": "unsupported"},
+        {"id": "gfp", "kind": "baseline", "expected": "supported"}
+      ]
+    },
+    {
+      "id": "S3-ungrounded-mutual-cycle",
+      "hypothesis": "H1",
+      "category": "support",
+      "description": "Mutual cycle p <-> q with no admitted entry point.",
+      "truth": "reject",
+      "accept_outcomes": ["supported"],
+      "arms": [
+        {"id": "lfp", "kind": "production", "expected": "unsupported"},
+        {"id": "gfp", "kind": "baseline", "expected": "supported"}
+      ]
+    },
+    {
+      "id": "S4-hidden-intermediate-cut",
+      "hypothesis": "H1",
+      "category": "support",
+      "description": "Excluding intermediate u must cut q; a root-only certificate hides u.",
+      "truth": "reject",
+      "accept_outcomes": ["cut_missed"],
+      "arms": [
+        {"id": "all_node_certificates", "kind": "production", "expected": "cut_applies"},
+        {"id": "root_only_certificates", "kind": "baseline", "expected": "cut_missed"}
+      ]
+    },
+    {
+      "id": "S5-shared-mapping-cut",
+      "hypothesis": "H1",
+      "category": "support",
+      "description": "Excluding shared premise m must cut both routes to q; direct-premise reasoning misses the shared dependency.",
+      "truth": "reject",
+      "accept_outcomes": ["cut_missed"],
+      "arms": [
+        {"id": "all_node_certificates", "kind": "production", "expected": "cut_applies"},
+        {"id": "direct_premises", "kind": "baseline", "expected": "cut_missed"}
+      ]
+    },
+    {
+      "id": "S6-exact-cut-unrelated-survives",
+      "hypothesis": "H1",
+      "category": "support",
+      "description": "Excluding u cuts q but must retain unrelated r supported through w <- b.",
+      "truth": "accept",
+      "accept_outcomes": ["exact_partition"],
+      "arms": [
+        {"id": "exact_cut", "kind": "production", "expected": "exact_partition"},
+        {"id": "over_cut", "kind": "baseline", "expected": "over_cut"}
+      ]
+    },
+    {
+      "id": "S7-exact-cut-required-cut",
+      "hypothesis": "H1",
+      "category": "support",
+      "description": "Excluding u must cut q on the exact-cut arm; the over-cut baseline also cuts q.",
+      "truth": "reject",
+      "accept_outcomes": [],
+      "arms": [
+        {"id": "exact_cut", "kind": "production", "expected": "cut"},
+        {"id": "over_cut", "kind": "baseline", "expected": "cut"}
+      ]
+    },
+    {
+      "id": "P1-path-exact-whole-conflicts",
+      "hypothesis": "H2",
+      "category": "path",
+      "description": "An exact whole-object write overlaps a live descendant read; both production and boolean aliasing report a conflict.",
+      "truth": "reject",
+      "accept_outcomes": [],
+      "arms": [
+        {"id": "exact_footprint", "kind": "production", "expected": "observed_conflict"},
+        {"id": "boolean_aliasing", "kind": "baseline", "expected": "observed_conflict"}
+      ]
+    },
+    {
+      "id": "P2-path-descendant-disjoint",
+      "hypothesis": "H2",
+      "category": "path",
+      "description": "Two disjoint descendant ranges must be compatible; boolean aliasing treats them as may-alias.",
+      "truth": "accept",
+      "accept_outcomes": ["compatible_within_finite_footprint"],
+      "arms": [
+        {"id": "exact_footprint", "kind": "production", "expected": "compatible_within_finite_footprint"},
+        {"id": "boolean_aliasing", "kind": "baseline", "expected": "observed_conflict"}
+      ]
+    },
+    {
+      "id": "P3-path-shared-mapping-disjoint",
+      "hypothesis": "H2",
+      "category": "path",
+      "description": "A shared-mapping view is not an independent exact allocation; a disjoint explicit range still preserves shared-mapping uncertainty, while a mapping-as-independent baseline fabricates compatibility.",
+      "truth": "reject",
+      "accept_outcomes": ["compatible_within_finite_footprint"],
+      "arms": [
+        {"id": "exact_footprint", "kind": "production", "expected": "not_falsified"},
+        {"id": "mapping_as_independent", "kind": "baseline", "expected": "compatible_within_finite_footprint"}
+      ]
+    },
+    {
+      "id": "P4-path-descendant-vs-top",
+      "hypothesis": "H2",
+      "category": "path",
+      "description": "A top alias makes the overlap possible, not definite; treating top as exact fabricates a conflict.",
+      "truth": "reject",
+      "accept_outcomes": ["compatible_within_finite_footprint"],
+      "arms": [
+        {"id": "exact_footprint", "kind": "production", "expected": "not_falsified"},
+        {"id": "top_as_exact", "kind": "baseline", "expected": "observed_conflict"}
+      ]
+    },
+    {
+      "id": "P5-path-omission-vs-not-falsified",
+      "hypothesis": "H2",
+      "category": "path",
+      "description": "A legally absent unobserved callback is omission; a non-absent unobserved callback is not_falsified.",
+      "truth": "unknown",
+      "accept_outcomes": [],
+      "arms": [
+        {"id": "exact_footprint", "kind": "production", "expected": "omission_and_not_falsified"},
+        {"id": "absent_is_omission", "kind": "baseline", "expected": "omission_only"},
+        {"id": "absent_is_not_falsified", "kind": "baseline", "expected": "not_falsified_only"}
+      ]
+    },
+    {
+      "id": "P6-path-foreign-provider",
+      "hypothesis": "H2",
+      "category": "path",
+      "description": "A foreign-unknown provider preserves uncertainty; ignoring it fabricates compatibility.",
+      "truth": "reject",
+      "accept_outcomes": ["compatible_within_finite_footprint"],
+      "arms": [
+        {"id": "exact_footprint", "kind": "production", "expected": "not_falsified"},
+        {"id": "provider_ignored", "kind": "baseline", "expected": "compatible_within_finite_footprint"}
+      ]
+    },
+    {
+      "id": "P7-path-independent-allocations",
+      "hypothesis": "H2",
+      "category": "path",
+      "description": "Writes through aliases of two distinct objects are compatible; both arms agree.",
+      "truth": "accept",
+      "accept_outcomes": ["compatible_within_finite_footprint"],
+      "arms": [
+        {"id": "exact_footprint", "kind": "production", "expected": "compatible_within_finite_footprint"},
+        {"id": "boolean_aliasing", "kind": "baseline", "expected": "compatible_within_finite_footprint"}
+      ]
+    },
+    {
+      "id": "D1-detector-authentic-calibrated",
+      "hypothesis": "H3",
+      "category": "detector",
+      "description": "Authentic known-bad detection plus a clean known-good control is calibrated.",
+      "truth": "accept",
+      "accept_outcomes": ["calibrated"],
+      "arms": [
+        {"id": "calibrated", "kind": "production", "expected": "calibrated"},
+        {"id": "raw_stdout", "kind": "baseline", "expected": "calibrated"}
+      ]
+    },
+    {
+      "id": "D2-detector-raw-stdout-no-finding",
+      "hypothesis": "H3",
+      "category": "detector",
+      "description": "A known-bad case prints the diagnostic text but supplies no typed finding.",
+      "truth": "reject",
+      "accept_outcomes": ["calibrated"],
+      "arms": [
+        {"id": "calibrated", "kind": "production", "expected": "refused_missing_finding"},
+        {"id": "raw_stdout", "kind": "baseline", "expected": "calibrated"}
+      ]
+    },
+    {
+      "id": "D3-detector-dead",
+      "hypothesis": "H3",
+      "category": "detector",
+      "description": "A known-bad case exits zero with no finding; the detector is dead.",
+      "truth": "reject",
+      "accept_outcomes": ["calibrated"],
+      "arms": [
+        {"id": "calibrated", "kind": "production", "expected": "refused_dead_detector"},
+        {"id": "job_success", "kind": "baseline", "expected": "calibrated"}
+      ]
+    },
+    {
+      "id": "D4-detector-misconfigured",
+      "hypothesis": "H3",
+      "category": "detector",
+      "description": "A typed finding exists but the detector build omits the required sanitizer flag.",
+      "truth": "reject",
+      "accept_outcomes": ["calibrated"],
+      "arms": [
+        {"id": "calibrated", "kind": "production", "expected": "refused_misconfigured_build_flags"},
+        {"id": "raw_stdout", "kind": "baseline", "expected": "calibrated"}
+      ]
+    },
+    {
+      "id": "D5-detector-mock-provider",
+      "hypothesis": "H3",
+      "category": "detector",
+      "description": "An otherwise valid receipt is transported by a mock provider.",
+      "truth": "reject",
+      "accept_outcomes": ["calibrated"],
+      "arms": [
+        {"id": "calibrated", "kind": "production", "expected": "refused_mock_provider_transport"},
+        {"id": "origin_ignored", "kind": "baseline", "expected": "calibrated"}
+      ]
+    },
+    {
+      "id": "D6-detector-live-miri",
+      "hypothesis": "H3",
+      "category": "detector",
+      "description": "Live Miri execution is opt-in and absent in the default image.",
+      "truth": "not_run",
+      "accept_outcomes": [],
+      "arms": [
+        {"id": "live_miri", "kind": "blocked", "expected": "NOT_RUN"}
+      ]
+    },
+    {
+      "id": "R1-proof-approved",
+      "hypothesis": "H4",
+      "category": "proof",
+      "description": "Approved digest-bound manifest: admission and correspondence pass, but no live checker is configured.",
+      "truth": "accept",
+      "accept_outcomes": ["accepted_admission_checker_unavailable", "accepted_within_scope"],
+      "arms": [
+        {"id": "closure_and_correspondence", "kind": "production", "expected": "accepted_admission_checker_unavailable"},
+        {"id": "parser_only", "kind": "baseline", "expected": "accepted_within_scope"}
+      ]
+    },
+    {
+      "id": "R2-proof-unchecked-wrapper",
+      "hypothesis": "H4",
+      "category": "proof",
+      "description": "The theorem is admitted but the FFI wrapper is unchecked.",
+      "truth": "reject",
+      "accept_outcomes": ["accepted_within_scope"],
+      "arms": [
+        {"id": "closure_and_correspondence", "kind": "production", "expected": "rejected_unchecked_implementation"},
+        {"id": "parser_only", "kind": "baseline", "expected": "accepted_within_scope"}
+      ]
+    },
+    {
+      "id": "R3-proof-admitted-dependency",
+      "hypothesis": "H4",
+      "category": "proof",
+      "description": "A reachable dependency is Admitted.",
+      "truth": "reject",
+      "accept_outcomes": ["accepted_within_scope"],
+      "arms": [
+        {"id": "closure_and_correspondence", "kind": "production", "expected": "rejected_assumption"},
+        {"id": "parser_only", "kind": "baseline", "expected": "accepted_within_scope"}
+      ]
+    },
+    {
+      "id": "R4-proof-missing-transition",
+      "hypothesis": "H4",
+      "category": "proof",
+      "description": "The implementation binding omits the mandatory reentrant callback transition.",
+      "truth": "reject",
+      "accept_outcomes": ["accepted_within_scope"],
+      "arms": [
+        {"id": "closure_and_correspondence", "kind": "production", "expected": "rejected_missing_transition"},
+        {"id": "parser_only", "kind": "baseline", "expected": "accepted_within_scope"}
+      ]
+    },
+    {
+      "id": "R5-proof-live-coq",
+      "hypothesis": "H4",
+      "category": "proof",
+      "description": "Live Coq checking is opt-in and absent in the default image.",
+      "truth": "not_run",
+      "accept_outcomes": [],
+      "arms": [
+        {"id": "live_coq", "kind": "blocked", "expected": "NOT_RUN"}
+      ]
+    },
+    {
+      "id": "E1-discovery-modeled-provider",
+      "hypothesis": "H5",
+      "category": "discovery",
+      "description": "All external objects are declared modeled with native DSO and matched re-execution.",
+      "truth": "reject",
+      "accept_outcomes": ["complete"],
+      "arms": [
+        {"id": "bridge_verify", "kind": "production", "expected": "refused_modeled_evidence"},
+        {"id": "provenance_ignored", "kind": "baseline", "expected": "complete"}
+      ]
+    },
+    {
+      "id": "E2-discovery-substitute-provider",
+      "hypothesis": "H5",
+      "category": "discovery",
+      "description": "The provider is declared a substitute.",
+      "truth": "reject",
+      "accept_outcomes": ["complete"],
+      "arms": [
+        {"id": "bridge_verify", "kind": "production", "expected": "refused_substitute_provider"},
+        {"id": "provenance_ignored", "kind": "baseline", "expected": "complete"}
+      ]
+    },
+    {
+      "id": "E3-discovery-stale-candidate",
+      "hypothesis": "H5",
+      "category": "discovery",
+      "description": "The bundle expected candidate differs from the observation candidate.",
+      "truth": "reject",
+      "accept_outcomes": ["complete"],
+      "arms": [
+        {"id": "bridge_verify", "kind": "production", "expected": "refused_stale_candidate"},
+        {"id": "schema_only", "kind": "baseline", "expected": "complete"}
+      ]
+    },
+    {
+      "id": "E4-discovery-tampered-finding",
+      "hypothesis": "H5",
+      "category": "discovery",
+      "description": "The FRF-Fuzz finding bytes are changed without updating its declared identity.",
+      "truth": "reject",
+      "accept_outcomes": ["complete"],
+      "arms": [
+        {"id": "bridge_verify", "kind": "production", "expected": "integrity_digest_mismatch"},
+        {"id": "schema_only", "kind": "baseline", "expected": "complete"}
+      ]
+    },
+    {
+      "id": "E5-discovery-missing-finding",
+      "hypothesis": "H5",
+      "category": "discovery",
+      "description": "No external observations are supplied; the bridge must be typed NOT_RUN.",
+      "truth": "not_run",
+      "accept_outcomes": [],
+      "arms": [
+        {"id": "bridge_verify", "kind": "production", "expected": "NOT_RUN"},
+        {"id": "schema_only", "kind": "baseline", "expected": "NOT_RUN"}
+      ]
+    },
+    {
+      "id": "E6-discovery-authentic-chain",
+      "hypothesis": "H5",
+      "category": "discovery",
+      "description": "An authentic native chain is available only when FRF_BRIDGE_LIVE_BUNDLE names a verified capture.",
+      "truth": "not_run",
+      "accept_outcomes": [],
+      "arms": [
+        {"id": "bridge_verify", "kind": "blocked", "expected": "NOT_RUN"}
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "C1",
+      "hypothesis": "H1",
+      "text": "The shipped least-fixed-point evaluator rejects ungrounded self and mutual cycles.",
+      "requires": [
+        {"case": "S2-ungrounded-self-cycle", "arm": "lfp", "expected": "unsupported"},
+        {"case": "S3-ungrounded-mutual-cycle", "arm": "lfp", "expected": "unsupported"}
+      ]
+    },
+    {
+      "id": "C2",
+      "hypothesis": "H1",
+      "text": "The greatest-fixed-point baseline accepts those same ungrounded cycles.",
+      "requires": [
+        {"case": "S2-ungrounded-self-cycle", "arm": "gfp", "expected": "supported"},
+        {"case": "S3-ungrounded-mutual-cycle", "arm": "gfp", "expected": "supported"}
+      ]
+    },
+    {
+      "id": "C3",
+      "hypothesis": "H1",
+      "text": "All-node certificates expose hidden intermediate and shared-mapping dependencies at the exact cut.",
+      "requires": [
+        {"case": "S4-hidden-intermediate-cut", "arm": "all_node_certificates", "expected": "cut_applies"},
+        {"case": "S5-shared-mapping-cut", "arm": "all_node_certificates", "expected": "cut_applies"}
+      ]
+    },
+    {
+      "id": "C4",
+      "hypothesis": "H1",
+      "text": "Root-only and direct-premise baselines miss the exact cut.",
+      "requires": [
+        {"case": "S4-hidden-intermediate-cut", "arm": "root_only_certificates", "expected": "cut_missed"},
+        {"case": "S5-shared-mapping-cut", "arm": "direct_premises", "expected": "cut_missed"}
+      ]
+    },
+    {
+      "id": "C5",
+      "hypothesis": "H1",
+      "text": "Exact cuts preserve unrelated support, while over-cut loses it.",
+      "requires": [
+        {"case": "S6-exact-cut-unrelated-survives", "arm": "exact_cut", "expected": "exact_partition"},
+        {"case": "S6-exact-cut-unrelated-survives", "arm": "over_cut", "expected": "over_cut"},
+        {"case": "S7-exact-cut-required-cut", "arm": "exact_cut", "expected": "cut"}
+      ]
+    },
+    {
+      "id": "C6",
+      "hypothesis": "H2",
+      "text": "Exact footprint semantics distinguishes disjoint descendant ranges and preserves shared-mapping uncertainty, while boolean aliasing and mapping-as-independent baselines do not.",
+      "requires": [
+        {"case": "P2-path-descendant-disjoint", "arm": "exact_footprint", "expected": "compatible_within_finite_footprint"},
+        {"case": "P2-path-descendant-disjoint", "arm": "boolean_aliasing", "expected": "observed_conflict"},
+        {"case": "P3-path-shared-mapping-disjoint", "arm": "exact_footprint", "expected": "not_falsified"},
+        {"case": "P3-path-shared-mapping-disjoint", "arm": "mapping_as_independent", "expected": "compatible_within_finite_footprint"}
+      ]
+    },
+    {
+      "id": "C7",
+      "hypothesis": "H3",
+      "text": "The detector adjudicator refuses raw-stdout, dead, misconfigured, and mock evidence; job-success and raw-stdout baselines accept it.",
+      "requires": [
+        {"case": "D2-detector-raw-stdout-no-finding", "arm": "calibrated", "expected": "refused_missing_finding"},
+        {"case": "D2-detector-raw-stdout-no-finding", "arm": "raw_stdout", "expected": "calibrated"},
+        {"case": "D3-detector-dead", "arm": "calibrated", "expected": "refused_dead_detector"},
+        {"case": "D3-detector-dead", "arm": "job_success", "expected": "calibrated"},
+        {"case": "D4-detector-misconfigured", "arm": "calibrated", "expected": "refused_misconfigured_build_flags"},
+        {"case": "D5-detector-mock-provider", "arm": "calibrated", "expected": "refused_mock_provider_transport"}
+      ]
+    },
+    {
+      "id": "C8",
+      "hypothesis": "H4",
+      "text": "Closure plus correspondence rejects an unchecked FFI wrapper and a missing reentrant transition, while parser-only acceptance does not.",
+      "requires": [
+        {"case": "R2-proof-unchecked-wrapper", "arm": "closure_and_correspondence", "expected": "rejected_unchecked_implementation"},
+        {"case": "R2-proof-unchecked-wrapper", "arm": "parser_only", "expected": "accepted_within_scope"},
+        {"case": "R4-proof-missing-transition", "arm": "closure_and_correspondence", "expected": "rejected_missing_transition"}
+      ]
+    },
+    {
+      "id": "C9",
+      "hypothesis": "H5",
+      "text": "The bridge refuses modeled and substitute providers, stale candidates, and tampered external objects, while provenance-ignoring and schema-only baselines accept them.",
+      "requires": [
+        {"case": "E1-discovery-modeled-provider", "arm": "bridge_verify", "expected": "refused_modeled_evidence"},
+        {"case": "E1-discovery-modeled-provider", "arm": "provenance_ignored", "expected": "complete"},
+        {"case": "E2-discovery-substitute-provider", "arm": "bridge_verify", "expected": "refused_substitute_provider"},
+        {"case": "E3-discovery-stale-candidate", "arm": "bridge_verify", "expected": "refused_stale_candidate"},
+        {"case": "E4-discovery-tampered-finding", "arm": "bridge_verify", "expected": "integrity_digest_mismatch"}
+      ]
+    },
+    {
+      "id": "C10",
+      "hypothesis": "H6",
+      "text": "On held-out known-bad and known-good controls, production arms make no false-accept or false-refuse decisions, and at least one named naive baseline makes a false decision somewhere in the corpus; zero-error baselines are reported as negative findings.",
+      "derived": "decision_quality",
+      "requires": []
+    },
+    {
+      "id": "C11",
+      "hypothesis": "H3/H4/H5",
+      "text": "Live detector execution, live Coq checking, and an authentic native chain are typed NOT_RUN in the default environment; no pass is fabricated.",
+      "requires": [
+        {"case": "D6-detector-live-miri", "arm": "live_miri", "expected": "NOT_RUN"},
+        {"case": "R5-proof-live-coq", "arm": "live_coq", "expected": "NOT_RUN"},
+        {"case": "E6-discovery-authentic-chain", "arm": "bridge_verify", "expected": "NOT_RUN"}
+      ]
+    }
+  ]
+}
