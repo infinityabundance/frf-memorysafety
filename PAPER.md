@@ -1,6 +1,6 @@
 # FRF-MemorySafety: A Pre-Registered Finite Ablation Study of Evidence-Centric Memory-Safety Gates for Unsafe-to-Safe Rust Ports
 
-**Version:** 0.9.0 (Phase 9.2 publication; no version bump)
+**Version:** 1.0.0 (Phase 9.2 publication; the 60 committed receipts were measured at crate version 0.9.0 and their deterministic fields are rechecked by the 1.0.0 evaluation gate)
 **Evaluation protocol:** `phase9.1-v1`, frozen 2026-10-18
 **Protocol SHA-256:** `02deb982c61c2a8307dbf3d34cf90f5aeb367e9ea7b1d794314aea9dd094d5ce`
 **Evidence:** 60 canonical receipts in `evaluation/receipts/`, `MANIFEST.json`, `METHOD.md`, `PRE-REGISTRATION.md`

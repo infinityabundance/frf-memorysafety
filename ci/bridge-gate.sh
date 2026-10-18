@@ -177,12 +177,20 @@ if docker image inspect "$PYTHON_IMAGE" >/dev/null 2>&1; then
         -w /work/frf-src "$PYTHON_IMAGE" sh -c '
             set -eu
             python3 --version
+            # FRF runs extension programs with its declared minimal environment
+            # (PATH=/usr/bin:/bin). The official Python image installs the
+            # interpreter under /usr/local/bin, so expose it on the declared
+            # path; this changes no container cap and no FRF behaviour.
+            if [ ! -e /usr/bin/python3 ]; then
+                ln -s "$(command -v python3)" /usr/bin/python3
+            fi
             if FRF_BIN=/work/frf-build/release/frf sh golden/demo.sh > /work/frf-golden.log 2>&1; then
                 echo "FRF_GOLDEN=PASS"
                 tail -3 /work/frf-golden.log
             else
                 echo "FRF_GOLDEN=FAIL"
                 tail -30 /work/frf-golden.log
+                exit 1
             fi
         ' >"$LOGS/bridge-gate-c2.log" 2>&1
     then

@@ -9,6 +9,120 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [1.0.0] - 2026-10-18
+
+Phase 9 publication release. This is a version and documentation release: it
+changes no analysis semantics, evidence rule, or measured observation. It
+promotes the crate to 1.0.0, publishes the pre-registered Phase 9 evaluation,
+and adds the evaluation and independent-reconstruction gates. The 60 committed
+receipts remain the measured 0.9.0 artifacts; a fresh 1.0.0 evaluation run is
+deterministic-identical on observation, digest, and experiment fields (resource
+measurements and the crate-version environment string may differ).
+
+### Added
+
+- Phase 9 pre-registration in [`evaluation/PRE-REGISTRATION.md`](evaluation/PRE-REGISTRATION.md)
+  and the frozen machine-readable [`evaluation/protocol.json`](evaluation/protocol.json)
+  (`phase9.1-v1`, SHA-256
+  `02deb982c61c2a8307dbf3d34cf90f5aeb367e9ea7b1d794314aea9dd094d5ce`),
+  fixing hypotheses, metrics, thresholds, ablations, the held-out rule, blocked
+  controls, resource accounting, and the claim-to-receipt rule before
+  measurement.
+- The isolated `frf-eval` harness (`src/evaluation.rs`, `src/bin/frf-eval.rs`):
+  31 cases and 60 `(case, arm)` receipts (20 held-out, 11 development), six
+  hypotheses, canonical receipts with wall time, peak RSS, output size,
+  input/observation/stdout/stderr digests, crate and `rustc` versions, image
+  identity, and the exact command; it refuses receipts without a required
+  measurement.
+- [`PAPER.md`](PAPER.md), the reproducible technical paper, and
+  [`evaluation/CLAIMS.json`](evaluation/CLAIMS.json), the 18-claim ledger with
+  receipt ids, expected direction/threshold, observed values, and status.
+- [`evaluation/LIMITATIONS.md`](evaluation/LIMITATIONS.md), the 18-entry
+  limitations ledger, and [`evaluation/METHOD.md`](evaluation/METHOD.md), the
+  methodology, measured tables, negative findings, and threats to validity.
+- [`evaluation/reconstruct.py`](evaluation/reconstruct.py), an independent
+  Python standard-library reconstructor that does not import or execute the
+  crate, plus [`ci/reconstruction-gate.sh`](ci/reconstruction-gate.sh) running
+  it in hardened, network-disabled `python:3.11-slim` with a 512 MiB
+  memory/swap cap.
+- [`ci/eval-gate.sh`](ci/eval-gate.sh), which runs the harness, verifies all 60
+  fresh receipts and the committed receipts, and compares their deterministic
+  fields; and [`tests/paper.rs`](tests/paper.rs), which fails when a paper claim
+  has no receipt mapping.
+
+### Changed
+
+- Version is 1.0.0 and `Cargo.lock` records 1.0.0; no dependency changed.
+- The committed receipts continue to record the crate version under which they
+  were measured (`0.9.0`); the 1.0.0 evaluation gate verifies them and compares
+  a fresh 1.0.0 run on deterministic fields.
+- `./ci/gate.sh` executes 351 tests (0 failed, 0 ignored) in both debug and
+  release, including the Phase 9 evaluation and paper tests and the live
+  mechanisms' typed `NOT_RUN` paths. The results are recorded in README.
+- README status, capability matrix, verification commands, gate inventory, and
+  the limitations-ledger link are updated for 1.0.0.
+
+### Fixed
+
+- `ci/bridge-gate.sh` now exposes the pinned Python image's interpreter at
+  `/usr/bin/python3` in the golden-demo stage. FRF runs extension programs with
+  its declared minimal environment (`PATH=/usr/bin:/bin`), while the official
+  `python:3.11-slim` image installs the interpreter under `/usr/local/bin`;
+  without the link the witness extension exited 127. No container cap or FRF
+  check is changed.
+- `ci/bridge-gate.sh` now fails the gate when the FRF golden demo fails. It
+  previously printed `FRF_GOLDEN=FAIL` but still exited 0 because the failure
+  was handled inside the container script.
+
+### Programme 0.2.0 -> 1.0.0
+
+- **0.2.0 (Phase 1):** strict `ms-canonical-json-v1`, domain-separated
+  identities, typed evidence, least-fixed-point support, finite profile and
+  local model, manual CLI, and the first hardened Docker gate.
+- **0.3.0 (Phase 2):** exact cuts, policy custody and historical verdicts,
+  noninterference, paper §12.4 replay, and differential conformance against a
+  separately coded oracle over 110,592 configurations.
+- **0.4.0 (Phase 3):** bounded `syn` source inventory, finite path effects,
+  aliases/footprints/reference intervals, and the optional pinned MIR adapter.
+- **0.5.0 (Phase 4):** responsibility tokens and race semantics, transcript
+  verification, and the test-only isolated native record/replay harness.
+- **0.6.0 (Phase 5):** typed detector evidence, calibration refusal rules, and
+  opt-in live adapters over a closed checked-in fixture registry.
+- **0.7.0 (Phase 6):** proof manifests, theorem/assumption closure, admission
+  taxonomy, Rust/FFI correspondence evidence, and the live pinned Coq adapter
+  with six seal cases.
+- **0.8.0 (Phase 7):** exact FRF/FRF-Fuzz/Gemel contracts, opaque provider
+  identities, a fail-closed custody pipeline, and the live
+  `FRF-Fuzz -> FRF -> Gemel` chain with six seals.
+- **0.9.0 (Phase 8):** pinned OpenSSL-Rust Safe-33 candidate, the real
+  `up_ref` overflow witness and repair, a curl 8.22.0 TLS 1.3 workload, a
+  6499/0 loader closure, and typed live capture/reuse/revocation.
+- **1.0.0 (Phase 9):** pre-registered finite evaluation, paper, claim and
+  limitations ledgers, independent reconstruction, and release packaging.
+
+### Claim ceiling
+
+Version 1.0.0 does not widen any claim. All positive results remain limited to
+the named finite, explicit-input corpora and the checks actually executed. The
+Phase 9 measurements are exact for this pre-registered 31-case, 60-receipt
+control family and are not population inference, defect recall, detector
+sensitivity/specificity, verification-cost prediction, or evidence of
+whole-program behaviour. The same-repository oracle result is differential
+consistency, not a proof of `SPEC.md`. Provenance and verdict custody are
+digest- and replay-bound, not authenticated; there is no signature, transparency
+log, or trusted build root. The live Coq result covers only the checked-in small
+finite two-claim support fixed-point theorem; manifest parsing is never proof
+acceptance. MIR coverage is a conservative text subset, not a caller graph or
+whole-program closure. The Phase 7 chain records real provider executions and
+loader maps but does not authenticate provenance. Phase 8 covers one
+`up_ref` owner/refcount boundary, one compatible repair, one curl 8.22.0 TLS
+1.3 workflow, and one candidate loader closure; the target ledger remains
+**0/33** `SAFE_COMPATIBLE`. No memory-safety, compatibility,
+`SAFE_COMPATIBLE`, universal safe-interior, or organic-vulnerability claim is
+made. Live Miri/Miri-class evaluation arms, live Coq evaluation arms, and an
+authentic native-chain evaluation arm remain typed `NOT_RUN` in the default
+evaluation image.
+
 ## [0.9.0] - 2026-10-18
 
 Phase 8: pinned OpenSSL-Rust Safe-33 conversion evidence, a live

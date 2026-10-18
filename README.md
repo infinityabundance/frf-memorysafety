@@ -5,8 +5,9 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** Version 0.9.0 is the
-Phase 8 release. It retains the Phase 7 live FRF-Fuzz -> FRF -> Gemel chain,
+**This build makes no memory-safety soundness claim.** Version 1.0.0 is the
+Phase 9 release. It retains the Phase 8 OpenSSL-Rust conversion evidence, the
+Phase 7 live FRF-Fuzz -> FRF -> Gemel chain,
 pinned provider contracts, provider-typed opaque identities, and fail-closed
 custody pipeline, the Phase 6 proof manifest with a declared
 theorem/assumption closure, admission taxonomy, separate Rust/FFI
@@ -77,21 +78,26 @@ organic discovery, unconfirmed mechanisms are rejected, and evidence is revoked
 when the property, candidate, boundary, dependency, tool, loader, revision,
 provenance, or witness bytes change.
 
-## Status (0.9.0 / phases 7 and 8 complete; Phase 9.2 paper published)
+Phase 9.1 pre-registered and measured a finite 31-case, 60-receipt ablation
+study; Phase 9.2 published [`PAPER.md`](PAPER.md), the 18-claim ledger, the
+18-entry limitations ledger, and an independent standard-library reconstructor.
+The 60 committed canonical receipts were measured at crate version 0.9.0 and
+remain the evidence of record; the 1.0.0 evaluation gate verifies them and
+compares a fresh 1.0.0 run on observation, digest, and experiment fields.
+
+## Status (1.0.0 / phases 7, 8, and 9 complete; Phase 9.2 paper published)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
 
-| Gate | Result |
+| Gate script | Result |
 |---|---|
-| `cargo fmt --all -- --check` | clean |
-| `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 351 tests passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 351 tests passed, 0 failed, 0 ignored |
+| `./ci/gate.sh` | `cargo fmt` clean; `cargo clippy -D warnings` clean; 351 debug and 351 release tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
+| `./ci/mir-gate.sh` | PASS, LIVE MIR observations |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
-| `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` (Python 3.11.2 local image) |
+| `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` (Python 3.11.17); 9 verifications, 0 failed |
 | `./ci/conversion-gate.sh` | pin built; 22 boundary tests passed; fault/repair 4/4; curl positive/negative PASS; ABI-LOAD 6499/0; 27 live crate tests passed |
 | `./ci/eval-gate.sh` | 60/60 receipts pass; 20 held-out / 11 development; 11/11 claims supported; fresh and committed receipts deterministic-identical |
 | `./ci/reconstruction-gate.sh` | independent standard-library reconstruction passes: 60/60 receipts, 20/11 split, 11/11 protocol claims, 18/18 paper claims mapped |
@@ -109,17 +115,16 @@ the same chain test with `FRF_BRIDGE_LIVE_BUNDLE` set.
 its fault/repair witness, curl, and the live capture; without
 `FRF_CONVERSION_CAPTURE`, the same tests execute and assert typed `NOT_RUN`.
 
-The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5/6 changes; the MIR
-path is unchanged from 0.4.0. The default gates above were run in the pinned
-container. The same container image is used by the native and detector gates
-after installing only their declared packages; the live tests are the same
-tests that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or
-`FRF_DETECTOR_LIVE` is unset in the default gate.
+`./ci/mir-gate.sh` was rerun for 1.0.0 and reported live MIR observations. All
+gates above were run in the pinned containers with the declared hard caps. The
+same container image is used by the native and detector gates after installing
+only their declared packages; the live tests are the same tests that assert
+typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or `FRF_DETECTOR_LIVE` is unset in the
+default gate.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
-Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), and
-Phase 8 (0.9.0) are in
-[`CHANGELOG.md`](CHANGELOG.md).
+Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
+(0.9.0), and Phase 9 (1.0.0) are in [`CHANGELOG.md`](CHANGELOG.md).
 
 ### Live native chain (Phase 7)
 
@@ -128,9 +133,9 @@ against one candidate artifact:
 
 ```text
 candidate  b594c294f4d34d28c34b018f9bb5e07c449a3bb8dc3d4b55b4a118608d93acbf
-finding    9eea34004a284cdeacf1633253ccd0ce342b53e02c9347d884a9c075e6a1fb34
-receipt    receipt-run-frf-fuzz-4f775512ad38df0305be933b1238e0d6f4743ab45eff5e470852aa62d70aa2f2-debbf82bbc86f0cbc7b348525dc2f98c9ccd873147bab0ad6d901640f5e1dccb
-GID        evidence.2cae082c010569b59a7bcff46a70f6cb69fec46a30d1701561f36f4a8c091ae9
+finding    4cd2cf1e05dbc56b89dd473d97bf0e97683fc27b31ead870144427cfb77ceb89
+receipt    receipt-run-frf-fuzz-ed22c7266946d5969900467f5c44a0d617c5b4583b07bbbaf8b3a1e110abf40d-be3cafd7d960e708a3e483e8518d6818852a7003b0084f27bdf781b7e1730c2f
+GID        evidence.3d5cfe2a9c904790742aafc0ac313a59e2ebb9e6fe3527e424c20fd53be534b1
 ```
 
 Custody stages are `Discover -> Reconstruct -> NativeConfirm -> FrfReceipt ->
@@ -140,16 +145,17 @@ SHA-256 values, two byte-identical `RunRecord`s per provider, and the actual
 stale candidate, tampered candidate, substituted DSO, recorded re-execution
 mismatch, and tampered finding object; all fail closed with zero authentic
 native identities. The FRF-Fuzz finding is a real fixed-seed campaign output;
-the recorded reference run performed 93,500 executions and produced 27 findings,
-while rerun counts vary with scheduling. A rerun may select a different finding
-and produces a new Gemel producer/GID; every admitted chain is rechecked against
-the same bytes, schema, candidate, replay, closure, and re-execution rules. See
+the 1.0.0 gate run performed 122,500 executions and produced 38 findings; an
+earlier reference run performed 93,500 and produced 27, so rerun counts vary
+with scheduling. A rerun may select a different finding and produces a new
+Gemel producer/GID; every admitted chain is rechecked against the same bytes,
+schema, candidate, replay, closure, and re-execution rules. See
 [`docs/phase7-live-chain.md`](docs/phase7-live-chain.md) for images,
 toolchains, commands, closure hashes, and the claim ceiling.
 
 ### Capability matrix
 
-| Capability | 0.9.0 availability |
+| Capability | 1.0.0 availability |
 |---|---|
 | Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
 | `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
@@ -167,7 +173,7 @@ toolchains, commands, closure hashes, and the claim ceiling.
 | `bridge status [--json]` | Implemented; reports exact pins, recorded builds, and executable availability; exit 6 unless every provider executable matches its recorded digest |
 | Conversion-court evidence model and live capture (`src/conversion.rs`) | Implemented; typed owner/allocator/callback boundaries, allowed C behaviour, witness provenance, loader closure, fault/repaired revisions, dependency invalidation, property-specific reuse/revocation, and `capture_live` from exact files; bookkeeping only |
 | Live OpenSSL-Rust Safe-33 witness/repair/consumer/loader | Implemented in `./ci/conversion-gate.sh` under a 4g cap: `up_ref` overflow fault `28c9e34` vs repair `1d9c335`, 22 boundary tests, curl 8.22.0 TLS 1.3 positive/negative, 6499/0 loader closure, and recomputed DSO digests. One boundary and one workflow only; no `SAFE_COMPATIBLE` |
-| Live FRF/FRF-Fuzz/Gemel custody chain | Implemented in `./ci/bridge-gate.sh`: real finding `9eea34004a28...` from a 93,500-execution campaign, receipt `receipt-run-frf-fuzz-4f7755...-debbf82b...`, GID `evidence.2cae082c01...`, candidate `b594c294f4d3...`; 6 of 6 seals PASS |
+| Live FRF/FRF-Fuzz/Gemel custody chain | Implemented in `./ci/bridge-gate.sh`: real finding `4cd2cf1e05db...` from a 122,500-execution campaign, receipt `receipt-run-frf-fuzz-ed22c7...-be3cafd7...`, GID `evidence.3d5cfe2a9c...`, candidate `b594c294f4d3...`; 6 of 6 seals PASS |
 | Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
@@ -504,8 +510,10 @@ false-accept/false-refuse counts, negative findings, and limitations are in
 
 ### Phase 9.2 publication
 
-Phase 9.2 publishes the pre-registered evaluation without changing the measured
-receipts or the 0.9.0 version.
+Phase 9.2 publishes the pre-registered evaluation. The committed receipts were
+measured at crate version 0.9.0; the 1.0.0 evaluation gate verifies them and
+confirms that a fresh 1.0.0 run has identical deterministic observations,
+digests, and experiment hashes.
 
 - [`PAPER.md`](PAPER.md) is the reproducible technical paper: claim ceiling,
   definitions, architecture, prior-art comparison, pre-registered design,
@@ -874,8 +882,9 @@ Both `detector calibrate FILE [--json]` and
 `detector calibrate --live --detector KIND [--json]` runs a closed checked-in
 fixture registry when `FRF_DETECTOR_LIVE=1` and the instrument is installed.
 The selectors are `miri`, `asan`, `lsan`, `tsan`, `loom`, `kani`, and `crypto`.
-The detector gate's live availability and results, last recorded at 0.6.0 and
-not rerun for 0.7.0, 0.8.0, or 0.9.0, are:
+The detector gate was rerun for 1.0.0 with 7/7 mechanisms PASS. Tool versions
+from the detailed recording are shown below; the 1.0.0 log reconfirms gcc
+12.2.0, the pinned Miri nightly, and Kani 0.60.0:
 
 | Mechanism | Selector | Recorded tool | Live result | Build separation |
 |---|---|---|---|---|
@@ -965,7 +974,7 @@ unavailable provider or absent bundle is exit 6 (`NotRun`).
 the pinned `rust:1.85.0-slim` container, never on the host. A successful run
 prints `PASS` for each gate and writes full logs to `target/gate-logs/`.
 
-The four gates are:
+The four checks in `./ci/gate.sh` are:
 
 ```sh
 cargo fmt --all -- --check
@@ -985,7 +994,7 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-The default gate executes 351 tests (including the 11 detector-live tests,
+default gate executes 351 tests (including the 11 detector-live tests,
 the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, the
 17 bridge seal tests, the 3 bridge unit tests, the 1 live/`NOT_RUN` chain test,
 and the 9 Phase 9.1 evaluation tests) and the native gate executes 17 live native
@@ -1023,12 +1032,21 @@ still executes the same test with no external tools and asserts typed
 `NOT_RUN`; no test is ignored. The Python image defaults to
 `python:3.11-slim` and can be overridden with `FRF_PYTHON_IMAGE`.
 
+`./ci/conversion-gate.sh` is the Phase 8.2 live conversion gate. It uses the
+same hardened flags with a 4 GiB memory/swap cap and the pinned
+`openssl-rs-court:1` image. It runs 22 owner/allocator/callback boundary tests,
+reproduces the `up_ref` overflow fault and its repair with compiler overflow
+checks on and off, builds and runs unmodified curl 8.22.0 against the candidate
+prefix (TLS 1.3 positive/negative), records the 6499/0 loader closure, and runs
+27 live capture/reuse/revocation tests. It reports `NOT_RUN` (exit 6) only when
+the pinned external candidate is absent.
+
 `./ci/mir-gate.sh` is a separate optional gate. It uses the same hardened
 flags plus a `frf-rustup` volume, attempts to install the pinned minimal
 `nightly-2025-02-20`, builds the binary, and runs `mir scan` against
-`tests/fixtures/mir/source.rs`. It prints `PASS` for a live observation and
-`NOT_RUN` (exit 6) if installation or execution is unavailable. It is not
-invoked by `ci/gate.sh`.
+`tests/fixtures/mir/source.rs`. The 1.0.0 run printed `PASS` for a live
+observation; it prints `NOT_RUN` (exit 6) if installation or execution is
+unavailable. It is not invoked by `ci/gate.sh`.
 
 `./ci/eval-gate.sh` is the Phase 9.1 evaluation gate. It uses the same hardened
 flags, installs only Debian `time`, builds `frf-eval`, runs all 60 pre-registered
@@ -1094,7 +1112,7 @@ src/bin/frf-eval.rs Phase 9.1 harness CLI
 ci/eval-gate.sh                  Phase 9.1 receipt, measurement, and claim gate
 ci/reconstruction-gate.sh        Phase 9.2 independent standard-library reconstruction gate
 PAPER.md                         Phase 9.2 pre-registered evaluation paper
-LIMITATIONS.md                   Phase 9.2 numbered limitations ledger
+evaluation/LIMITATIONS.md        Phase 9.2 numbered limitations ledger
 evaluation/CLAIMS.json           Phase 9.2 paper claims with receipt mappings and observed values
 evaluation/reconstruct.py        Phase 9.2 independent reconstructor (Python standard library only)
 evaluation/PRE-REGISTRATION.md   frozen hypotheses, metrics, thresholds, held-out rule, and blocked controls
