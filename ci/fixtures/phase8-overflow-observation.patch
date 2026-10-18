@@ -1,0 +1,19 @@
+--- a/src/runtime/refcount.rs
++++ b/src/runtime/refcount.rs
+@@ -134,6 +134,16 @@
+         assert_eq!(refs.load(Ordering::Relaxed), i32::MAX);
+     }
+ 
++    #[test]
++    fn up_ref_overflow_observation() {
++        let refs = AtomicI32::new(i32::MAX);
++        let answer = up_ref(&refs);
++        let count = refs.load(Ordering::Relaxed);
++        println!("FAULT_OBSERVATION answer={answer} count={count}");
++        assert_eq!(answer, 1);
++        assert_eq!(count, i32::MIN);
++    }
++
+     #[test]
+     fn up_ref_preserves_positive_count_answer() {
+         let refs = AtomicI32::new(1);

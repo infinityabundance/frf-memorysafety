@@ -1,0 +1,16 @@
+--- a/src/runtime/refcount.rs
++++ b/src/runtime/refcount.rs
+@@ -127,6 +127,13 @@
+         assert_eq!(destroying.load(Ordering::Relaxed), REF_DESTROYING);
+     }
+ 
++    #[test]
++    fn up_ref_refuses_overflow_without_changing_count() {
++        let refs = AtomicI32::new(i32::MAX);
++        assert_eq!(up_ref(&refs), 0);
++        assert_eq!(refs.load(Ordering::Relaxed), i32::MAX);
++    }
++
+     #[test]
+     fn up_ref_preserves_positive_count_answer() {
+         let refs = AtomicI32::new(1);
