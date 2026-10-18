@@ -16,6 +16,10 @@ use crate::court::{
     verify_transcript_json, CourtError, CourtErrorCategory, COURT_REPORT_SCHEMA,
     NATIVE_EVENT_TRANSCRIPT_SCHEMA,
 };
+#[cfg(unix)]
+use crate::detector::live::{
+    calibrate_live, not_run_json, parse_detector_kind, LiveCalibration, LiveStatus,
+};
 use crate::detector::{
     evaluate_calibration_json, CalibrationOutcome, CalibrationReport, DetectorErrorCategory,
     RefusalSeverity,
@@ -67,12 +71,14 @@ Commands:
   mir scan FILE [--json] [--toolchain NAME]
   court verify FILE [--json]
   detector calibrate FILE [--json]
+  detector calibrate --live --detector KIND [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
-Live external commands (always NOT_RUN, exit 6):
+Live external commands (NOT_RUN, exit 6, unless the instrument is installed
+and FRF_DETECTOR_LIVE=1):
+  detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto
   court run ...
-  detector calibrate --live ...
   frf promote ...
   gemel publish ...
 
@@ -194,6 +200,13 @@ fn command_capabilities(rest: &[String]) -> Result<i32, String> {
         println!("not run:");
         for item in &capabilities.not_run {
             println!("  - {item}");
+        }
+        println!("detector availability (runtime):");
+        for detector in &capabilities.detectors {
+            println!(
+                "  - {} [{}]: {}",
+                detector.id, detector.status, detector.detail
+            );
         }
         println!("external authorities:");
         for item in &capabilities.external_authorities {
@@ -1045,14 +1058,125 @@ fn court_error_exit(error: &CourtError) -> i32 {
 fn command_detector(rest: &[String]) -> Result<i32, String> {
     if rest.first().map(String::as_str) == Some("calibrate") {
         if rest.iter().any(|arg| arg == "--live") {
-            not_run("detector calibrate --live")
+            command_detector_live(&rest[1..])
         } else {
             Ok(command_detector_calibrate(&rest[1..]))
         }
     } else {
-        eprintln!("usage: detector calibrate FILE [--json] | detector calibrate --live");
+        eprintln!(
+            "usage: detector calibrate FILE [--json] | detector calibrate --live --detector KIND [--json]"
+        );
         Ok(EXIT_USAGE)
     }
+}
+
+#[cfg(unix)]
+fn command_detector_live(rest: &[String]) -> Result<i32, String> {
+    let mut detector = None;
+    let mut json = false;
+    let mut live = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--live" => live = true,
+            "--json" => json = true,
+            "--detector" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                    return Ok(EXIT_USAGE);
+                };
+                if detector.is_some() {
+                    eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                    return Ok(EXIT_USAGE);
+                }
+                detector = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                return Ok(EXIT_USAGE);
+            }
+            value => {
+                if detector.is_some() {
+                    eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                    return Ok(EXIT_USAGE);
+                }
+                detector = Some(value.to_owned());
+            }
+        }
+        index += 1;
+    }
+    if !live {
+        eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+        return Ok(EXIT_USAGE);
+    }
+    let Some(detector) = detector else {
+        eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+        return Ok(EXIT_USAGE);
+    };
+    let Some(kind) = parse_detector_kind(&detector) else {
+        eprintln!(
+            "unknown detector kind: {detector}; expected miri|asan|lsan|tsan|loom|kani|crypto"
+        );
+        return Ok(EXIT_USAGE);
+    };
+    let calibration = calibrate_live(&kind);
+    match calibration.status {
+        LiveStatus::NotRun => {
+            let reason = calibration
+                .reason
+                .as_deref()
+                .unwrap_or("instrument unavailable");
+            if json {
+                let value = not_run_json(&kind, reason)?;
+                emit_json(&value)?;
+            } else {
+                println!("live: NOT_RUN");
+                println!("detector: {detector}");
+                println!("reason: {reason}");
+            }
+            Ok(EXIT_NOT_RUN)
+        }
+        LiveStatus::Calibrated | LiveStatus::Refused => {
+            let Some(report) = calibration.report.as_ref() else {
+                eprintln!("live calibration produced no report");
+                return Ok(EXIT_HARNESS);
+            };
+            if json {
+                let bytes = match report.canonical_bytes() {
+                    Ok(bytes) => bytes,
+                    Err(error) => {
+                        eprintln!("{error}");
+                        return Ok(detector_error_exit(&error));
+                    }
+                };
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write live calibration report: {error}");
+                    return Ok(EXIT_HARNESS);
+                }
+            } else if let Err(error) = write_live_summary(&calibration) {
+                eprintln!("cannot write live calibration summary: {error}");
+                return Ok(EXIT_HARNESS);
+            }
+            Ok(calibration_exit_code(report))
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn command_detector_live(_rest: &[String]) -> Result<i32, String> {
+    not_run("detector calibrate --live")
+}
+
+#[cfg(unix)]
+fn write_live_summary(calibration: &LiveCalibration) -> Result<(), String> {
+    if let Some(report) = calibration.report.as_ref() {
+        write_calibration_summary(report)?;
+    }
+    if let Some(reason) = calibration.reason.as_deref() {
+        println!("reason: {reason}");
+    }
+    Ok(())
 }
 
 fn command_detector_calibrate(rest: &[String]) -> i32 {
@@ -1300,9 +1424,21 @@ mod tests {
     #[test]
     fn live_commands_are_not_run() {
         assert_eq!(run_args(&["court", "run", "x"]), EXIT_NOT_RUN);
-        assert_eq!(run_args(&["detector", "calibrate", "--live"]), EXIT_NOT_RUN);
         assert_eq!(run_args(&["frf", "promote", "x"]), EXIT_NOT_RUN);
         assert_eq!(run_args(&["gemel", "publish", "x"]), EXIT_NOT_RUN);
+        #[cfg(unix)]
+        assert_eq!(run_args(&["detector", "calibrate", "--live"]), EXIT_USAGE);
+        #[cfg(unix)]
+        assert_eq!(
+            run_args(&[
+                "detector",
+                "calibrate",
+                "--live",
+                "--detector",
+                "not-a-detector"
+            ]),
+            EXIT_USAGE
+        );
     }
 
     #[test]

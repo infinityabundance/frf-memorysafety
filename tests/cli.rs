@@ -67,9 +67,17 @@ fn usage_errors_return_two() {
 #[test]
 fn live_commands_return_six() {
     assert_eq!(run(&["court", "run", "--case", "x"]), 6);
-    assert_eq!(run(&["detector", "calibrate", "--live"]), 6);
     assert_eq!(run(&["frf", "promote", "--case", "x"]), 6);
     assert_eq!(run(&["gemel", "publish", "--case", "x"]), 6);
+    #[cfg(unix)]
+    {
+        if !frf_memorysafety::detector::live::live_enabled() {
+            assert_eq!(
+                run(&["detector", "calibrate", "--live", "--detector", "miri"]),
+                6
+            );
+        }
+    }
 }
 
 #[test]

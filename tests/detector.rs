@@ -584,13 +584,14 @@ fn cli_uses_section_14_statuses_and_emits_canonical_json() {
         frf_memorysafety::cli::run(["detector".to_owned(), "calibrate".to_owned()]),
         2
     );
+    #[cfg(unix)]
     assert_eq!(
         frf_memorysafety::cli::run([
             "detector".to_owned(),
             "calibrate".to_owned(),
             "--live".to_owned()
         ]),
-        6
+        2
     );
     assert_eq!(
         frf_memorysafety::cli::run([

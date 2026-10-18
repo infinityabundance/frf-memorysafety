@@ -1,0 +1,19 @@
+[package]
+name = "frf-miri-fixtures"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[[bin]]
+name = "ub"
+path = "ub.rs"
+
+[[bin]]
+name = "clean"
+path = "clean.rs"
+
+[[bin]]
+name = "harmless"
+path = "harmless.rs"

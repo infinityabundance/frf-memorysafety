@@ -19,8 +19,12 @@
 //!
 //! # What this build does not establish
 //!
-//! No live Miri, sanitizer, Kani, Loom, FRF court, FRF-Fuzz, Gemel, or native
-//! proof-checker run is performed. The optional MIR adapter observes unresolved
+//! No live FRF court, FRF-Fuzz, Gemel, or native proof-checker run is
+//! performed. Phase 5.2 adds opt-in live detector adapters for a closed set of
+//! checked-in fixtures: pinned Miri, gcc ASan/LSan/TSan, loom, Kani, and an
+//! OpenSSL SHA-256 known-answer/signature control. Those adapters run only when
+//! `FRF_DETECTOR_LIVE=1` and the instrument is installed; otherwise the typed
+//! `NOT_RUN` path is reported. The optional MIR adapter observes unresolved
 //! textual edges from an unstable compiler format; it does not resolve symbols,
 //! aliases, types, provenance, or whole-program closure. The court verifier
 //! consumes a caller-supplied transcript. A test-only harness can compile and
@@ -128,6 +132,9 @@ pub struct Capabilities {
     pub implemented: Vec<&'static str>,
     /// Features that require an unavailable external executable or service.
     pub not_run: Vec<&'static str>,
+    /// Per-detector runtime availability. This is an installation observation,
+    /// not a sensitivity or specificity claim.
+    pub detectors: Vec<crate::detector::DetectorAvailability>,
     /// This crate never emits FRF `OpenReceipt`s or Gemel GIDs.
     pub external_authorities: Vec<&'static str>,
 }
@@ -172,15 +179,17 @@ pub fn capabilities() -> Capabilities {
             "typed detector evidence: identity, bounded capture, provenance, known-bad and known-good cases",
             "detector calibration adjudication refusing dead, misconfigured, harmless, mock-provider, and fake-marker evidence",
             "detector calibrate FILE [--json] canonical calibration reports with SPEC.md section 14 exit statuses",
+            "opt-in live detector adapters over closed checked-in fixtures: Miri, ASan, LSan, TSan, loom, Kani, and OpenSSL SHA-256/signature controls",
+            "live detector evidence with real stdout/stderr capture, digests, tool versions, separate build identities, and typed NOT_RUN",
+            "detector calibrate --live --detector KIND [--json] with per-detector availability",
             "detector calibration receipt adjudication types",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
         ],
         not_run: vec![
-            "live Miri/ASan/LSan/TSan execution",
-            "live Kani/Loom execution",
-            "live detector calibration (detector calibrate --live)",
+            "live Miri/ASan/LSan/TSan/Loom/Kani/crypto detectors are NOT_RUN unless installed and FRF_DETECTOR_LIVE=1; see detectors[] for runtime availability",
+            "live detector execution over arbitrary or caller-supplied programs (closed checked-in fixtures only)",
             "arbitrary native C/Rust event recording and `court run` over caller-supplied programs",
             "real-scheduler concurrency observation and native callback tracing beyond the checked-in fixtures",
             "live FRF court and OpenReceipt verification",
@@ -194,6 +203,10 @@ pub fn capabilities() -> Capabilities {
             "whole-program or universal alias-compatibility claims",
             "universal safe-interior or SAFE_COMPATIBLE acceptance",
         ],
+        #[cfg(unix)]
+        detectors: detector::live::availability(),
+        #[cfg(not(unix))]
+        detectors: Vec::new(),
         external_authorities: vec![
             "FRF remains the only FRF receipt producer",
             "FRF-Fuzz remains the only BLAKE3 finding producer",

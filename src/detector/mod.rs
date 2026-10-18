@@ -25,7 +25,12 @@
 //! Calibration is mechanism- and case-specific. A known-bad case that is
 //! detected does not imply that another defect class will be detected, and a
 //! clean known-good case does not imply the absence of false negatives.
-//! Live instrument execution is deliberately **`NOT_RUN`** in this phase.
+//! Phase 5.2 adds opt-in live adapters in [`live`]; they run only checked-in
+//! fixtures through installed instruments and return a typed `NOT_RUN` when an
+//! instrument or fixture is unavailable.
+
+#[cfg(unix)]
+pub mod live;
 
 use std::collections::BTreeSet;
 
@@ -38,6 +43,23 @@ use crate::identity::{
 };
 use crate::model::DetectorKind;
 
+/// Runtime availability of one live detector.
+///
+/// Availability is an observation about the installed environment, not a
+/// detector-sensitivity claim. A detector may be `available` and still refuse
+/// calibration when its control fails.
+#[derive(Debug, Clone, Serialize)]
+pub struct DetectorAvailability {
+    /// Stable detector identifier used by the live CLI and gate.
+    pub id: &'static str,
+    /// Detector kind.
+    pub kind: DetectorKind,
+    /// `available` or `not_run`.
+    pub status: &'static str,
+    /// Exact version text or the precise unavailability reason.
+    pub detail: String,
+}
+
 /// Schema identifier for a detector calibration receipt.
 pub const DETECTOR_EVIDENCE_SCHEMA: &str = "frf-memorysafety.detector-evidence.v1";
 /// Schema identifier for a calibration report.
@@ -45,7 +67,7 @@ pub const CALIBRATION_REPORT_SCHEMA: &str = "frf-memorysafety.calibration-report
 /// Protocol specification identifier.
 pub const DETECTOR_SPEC: &str = "frf-memorysafety-spec-v1";
 /// Claim ceiling embedded in every calibration report.
-pub const CALIBRATION_CLAIM_CEILING: &str = "Calibration is mechanism- and case-specific. A CLEAN or CALIBRATED report establishes only that the supplied finite known-bad and known-good cases satisfy the declared structural evidence rules. It does not authenticate the tool, prove that it ran, establish universal detector sensitivity or specificity, cover another mechanism/input/flags/target/build, or establish memory safety. Live detector execution is NOT_RUN in this phase.";
+pub const CALIBRATION_CLAIM_CEILING: &str = "Calibration is mechanism- and case-specific. A CLEAN or CALIBRATED report establishes only that the supplied finite known-bad and known-good cases satisfy the declared structural evidence rules. Live adapters may execute a closed checked-in fixture through an installed instrument, but a live report still does not authenticate the tool, prove universal detector sensitivity or specificity, cover another mechanism/input/flags/target/build, establish cryptographic constant-time behavior, or establish memory safety. An unavailable instrument is NOT_RUN.";
 
 /// Maximum retained UTF-8 bytes in one captured stdout or stderr stream.
 pub const MAX_CAPTURE_BYTES: usize = 65_536;
