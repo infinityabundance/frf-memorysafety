@@ -32,7 +32,19 @@ typed `NOT_RUN` when an instrument is unavailable. Proof checking is limited to
 the checked-in finite Coq theorem and its negative controls; it is not a proof
 of the crate and is not a universal soundness claim.
 
-## Status (0.7.0 / phase 6)
+Phase 7.1 (unreleased on `staging`; no version bump) adds exact discovery and
+pinning of the real FRF, FRF-Fuzz, and Gemel repositories, opaque provider-typed
+identities that cannot be built from arbitrary strings, a fail-closed evidence
+bundle verifier, and the custody pipeline
+`discover -> reconstruct -> native_confirm -> frf_receipt -> gemel_custody`.
+**Phase 7 is not complete.** FRF 0.1.86 and Gemel 0.12.0 build and ran live for
+version/contract probes in the hardened container, but pinned FRF-Fuzz 0.8.3
+requires Rust 1.98 and nightly-2026-07-24 and is `NOT_RUN` under the mandated
+`rust:1.85.0-slim` rule. No authentic FRF -> FRF-Fuzz -> Gemel custody chain was
+produced, and the bridge never writes an `OpenReceipt`, finding, GCE object, or
+GID. See [`docs/phase7-bridge-discovery.md`](docs/phase7-bridge-discovery.md).
+
+## Status (0.7.0 / phase 6 + phase 7.1 bridge foundation)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -41,14 +53,15 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 290 base tests passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 290 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 310 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 310 base tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
 
-The default gate executes all 290 tests, including the six proof-live tests on
-their typed `checker_unavailable` path. `./ci/proof-gate.sh` re-runs those same
+The default gate executes all 310 tests, including the six proof-live tests on
+their typed `checker_unavailable` path and the 17 bridge seal tests plus 3
+bridge unit tests. `./ci/proof-gate.sh` re-runs those same
 six tests against live Coq; the live count is a subset of the base total, not
 additional to it.
 
@@ -78,6 +91,9 @@ Phase 4 (0.5.0), Phase 5 (0.6.0), and Phase 6 (0.7.0) are in
 | `detector calibrate FILE [--json]` | Implemented; refuses dead, misconfigured, harmless, mock-provider, and fake-marker evidence |
 | Live detector calibration (`detector calibrate --live --detector KIND`) | Implemented for closed checked-in fixtures when the instrument is installed and `FRF_DETECTOR_LIVE=1`; otherwise `NOT_RUN`, exit 6 |
 | `proof verify MANIFEST [--live] [--json]` | Implemented; validates manifest, closure, admission, and separate correspondence; `--live` invokes pinned Coq and returns `checker_unavailable`, exit 6, when it is absent |
+| `bridge verify FILE [--json]` | Implemented; validates a supplied evidence bundle, opaque identities, schemas, digests, candidate binding, provenance, DSO binding, and declared re-execution; never executes a provider |
+| `bridge status [--json]` | Implemented; reports exact pins, recorded builds, and executable availability; exit 6 unless every provider executable matches its recorded digest |
+| Live FRF/FRF-Fuzz/Gemel custody chain | Not complete; no authentic chain was produced. FRF and Gemel were built and probed live, FRF-Fuzz is blocked by its Rust 1.98/nightly-2026-07-24 requirement |
 | Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
@@ -249,6 +265,18 @@ ceiling.
   `checker_unavailable` and exit 6 when no live checker is configured, binds a
   completed run to `CheckerContext::Recorded`, and never fabricates acceptance
   from parser success.
+- Exact Phase 7.1 provider discovery and pinning for FRF, FRF-Fuzz, and Gemel,
+  with repository, branch, license, commit, schema token, and recorded build
+  outcome in `capabilities` and `bridge status`.
+- Provider-typed opaque identities (`BridgeFrfReceiptId`,
+  `BridgeFrfFuzzFindingId`, `BridgeGemelGceId`) with private fields and no
+  public string constructor; admission requires exact bytes, schema, provider
+  pin, identity form, and digest.
+- A custody pipeline with typed `NOT_RUN` and refusal reasons for modeled,
+  modified-provider, substitute, stale-candidate, substituted-DSO, schema,
+  tamper, and re-execution-mismatch evidence.
+- `bridge verify FILE [--json] [--candidate SHA256]` and `bridge status
+  [--json]` with SPEC §14 exit statuses.
 - `capabilities --json` reports bounded proof-checker availability.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
@@ -335,9 +363,13 @@ FFI implementations.
   refused, the runtime is unsupported, or `FRF_DETECTOR_LIVE` is unset
 - Constant-time/secret-lifecycle measurement (the OpenSSL control is a
   SHA-256 known-answer and signature-verification control, not a leakage oracle)
-- Live FRF court / OpenReceipt verification
-- Live FRF-Fuzz coordinator
-- Live Gemel publication
+- Live FRF court / `OpenReceipt` verification (bridge accepts supplied receipts only)
+- Live FRF-Fuzz coordinator and native finding replay (blocked by its Rust
+  1.98/nightly-2026-07-24 requirement under the 1.85 container rule)
+- Live Gemel publication (bridge accepts supplied GCE evidence only)
+- An authentic FRF -> FRF-Fuzz -> Gemel custody chain
+- Authentication of `authentic_native` provenance (it is a declared,
+  digest-checked label, not a signature or trust root)
 - Live OpenSSL-Rust Safe-33 native courts
 - Live Lean/Isabelle proof-checker invocation
 - Live Coq proof checking when `coqc` is absent (`checker_unavailable`, exit 6)
@@ -374,6 +406,8 @@ frf-memorysafety path analyze FILE [--json]
 frf-memorysafety mir scan FILE [--json] [--toolchain NAME]
 frf-memorysafety court verify FILE [--json]
 frf-memorysafety proof verify MANIFEST [--live] [--json]
+frf-memorysafety bridge verify FILE [--json] [--candidate SHA256]
+frf-memorysafety bridge status [--json]
 frf-memorysafety detector calibrate FILE [--json]
 frf-memorysafety detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto [--json]
 frf-memorysafety evidence verify --root DIR
@@ -729,9 +763,10 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-default gate executes 290 base tests (including the 11 detector-live tests and
-the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths) and
-the native gate executes 17 live native tests; none is ignored or filtered out.
+default gate executes 310 base tests (including the 11 detector-live tests,
+the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, and
+the 17 bridge seal tests plus 3 bridge unit tests) and the native gate executes
+17 live native tests; none is ignored or filtered out.
 
 `./ci/detector-gate.sh` is a separate live gate for Phase 5.2. It uses the same
 hardened Docker flags, installs only `gcc`, `libc6-dev`, `openssl`, `curl`, and
@@ -792,8 +827,10 @@ src/mir.rs        optional pinned MIR adapter and conservative text parser
 src/court.rs      responsibility tokens, races, and transcript verification
 src/native.rs     test-only isolated native fixture recording and replay
 src/proof.rs      Phase 6 manifest, closure, admission, correspondence, live Coq adapter
+src/bridge.rs     Phase 7.1 provider pins, opaque identities, custody, bundle verification
 docs/phase6-proof-adapter.md      proof schema, closure, taxonomy, correspondence, citations
 docs/phase6-live-checker.md       install, invocation, theorem, seals, claim ceiling, citations
+docs/phase7-bridge-discovery.md   exact repos/commits/schemas, builds, identity boundary, seals, blockers
 tests/proof/coq/                  checked-in Coq fixtures, evidence, canonical manifests
 tests/proof_live.rs               live/unavailable seal tests
 src/detector/mod.rs  typed detector evidence and calibration refusal rules
@@ -815,7 +852,8 @@ tests/            canonical vectors, support semantics, independent oracle,
                   court token/race/completeness/CLI controls, native fixture
                   pairs/skipped-event/replay controls, detector evidence/calibration
                   seal controls, proof manifest/closure/admission/correspondence
-                  controls, live Coq/unavailable seals, replay, CLI
+                  controls, live Coq/unavailable seals, bridge identity/custody
+                  seals, replay, CLI
 ```
 
 ## Non-transfer
@@ -832,4 +870,8 @@ Rust/FFI correspondence check is reviewed evidence binding, not a machine-proved
 semantic refinement. A live Coq run establishes only that the checked-in small
 finite two-claim support fixed-point theorem compiled and was reported closed;
 it does not prove the crate, arbitrary FFI implementations, or universal
-soundness. See `SPEC.md` §1.
+soundness. A verified bridge bundle establishes exact pins, external byte
+identities, schema tokens, candidate binding, and declared provenance; it does
+not establish that a native provider executed, and `authentic_native` is not an
+authenticated claim. See `SPEC.md` §1 and
+[`docs/phase7-bridge-discovery.md`](docs/phase7-bridge-discovery.md).

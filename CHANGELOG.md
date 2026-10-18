@@ -9,6 +9,43 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased]
+
+Phase 7.1: native provider discovery, exact pinning, opaque external
+identities, and the custody bridge. No version bump and no publish. **Phase 7
+is not complete:** no authentic FRF -> FRF-Fuzz -> Gemel chain was produced,
+and pinned FRF-Fuzz cannot be built under the mandated 1.85 container.
+
+### Added
+
+- Discovery and exact pinning of `infinityabundance/frf`
+  (`ce461ce311bfe10fe90d2be03fba6217a6e8ba28`),
+  `infinityabundance/frf-fuzz`
+  (`054b45cda974852ccce62bc14dbeacb5fef0336b`), and
+  `infinityabundance/gemel`
+  (`54fc581bff09e67b9d4cc533d157a8c9fc575424`), with visibility, branch,
+  license, schema token, and build outcome.
+- `src/bridge.rs`: provider-typed opaque identities with private fields and no
+  public string constructor; admission only through exact-byte, schema,
+  provider-pin, identity-form, and digest verification.
+- Custody pipeline `discover -> reconstruct -> native_confirm -> frf_receipt ->
+  gemel_custody` with typed `NOT_RUN`, refusal, and integrity reasons.
+- Fail-closed controls for modeled/modified/substitute evidence, missing or
+  mismatched schemas, tampered receipts/findings/GCE objects, stale candidates,
+  substituted DSOs, and independent re-execution mismatch.
+- `bridge verify FILE [--json] [--candidate SHA256]` and `bridge status
+  [--json]` with SPEC §14 exit statuses.
+- `docs/phase7-bridge-discovery.md` with exact contracts, build/run outputs,
+  identity boundary, seals, blockers, and claim ceiling.
+
+### Known blockers
+
+- FRF-Fuzz 0.8.3 requires Rust 1.98 and `nightly-2026-07-24`; the mandated
+  `rust:1.85.0-slim` image refuses the build (exit 101).
+- The bridge performs no provider execution and produces no authentic custody
+  chain; supplied `authentic_native` provenance is declared and digest-checked,
+  not authenticated.
+
 ## [0.7.0] - 2026-10-18
 
 Phase 6: proof manifest, theorem/assumption closure, admission taxonomy, a
