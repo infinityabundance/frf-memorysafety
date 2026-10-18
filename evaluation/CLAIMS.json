@@ -1,0 +1,1598 @@
+{
+  "claims": [
+    {
+      "check": {
+        "type": "all_receipts"
+      },
+      "expected": "60/60 receipts pass; 0 failures",
+      "hypothesis": "H1-H6",
+      "id": "PC1",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "exact expected-observation match",
+      "observed": {
+        "blocked": 5,
+        "failed": 0,
+        "passed": 60,
+        "receipts": 60
+      },
+      "protocol_claims": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "C11"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::calibrated",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::calibrated",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::calibrated",
+        "D5-detector-mock-provider::origin_ignored",
+        "D6-detector-live-miri::live_miri",
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::bridge_verify",
+        "E5-discovery-missing-finding::schema_only",
+        "E6-discovery-authentic-chain::bridge_verify",
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P1-path-exact-whole-conflicts::exact_footprint",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P2-path-descendant-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::mapping_as_independent",
+        "P4-path-descendant-vs-top::exact_footprint",
+        "P4-path-descendant-vs-top::top_as_exact",
+        "P5-path-omission-vs-not-falsified::absent_is_not_falsified",
+        "P5-path-omission-vs-not-falsified::absent_is_omission",
+        "P5-path-omission-vs-not-falsified::exact_footprint",
+        "P6-path-foreign-provider::exact_footprint",
+        "P6-path-foreign-provider::provider_ignored",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "P7-path-independent-allocations::exact_footprint",
+        "R1-proof-approved::closure_and_correspondence",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "R4-proof-missing-transition::parser_only",
+        "R5-proof-live-coq::live_coq",
+        "S1-grounded-cycle::gfp",
+        "S1-grounded-cycle::lfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S2-ungrounded-self-cycle::lfp",
+        "S3-ungrounded-mutual-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::lfp",
+        "S4-hidden-intermediate-cut::all_node_certificates",
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::all_node_certificates",
+        "S5-shared-mapping-cut::direct_premises",
+        "S6-exact-cut-unrelated-survives::exact_cut",
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::exact_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "Every committed receipt matches its pre-registered expected observation.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "top_as_exact"
+        ],
+        "type": "arm_decisions"
+      },
+      "expected": "false_accept=0 and false_refuse=0; held-out discrimination=0",
+      "hypothesis": "H2",
+      "id": "PC10",
+      "in_paper": true,
+      "kind": "negative_finding",
+      "metric": "arm confusion counts",
+      "observed": {
+        "top_as_exact": {
+          "development": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 1
+          },
+          "held_out": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 0,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "kind": "baseline"
+        }
+      },
+      "protocol_claims": [],
+      "receipts": [
+        "P4-path-descendant-vs-top::top_as_exact"
+      ],
+      "statement": "Treating a top alias as exact is conservative but wrong; it makes no unsafe decision.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "raw_stdout",
+          "job_success",
+          "origin_ignored"
+        ],
+        "receipts": [
+          "D2-detector-raw-stdout-no-finding::calibrated",
+          "D3-detector-dead::calibrated",
+          "D4-detector-misconfigured::calibrated",
+          "D5-detector-mock-provider::calibrated"
+        ],
+        "type": "arm_decisions_with_outcomes"
+      },
+      "expected": "raw_stdout=1 and job_success=1 held-out false_accept; origin_ignored=1 development false_accept; calibrated refuses D2-D5",
+      "hypothesis": "H3",
+      "id": "PC11",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts and observed labels",
+      "observed": {
+        "decisions": {
+          "job_success": {
+            "development": {
+              "false_accept": 0,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 0,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "held_out": {
+              "false_accept": 1,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 1,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "kind": "baseline"
+          },
+          "origin_ignored": {
+            "development": {
+              "false_accept": 1,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 1,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "held_out": {
+              "false_accept": 0,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 0,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "kind": "baseline"
+          },
+          "raw_stdout": {
+            "development": {
+              "false_accept": 1,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 1,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "held_out": {
+              "false_accept": 1,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 2,
+              "true_accept": 1,
+              "true_reject": 0
+            },
+            "kind": "baseline"
+          }
+        },
+        "outcomes": {
+          "D2-detector-raw-stdout-no-finding::calibrated": "refused_missing_finding",
+          "D3-detector-dead::calibrated": "refused_dead_detector",
+          "D4-detector-misconfigured::calibrated": "refused_misconfigured_build_flags",
+          "D5-detector-mock-provider::calibrated": "refused_mock_provider_transport"
+        }
+      },
+      "protocol_claims": [
+        "C7"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::calibrated",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::calibrated",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::calibrated",
+        "D5-detector-mock-provider::origin_ignored"
+      ],
+      "statement": "Detector baselines accept invalid held-out receipts while the production detector refuses them.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "parser_only",
+          "closure_and_correspondence"
+        ],
+        "receipts": [
+          "R1-proof-approved::closure_and_correspondence",
+          "R2-proof-unchecked-wrapper::closure_and_correspondence",
+          "R3-proof-admitted-dependency::closure_and_correspondence",
+          "R4-proof-missing-transition::closure_and_correspondence"
+        ],
+        "type": "arm_decisions_with_outcomes"
+      },
+      "expected": "parser_only=3 held-out false_accept; closure_and_correspondence rejects R2-R4",
+      "hypothesis": "H4",
+      "id": "PC12",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts and observed labels",
+      "observed": {
+        "decisions": {
+          "closure_and_correspondence": {
+            "development": {
+              "false_accept": 0,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 0,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "held_out": {
+              "false_accept": 0,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 4,
+              "true_accept": 1,
+              "true_reject": 3
+            },
+            "kind": "production"
+          },
+          "parser_only": {
+            "development": {
+              "false_accept": 0,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 0,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "held_out": {
+              "false_accept": 3,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 4,
+              "true_accept": 1,
+              "true_reject": 0
+            },
+            "kind": "baseline"
+          }
+        },
+        "outcomes": {
+          "R1-proof-approved::closure_and_correspondence": "accepted_admission_checker_unavailable",
+          "R2-proof-unchecked-wrapper::closure_and_correspondence": "rejected_unchecked_implementation",
+          "R3-proof-admitted-dependency::closure_and_correspondence": "rejected_assumption",
+          "R4-proof-missing-transition::closure_and_correspondence": "rejected_missing_transition"
+        }
+      },
+      "protocol_claims": [
+        "C8"
+      ],
+      "receipts": [
+        "R1-proof-approved::closure_and_correspondence",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "R4-proof-missing-transition::parser_only"
+      ],
+      "statement": "Parser-only accepts invalid held-out manifests; closure plus correspondence rejects them.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "provenance_ignored",
+          "schema_only"
+        ],
+        "receipts": [
+          "E1-discovery-modeled-provider::bridge_verify",
+          "E2-discovery-substitute-provider::bridge_verify",
+          "E3-discovery-stale-candidate::bridge_verify",
+          "E4-discovery-tampered-finding::bridge_verify",
+          "E5-discovery-missing-finding::bridge_verify",
+          "E6-discovery-authentic-chain::bridge_verify"
+        ],
+        "type": "arm_decisions_with_outcomes"
+      },
+      "expected": "provenance_ignored=2 and schema_only=2 held-out false_accept; bridge_verify refuses E1-E4; E5/E6 NOT_RUN",
+      "hypothesis": "H5",
+      "id": "PC13",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts and observed labels",
+      "observed": {
+        "decisions": {
+          "provenance_ignored": {
+            "development": {
+              "false_accept": 0,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 0,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "held_out": {
+              "false_accept": 2,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 2,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "kind": "baseline"
+          },
+          "schema_only": {
+            "development": {
+              "false_accept": 0,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 0,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "held_out": {
+              "false_accept": 2,
+              "false_refuse": 0,
+              "not_run": 0,
+              "total": 2,
+              "true_accept": 0,
+              "true_reject": 0
+            },
+            "kind": "baseline"
+          }
+        },
+        "outcomes": {
+          "E1-discovery-modeled-provider::bridge_verify": "refused_modeled_evidence",
+          "E2-discovery-substitute-provider::bridge_verify": "refused_substitute_provider",
+          "E3-discovery-stale-candidate::bridge_verify": "refused_stale_candidate",
+          "E4-discovery-tampered-finding::bridge_verify": "integrity_digest_mismatch",
+          "E5-discovery-missing-finding::bridge_verify": "NOT_RUN",
+          "E6-discovery-authentic-chain::bridge_verify": "NOT_RUN"
+        }
+      },
+      "protocol_claims": [
+        "C9",
+        "C11"
+      ],
+      "receipts": [
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::bridge_verify",
+        "E5-discovery-missing-finding::schema_only",
+        "E6-discovery-authentic-chain::bridge_verify"
+      ],
+      "statement": "Discovery baselines accept invalid held-out bundles; bridge verification refuses them.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "type": "blocked_controls"
+      },
+      "expected": "3 blocked controls observed NOT_RUN",
+      "hypothesis": "H3/H4/H5",
+      "id": "PC14",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "blocked-control statuses",
+      "observed": {
+        "controls": {
+          "D6-detector-live-miri::live_miri": "NOT_RUN",
+          "E6-discovery-authentic-chain::bridge_verify": "NOT_RUN",
+          "R5-proof-live-coq::live_coq": "NOT_RUN"
+        },
+        "count": 3
+      },
+      "protocol_claims": [
+        "C11"
+      ],
+      "receipts": [
+        "D6-detector-live-miri::live_miri",
+        "E6-discovery-authentic-chain::bridge_verify",
+        "R5-proof-live-coq::live_coq"
+      ],
+      "statement": "Live detector, live Coq, and authentic native-chain controls are typed NOT_RUN.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "type": "resources"
+      },
+      "expected": "wall=32 ms; output=10,812 bytes; RSS 5,040-6,016 KiB",
+      "hypothesis": "H1-H6",
+      "id": "PC15",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "resource accounting",
+      "observed": {
+        "output_bytes_sum": 10812,
+        "peak_rss_kb_max": 6016,
+        "peak_rss_kb_min": 5040,
+        "peak_rss_kb_sum": 329276,
+        "receipts": 60,
+        "wall_time_ms_max": 1,
+        "wall_time_ms_sum": 32
+      },
+      "protocol_claims": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "C11"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::calibrated",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::calibrated",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::calibrated",
+        "D5-detector-mock-provider::origin_ignored",
+        "D6-detector-live-miri::live_miri",
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::bridge_verify",
+        "E5-discovery-missing-finding::schema_only",
+        "E6-discovery-authentic-chain::bridge_verify",
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P1-path-exact-whole-conflicts::exact_footprint",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P2-path-descendant-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::mapping_as_independent",
+        "P4-path-descendant-vs-top::exact_footprint",
+        "P4-path-descendant-vs-top::top_as_exact",
+        "P5-path-omission-vs-not-falsified::absent_is_not_falsified",
+        "P5-path-omission-vs-not-falsified::absent_is_omission",
+        "P5-path-omission-vs-not-falsified::exact_footprint",
+        "P6-path-foreign-provider::exact_footprint",
+        "P6-path-foreign-provider::provider_ignored",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "P7-path-independent-allocations::exact_footprint",
+        "R1-proof-approved::closure_and_correspondence",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "R4-proof-missing-transition::parser_only",
+        "R5-proof-live-coq::live_coq",
+        "S1-grounded-cycle::gfp",
+        "S1-grounded-cycle::lfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S2-ungrounded-self-cycle::lfp",
+        "S3-ungrounded-mutual-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::lfp",
+        "S4-hidden-intermediate-cut::all_node_certificates",
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::all_node_certificates",
+        "S5-shared-mapping-cut::direct_premises",
+        "S6-exact-cut-unrelated-survives::exact_cut",
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::exact_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "Resource accounting is the sum of measured child wall time, output bytes, and peak RSS.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "type": "negative_findings"
+      },
+      "expected": "8 negative findings",
+      "hypothesis": "H1-H6",
+      "id": "PC16",
+      "in_paper": true,
+      "kind": "negative_finding",
+      "metric": "negative findings ledger",
+      "observed": {
+        "count": 8,
+        "findings": [
+          "N1:boolean_aliasing_no_held_out_discriminator",
+          "N2:over_cut_no_held_out_discriminator",
+          "N3:top_as_exact_zero_false_decisions",
+          "N4:gfp_agrees_on_grounded_cycle",
+          "N5:parser_only_accepts_approved_manifest",
+          "N6:raw_stdout_accepts_authentic_calibration",
+          "N7:no_live_proof_checker_ran",
+          "N8:live_controls_not_run"
+        ]
+      },
+      "protocol_claims": [],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::calibrated",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::calibrated",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::calibrated",
+        "D5-detector-mock-provider::origin_ignored",
+        "D6-detector-live-miri::live_miri",
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::bridge_verify",
+        "E5-discovery-missing-finding::schema_only",
+        "E6-discovery-authentic-chain::bridge_verify",
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P1-path-exact-whole-conflicts::exact_footprint",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P2-path-descendant-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::mapping_as_independent",
+        "P4-path-descendant-vs-top::exact_footprint",
+        "P4-path-descendant-vs-top::top_as_exact",
+        "P5-path-omission-vs-not-falsified::absent_is_not_falsified",
+        "P5-path-omission-vs-not-falsified::absent_is_omission",
+        "P5-path-omission-vs-not-falsified::exact_footprint",
+        "P6-path-foreign-provider::exact_footprint",
+        "P6-path-foreign-provider::provider_ignored",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "P7-path-independent-allocations::exact_footprint",
+        "R1-proof-approved::closure_and_correspondence",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "R4-proof-missing-transition::parser_only",
+        "R5-proof-live-coq::live_coq",
+        "S1-grounded-cycle::gfp",
+        "S1-grounded-cycle::lfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S2-ungrounded-self-cycle::lfp",
+        "S3-ungrounded-mutual-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::lfp",
+        "S4-hidden-intermediate-cut::all_node_certificates",
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::all_node_certificates",
+        "S5-shared-mapping-cut::direct_premises",
+        "S6-exact-cut-unrelated-survives::exact_cut",
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::exact_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "Eight pre-declared negative findings are reported rather than hidden.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "absent_is_not_falsified",
+          "absent_is_omission",
+          "boolean_aliasing",
+          "direct_premises",
+          "gfp",
+          "job_success",
+          "mapping_as_independent",
+          "origin_ignored",
+          "over_cut",
+          "parser_only",
+          "provenance_ignored",
+          "provider_ignored",
+          "raw_stdout",
+          "root_only_certificates",
+          "schema_only",
+          "top_as_exact"
+        ],
+        "type": "discrimination"
+      },
+      "expected": "held-out discriminators for gfp(2), root_only(1), direct_premises(1), mapping_as_independent(1), absent arms(1 each), raw_stdout(1), job_success(1), parser_only(4), provenance_ignored(2), schema_only(2); development-only for over_cut, boolean_aliasing, top_as_exact, provider_ignored, and origin_ignored",
+      "hypothesis": "H1-H5",
+      "id": "PC17",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "held-out/development discriminator counts",
+      "observed": {
+        "arms": {
+          "absent_is_not_falsified": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "P5-path-omission-vs-not-falsified"
+            ],
+            "held_out_failures": [
+              "P5-path-omission-vs-not-falsified"
+            ]
+          },
+          "absent_is_omission": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "P5-path-omission-vs-not-falsified"
+            ],
+            "held_out_failures": [
+              "P5-path-omission-vs-not-falsified"
+            ]
+          },
+          "boolean_aliasing": {
+            "development": [
+              "P2-path-descendant-disjoint"
+            ],
+            "development_failures": [
+              "P2-path-descendant-disjoint"
+            ],
+            "held_out": [],
+            "held_out_failures": []
+          },
+          "direct_premises": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "S5-shared-mapping-cut"
+            ],
+            "held_out_failures": [
+              "S5-shared-mapping-cut"
+            ]
+          },
+          "gfp": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "S2-ungrounded-self-cycle",
+              "S3-ungrounded-mutual-cycle"
+            ],
+            "held_out_failures": [
+              "S2-ungrounded-self-cycle",
+              "S3-ungrounded-mutual-cycle"
+            ]
+          },
+          "job_success": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "D3-detector-dead"
+            ],
+            "held_out_failures": [
+              "D3-detector-dead"
+            ]
+          },
+          "mapping_as_independent": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "P3-path-shared-mapping-disjoint"
+            ],
+            "held_out_failures": [
+              "P3-path-shared-mapping-disjoint"
+            ]
+          },
+          "origin_ignored": {
+            "development": [
+              "D5-detector-mock-provider"
+            ],
+            "development_failures": [
+              "D5-detector-mock-provider"
+            ],
+            "held_out": [],
+            "held_out_failures": []
+          },
+          "over_cut": {
+            "development": [
+              "S6-exact-cut-unrelated-survives"
+            ],
+            "development_failures": [
+              "S6-exact-cut-unrelated-survives"
+            ],
+            "held_out": [],
+            "held_out_failures": []
+          },
+          "parser_only": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "R1-proof-approved",
+              "R2-proof-unchecked-wrapper",
+              "R3-proof-admitted-dependency",
+              "R4-proof-missing-transition"
+            ],
+            "held_out_failures": [
+              "R1-proof-approved",
+              "R2-proof-unchecked-wrapper",
+              "R3-proof-admitted-dependency",
+              "R4-proof-missing-transition"
+            ]
+          },
+          "provenance_ignored": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "E1-discovery-modeled-provider",
+              "E2-discovery-substitute-provider"
+            ],
+            "held_out_failures": [
+              "E1-discovery-modeled-provider",
+              "E2-discovery-substitute-provider"
+            ]
+          },
+          "provider_ignored": {
+            "development": [
+              "P6-path-foreign-provider"
+            ],
+            "development_failures": [
+              "P6-path-foreign-provider"
+            ],
+            "held_out": [],
+            "held_out_failures": []
+          },
+          "raw_stdout": {
+            "development": [
+              "D4-detector-misconfigured"
+            ],
+            "development_failures": [
+              "D4-detector-misconfigured"
+            ],
+            "held_out": [
+              "D2-detector-raw-stdout-no-finding"
+            ],
+            "held_out_failures": [
+              "D2-detector-raw-stdout-no-finding"
+            ]
+          },
+          "root_only_certificates": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "S4-hidden-intermediate-cut"
+            ],
+            "held_out_failures": [
+              "S4-hidden-intermediate-cut"
+            ]
+          },
+          "schema_only": {
+            "development": [],
+            "development_failures": [],
+            "held_out": [
+              "E3-discovery-stale-candidate",
+              "E4-discovery-tampered-finding"
+            ],
+            "held_out_failures": [
+              "E3-discovery-stale-candidate",
+              "E4-discovery-tampered-finding"
+            ]
+          },
+          "top_as_exact": {
+            "development": [
+              "P4-path-descendant-vs-top"
+            ],
+            "development_failures": [
+              "P4-path-descendant-vs-top"
+            ],
+            "held_out": [],
+            "held_out_failures": []
+          }
+        },
+        "development_zero": [
+          "absent_is_not_falsified",
+          "absent_is_omission",
+          "direct_premises",
+          "gfp",
+          "job_success",
+          "mapping_as_independent",
+          "parser_only",
+          "provenance_ignored",
+          "root_only_certificates",
+          "schema_only"
+        ],
+        "development_zero_count": 10,
+        "held_out_zero": [
+          "boolean_aliasing",
+          "origin_ignored",
+          "over_cut",
+          "provider_ignored",
+          "top_as_exact"
+        ],
+        "held_out_zero_count": 5
+      },
+      "protocol_claims": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::origin_ignored",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::schema_only",
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P3-path-shared-mapping-disjoint::mapping_as_independent",
+        "P4-path-descendant-vs-top::top_as_exact",
+        "P5-path-omission-vs-not-falsified::absent_is_not_falsified",
+        "P5-path-omission-vs-not-falsified::absent_is_omission",
+        "P6-path-foreign-provider::provider_ignored",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::parser_only",
+        "S1-grounded-cycle::gfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::gfp",
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::direct_premises",
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "Held-out and development discriminator counts for every named naive arm.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "type": "hypothesis_coverage"
+      },
+      "expected": "H1=14, H2=15, H3=11, H4=9, H5=11, H6=48 receipts; 0 failures",
+      "hypothesis": "H1-H6",
+      "id": "PC18",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "receipt coverage per hypothesis",
+      "observed": {
+        "H1": {
+          "blocked": 0,
+          "cases": 7,
+          "development_cases": 2,
+          "failed": 0,
+          "held_out_cases": 5,
+          "passed": 14,
+          "receipts": 14
+        },
+        "H2": {
+          "blocked": 0,
+          "cases": 7,
+          "development_cases": 4,
+          "failed": 0,
+          "held_out_cases": 3,
+          "passed": 15,
+          "receipts": 15
+        },
+        "H3": {
+          "blocked": 1,
+          "cases": 6,
+          "development_cases": 2,
+          "failed": 0,
+          "held_out_cases": 4,
+          "passed": 11,
+          "receipts": 11
+        },
+        "H4": {
+          "blocked": 1,
+          "cases": 5,
+          "development_cases": 1,
+          "failed": 0,
+          "held_out_cases": 4,
+          "passed": 9,
+          "receipts": 9
+        },
+        "H5": {
+          "blocked": 3,
+          "cases": 6,
+          "development_cases": 2,
+          "failed": 0,
+          "held_out_cases": 4,
+          "passed": 11,
+          "receipts": 11
+        },
+        "H6": {
+          "blocked": 0,
+          "cases": 24,
+          "development_cases": 6,
+          "failed": 0,
+          "held_out_cases": 18,
+          "passed": 48,
+          "receipts": 48
+        }
+      },
+      "protocol_claims": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "C11"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::calibrated",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::calibrated",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::calibrated",
+        "D5-detector-mock-provider::origin_ignored",
+        "D6-detector-live-miri::live_miri",
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::bridge_verify",
+        "E5-discovery-missing-finding::schema_only",
+        "E6-discovery-authentic-chain::bridge_verify",
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P1-path-exact-whole-conflicts::exact_footprint",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P2-path-descendant-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::mapping_as_independent",
+        "P4-path-descendant-vs-top::exact_footprint",
+        "P4-path-descendant-vs-top::top_as_exact",
+        "P5-path-omission-vs-not-falsified::absent_is_not_falsified",
+        "P5-path-omission-vs-not-falsified::absent_is_omission",
+        "P5-path-omission-vs-not-falsified::exact_footprint",
+        "P6-path-foreign-provider::exact_footprint",
+        "P6-path-foreign-provider::provider_ignored",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "P7-path-independent-allocations::exact_footprint",
+        "R1-proof-approved::closure_and_correspondence",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "R4-proof-missing-transition::parser_only",
+        "R5-proof-live-coq::live_coq",
+        "S1-grounded-cycle::gfp",
+        "S1-grounded-cycle::lfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S2-ungrounded-self-cycle::lfp",
+        "S3-ungrounded-mutual-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::lfp",
+        "S4-hidden-intermediate-cut::all_node_certificates",
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::all_node_certificates",
+        "S5-shared-mapping-cut::direct_premises",
+        "S6-exact-cut-unrelated-survives::exact_cut",
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::exact_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "Receipt coverage and pass counts for each hypothesis, including the derived decision family.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "type": "split"
+      },
+      "expected": "20 held-out / 11 development cases",
+      "hypothesis": "H1-H6",
+      "id": "PC2",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "held-out selection split",
+      "observed": {
+        "cases": 31,
+        "development_cases": 11,
+        "development_receipts": 20,
+        "held_out_cases": 20,
+        "held_out_receipts": 40
+      },
+      "protocol_claims": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "C11"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::calibrated",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::calibrated",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::calibrated",
+        "D5-detector-mock-provider::origin_ignored",
+        "D6-detector-live-miri::live_miri",
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::bridge_verify",
+        "E5-discovery-missing-finding::schema_only",
+        "E6-discovery-authentic-chain::bridge_verify",
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P1-path-exact-whole-conflicts::exact_footprint",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P2-path-descendant-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::mapping_as_independent",
+        "P4-path-descendant-vs-top::exact_footprint",
+        "P4-path-descendant-vs-top::top_as_exact",
+        "P5-path-omission-vs-not-falsified::absent_is_not_falsified",
+        "P5-path-omission-vs-not-falsified::absent_is_omission",
+        "P5-path-omission-vs-not-falsified::exact_footprint",
+        "P6-path-foreign-provider::exact_footprint",
+        "P6-path-foreign-provider::provider_ignored",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "P7-path-independent-allocations::exact_footprint",
+        "R1-proof-approved::closure_and_correspondence",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "R4-proof-missing-transition::parser_only",
+        "R5-proof-live-coq::live_coq",
+        "S1-grounded-cycle::gfp",
+        "S1-grounded-cycle::lfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S2-ungrounded-self-cycle::lfp",
+        "S3-ungrounded-mutual-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::lfp",
+        "S4-hidden-intermediate-cut::all_node_certificates",
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::all_node_certificates",
+        "S5-shared-mapping-cut::direct_premises",
+        "S6-exact-cut-unrelated-survives::exact_cut",
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::exact_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "The frozen hash rule yields the declared held-out and development split.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "type": "protocol_claims"
+      },
+      "expected": "11/11 protocol claims supported",
+      "hypothesis": "H1-H6",
+      "id": "PC3",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "protocol claim support",
+      "observed": {
+        "claims": 11,
+        "falsified": 0,
+        "statuses": {
+          "C1": "supported",
+          "C10": "supported",
+          "C11": "supported",
+          "C2": "supported",
+          "C3": "supported",
+          "C4": "supported",
+          "C5": "supported",
+          "C6": "supported",
+          "C7": "supported",
+          "C8": "supported",
+          "C9": "supported"
+        },
+        "supported": 11
+      },
+      "protocol_claims": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "C11"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D1-detector-authentic-calibrated::raw_stdout",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D2-detector-raw-stdout-no-finding::raw_stdout",
+        "D3-detector-dead::calibrated",
+        "D3-detector-dead::job_success",
+        "D4-detector-misconfigured::calibrated",
+        "D4-detector-misconfigured::raw_stdout",
+        "D5-detector-mock-provider::calibrated",
+        "D5-detector-mock-provider::origin_ignored",
+        "D6-detector-live-miri::live_miri",
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E1-discovery-modeled-provider::provenance_ignored",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E2-discovery-substitute-provider::provenance_ignored",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E3-discovery-stale-candidate::schema_only",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E4-discovery-tampered-finding::schema_only",
+        "E5-discovery-missing-finding::bridge_verify",
+        "E5-discovery-missing-finding::schema_only",
+        "E6-discovery-authentic-chain::bridge_verify",
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P1-path-exact-whole-conflicts::exact_footprint",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P2-path-descendant-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::mapping_as_independent",
+        "P4-path-descendant-vs-top::exact_footprint",
+        "P4-path-descendant-vs-top::top_as_exact",
+        "P5-path-omission-vs-not-falsified::absent_is_not_falsified",
+        "P5-path-omission-vs-not-falsified::absent_is_omission",
+        "P5-path-omission-vs-not-falsified::exact_footprint",
+        "P6-path-foreign-provider::exact_footprint",
+        "P6-path-foreign-provider::provider_ignored",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "P7-path-independent-allocations::exact_footprint",
+        "R1-proof-approved::closure_and_correspondence",
+        "R1-proof-approved::parser_only",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::parser_only",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R3-proof-admitted-dependency::parser_only",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "R4-proof-missing-transition::parser_only",
+        "R5-proof-live-coq::live_coq",
+        "S1-grounded-cycle::gfp",
+        "S1-grounded-cycle::lfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S2-ungrounded-self-cycle::lfp",
+        "S3-ungrounded-mutual-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::lfp",
+        "S4-hidden-intermediate-cut::all_node_certificates",
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::all_node_certificates",
+        "S5-shared-mapping-cut::direct_premises",
+        "S6-exact-cut-unrelated-survives::exact_cut",
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::exact_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "Every protocol claim maps to receipts whose observed labels equal the claimed labels.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "type": "production_decision_quality"
+      },
+      "expected": "false_accept=0 and false_refuse=0",
+      "hypothesis": "H6",
+      "id": "PC4",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "held-out confusion counts",
+      "observed": {
+        "arms": 7,
+        "held_out_decisions": 18,
+        "held_out_false_accept": 0,
+        "held_out_false_refuse": 0,
+        "held_out_not_run": 0
+      },
+      "protocol_claims": [
+        "C10"
+      ],
+      "receipts": [
+        "D1-detector-authentic-calibrated::calibrated",
+        "D2-detector-raw-stdout-no-finding::calibrated",
+        "D3-detector-dead::calibrated",
+        "D4-detector-misconfigured::calibrated",
+        "D5-detector-mock-provider::calibrated",
+        "E1-discovery-modeled-provider::bridge_verify",
+        "E2-discovery-substitute-provider::bridge_verify",
+        "E3-discovery-stale-candidate::bridge_verify",
+        "E4-discovery-tampered-finding::bridge_verify",
+        "E5-discovery-missing-finding::bridge_verify",
+        "P1-path-exact-whole-conflicts::exact_footprint",
+        "P2-path-descendant-disjoint::exact_footprint",
+        "P3-path-shared-mapping-disjoint::exact_footprint",
+        "P4-path-descendant-vs-top::exact_footprint",
+        "P5-path-omission-vs-not-falsified::exact_footprint",
+        "P6-path-foreign-provider::exact_footprint",
+        "P7-path-independent-allocations::exact_footprint",
+        "R1-proof-approved::closure_and_correspondence",
+        "R2-proof-unchecked-wrapper::closure_and_correspondence",
+        "R3-proof-admitted-dependency::closure_and_correspondence",
+        "R4-proof-missing-transition::closure_and_correspondence",
+        "S1-grounded-cycle::lfp",
+        "S2-ungrounded-self-cycle::lfp",
+        "S3-ungrounded-mutual-cycle::lfp",
+        "S4-hidden-intermediate-cut::all_node_certificates",
+        "S5-shared-mapping-cut::all_node_certificates",
+        "S6-exact-cut-unrelated-survives::exact_cut",
+        "S7-exact-cut-required-cut::exact_cut"
+      ],
+      "statement": "Production arms make no held-out false accept or false refuse on decision cases.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "gfp"
+        ],
+        "type": "arm_decisions"
+      },
+      "expected": "held-out false_accept=2",
+      "hypothesis": "H1",
+      "id": "PC5",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts",
+      "observed": {
+        "gfp": {
+          "development": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 1,
+            "true_reject": 0
+          },
+          "held_out": {
+            "false_accept": 2,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 2,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "kind": "baseline"
+        }
+      },
+      "protocol_claims": [
+        "C2"
+      ],
+      "receipts": [
+        "S1-grounded-cycle::gfp",
+        "S2-ungrounded-self-cycle::gfp",
+        "S3-ungrounded-mutual-cycle::gfp"
+      ],
+      "statement": "The greatest-fixed-point baseline accepts both held-out ungrounded cycles.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "root_only_certificates",
+          "direct_premises"
+        ],
+        "type": "arm_decisions"
+      },
+      "expected": "held-out false_accept=1 for each baseline",
+      "hypothesis": "H1",
+      "id": "PC6",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts",
+      "observed": {
+        "direct_premises": {
+          "development": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 0,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "held_out": {
+            "false_accept": 1,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "kind": "baseline"
+        },
+        "root_only_certificates": {
+          "development": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 0,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "held_out": {
+            "false_accept": 1,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "kind": "baseline"
+        }
+      },
+      "protocol_claims": [
+        "C4"
+      ],
+      "receipts": [
+        "S4-hidden-intermediate-cut::root_only_certificates",
+        "S5-shared-mapping-cut::direct_premises"
+      ],
+      "statement": "Root-only and direct-premise baselines each accept one held-out exact-cut failure.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "over_cut"
+        ],
+        "type": "arm_decisions"
+      },
+      "expected": "development false_refuse=1; held-out discrimination=0",
+      "hypothesis": "H1",
+      "id": "PC7",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts",
+      "observed": {
+        "over_cut": {
+          "development": {
+            "false_accept": 0,
+            "false_refuse": 1,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "held_out": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 1
+          },
+          "kind": "baseline"
+        }
+      },
+      "protocol_claims": [
+        "C5"
+      ],
+      "receipts": [
+        "S6-exact-cut-unrelated-survives::over_cut",
+        "S7-exact-cut-required-cut::over_cut"
+      ],
+      "statement": "The over-cut baseline loses unrelated support on the development split.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "boolean_aliasing",
+          "provider_ignored"
+        ],
+        "type": "arm_decisions"
+      },
+      "expected": "boolean_aliasing: held-out false_accept=0, development false_refuse=1; provider_ignored: held-out false_accept=0, development false_accept=1",
+      "hypothesis": "H2",
+      "id": "PC8",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts",
+      "observed": {
+        "boolean_aliasing": {
+          "development": {
+            "false_accept": 0,
+            "false_refuse": 1,
+            "not_run": 0,
+            "total": 2,
+            "true_accept": 1,
+            "true_reject": 0
+          },
+          "held_out": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 1
+          },
+          "kind": "baseline"
+        },
+        "provider_ignored": {
+          "development": {
+            "false_accept": 1,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "held_out": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 0,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "kind": "baseline"
+        }
+      },
+      "protocol_claims": [
+        "C6"
+      ],
+      "receipts": [
+        "P1-path-exact-whole-conflicts::boolean_aliasing",
+        "P2-path-descendant-disjoint::boolean_aliasing",
+        "P7-path-independent-allocations::boolean_aliasing",
+        "P6-path-foreign-provider::provider_ignored"
+      ],
+      "statement": "Boolean aliasing and provider-ignoring baselines make development-split false decisions on path cases.",
+      "status": "supported"
+    },
+    {
+      "check": {
+        "arms": [
+          "mapping_as_independent"
+        ],
+        "type": "arm_decisions"
+      },
+      "expected": "held-out false_accept=1",
+      "hypothesis": "H2",
+      "id": "PC9",
+      "in_paper": true,
+      "kind": "measured",
+      "metric": "arm confusion counts",
+      "observed": {
+        "mapping_as_independent": {
+          "development": {
+            "false_accept": 0,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 0,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "held_out": {
+            "false_accept": 1,
+            "false_refuse": 0,
+            "not_run": 0,
+            "total": 1,
+            "true_accept": 0,
+            "true_reject": 0
+          },
+          "kind": "baseline"
+        }
+      },
+      "protocol_claims": [
+        "C6"
+      ],
+      "receipts": [
+        "P3-path-shared-mapping-disjoint::mapping_as_independent"
+      ],
+      "statement": "The mapping-as-independent baseline accepts a held-out shared-mapping case.",
+      "status": "supported"
+    }
+  ],
+  "constants": {
+    "cases": 31,
+    "cpus": 2,
+    "crate_version": "0.9.0",
+    "development_cases": 11,
+    "held_out_cases": 20,
+    "memory_limit_mb": 2048,
+    "memory_swap_limit_mb": 2048,
+    "nofile_limit": 1024,
+    "oom_score_adj": 500,
+    "paper_claims": 18,
+    "pids_limit": 512,
+    "protocol_claims": 11,
+    "protocol_sha256": "02deb982c61c2a8307dbf3d34cf90f5aeb367e9ea7b1d794314aea9dd094d5ce",
+    "protocol_version": "phase9.1-v1",
+    "python_image": "python:3.11-slim",
+    "python_image_digest": "sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534c5767af9ea65f6ce",
+    "python_image_id": "sha256:541096ae9b05d3b850341b78790e2ed31e94d5aa0ea086933c6ff0c09ffa2e63",
+    "receipts": 60,
+    "reconstruction_memory_limit_mb": 512,
+    "rust_image": "rust:1.85.0-slim",
+    "rust_image_digest": "sha256:1829c432be4a592f3021501334d3fcca24f238432b13306a4e62669dec538e52",
+    "rust_image_id": "sha256:206360542a30ac87385638c1d123eae6cebcd9d8675d521bb80eac7f5820509b",
+    "timeout_seconds": 1800
+  },
+  "protocol_sha256": "02deb982c61c2a8307dbf3d34cf90f5aeb367e9ea7b1d794314aea9dd094d5ce",
+  "protocol_version": "phase9.1-v1",
+  "schema": "frf-memorysafety.paper-claims.v1"
+}
