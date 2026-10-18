@@ -1,9 +1,10 @@
 # Phase 3.1: conservative source inventory
 
 Snapshot: branch `staging`, crate `frf-memorysafety 0.3.0`. This document
-describes the Phase 3.1 source inventory only. Phase 3.2 (MIR/compiler-assisted
-edges) and Phase 3.3 (alias, footprint, and reference-interval semantics) are
-not implemented.
+describes the Phase 3.1 source inventory only. Phase 3.2 adds the finite
+path-effect model; Phase 3.3 adds an optional pinned MIR text adapter. Neither
+later phase performs compiler-resolved alias/type extraction or native
+observation.
 
 ## Claim ceiling
 

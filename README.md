@@ -6,15 +6,16 @@ and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
 **This build makes no memory-safety soundness claim.** It is phase-2
-bookkeeping infrastructure, a phase-3.1 syntax-only source inventory, and a
-phase-3.2 explicit-input path-effect model: strict encoding, typed evidence,
-founded support with policy custody, a finite three-rule profile, bounded
-`syn`-based source discovery, typed alias/footprint/reference-interval
-qualification, and an honest CLI.
+bookkeeping infrastructure, a phase-3.1 syntax-only source inventory, a
+phase-3.2 explicit-input path-effect model, and a phase-3.3 optional pinned MIR
+text adapter: strict encoding, typed evidence, founded support with policy
+custody, a finite three-rule profile, bounded `syn`-based source discovery,
+typed alias/footprint/reference-interval qualification, conservative MIR edge
+observations when the pinned toolchain is present, and an honest CLI.
 Universal safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite
 profile and are always reported as `WITHHELD_NOT_RUN`.
 
-## Status (0.3.0, phase 2 + phases 3.1–3.2)
+## Status (0.3.0, phase 2 + phases 3.1–3.3)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -23,13 +24,15 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 155 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 155 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets` | 168 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release` | 168 passed, 0 failed, 0 ignored |
+| `ci/mir-gate.sh` | PASS (LIVE observations with pinned nightly) |
 
-Version 0.3.0 is the Phase 2 release. The Phase 3.1 inventory and Phase 3.2
-path-effect work are unreleased additions; no version bump or publication is
-implied. Release notes for Phase 1 (0.2.0) and Phase 2 (0.3.0) plus the
-unreleased Phase 3 entries are in [`CHANGELOG.md`](CHANGELOG.md).
+Version 0.3.0 is the Phase 2 release. The Phase 3.1 inventory, Phase 3.2
+path-effect work, and Phase 3.3 optional MIR adapter are unreleased additions;
+no version bump or publication is implied. Release notes for Phase 1 (0.2.0)
+and Phase 2 (0.3.0) plus the unreleased Phase 3 entries are in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 The conformance tests **execute**; they are not ignored. The shipping engine is
 compared against a separately coded oracle in `tests/support_oracle/` over the
@@ -89,6 +92,21 @@ ceiling.
   dispatch. Foreign and provider behavior is never promoted to safe or unsafe.
 - `path analyze FILE [--json]` over explicit JSON or a Phase 3.1 source
   inventory, with deterministic canonical reports and SPEC §14 exit statuses.
+- An optional, pinned MIR adapter (`nightly-2025-02-20`) that invokes
+  `rustup run <toolchain> rustc --edition 2021 -Zunpretty=mir` with explicit
+  argv, no shell, a private temporary working directory, bounded stdout and
+  stderr, and a bounded timeout.
+- A conservative MIR text parser for function definitions, unresolved call
+  edges, dereferences, storage/lifetime markers, drop/free-like calls, and
+  explicit unknown constructs. Foreign, provider, trait, and indirect dispatch
+  remain unresolved; same-name local definitions are not treated as
+  resolution.
+- A typed `NOT_RUN` response and exit status 6 when `rustup`, the pinned
+  toolchain, or the bounded invocation is unavailable. No observation is
+  fabricated.
+- `mir scan FILE [--json] [--toolchain NAME]` with canonical
+  `frf-memorysafety.mir-observation.v1` or
+  `frf-memorysafety.mir-not-run.v1` JSON.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
 
@@ -125,9 +143,14 @@ caller graph, an alias analysis, or a coverage proof. The path-effect model is
 finite and explicit-input only: it does not extract aliases from source or MIR,
 observe native callbacks, model concurrency, or establish whole-program
 closure. A `compatible_within_finite_footprint` outcome is not universal
-aliasing compatibility. No result here implies native Rust soundness, detector
-sensitivity, real-FFI coverage, or universal safe-interior soundness.
-`SAFE_COMPATIBLE` is never accepted by this build.
+aliasing compatibility. The optional MIR adapter consumes only the
+human-readable, unstable `-Zunpretty=mir` text: it does not resolve symbols,
+types, traits, generics, macros, external crates, aliases, provenance, or
+reference intervals, and it does not establish a caller graph or whole-program
+closure. A `NOT_RUN` response is not an empty successful scan. No result here
+implies native Rust soundness, detector sensitivity, real-FFI coverage, or
+universal safe-interior soundness. `SAFE_COMPATIBLE` is never accepted by this
+build.
 
 ### NOT_RUN in this build
 
@@ -138,9 +161,11 @@ sensitivity, real-FFI coverage, or universal safe-interior soundness.
 - Live Gemel publication
 - Live OpenSSL-Rust Safe-33 native courts
 - Native proof-checker adapters
-- MIR/compiler-resolved caller graphs and whole-program closure (phase 3.3+)
-- Source/MIR-extracted alias, footprint, and reference-interval semantics
-  (phase 3.3+)
+- MIR/compiler-resolved caller graphs and whole-program closure
+- Source/MIR-extracted alias, provenance, footprint, and reference-interval
+  semantics
+- MIR edge extraction when the pinned `nightly-2025-02-20` toolchain is absent
+  (`NOT_RUN`, exit 6)
 - Native C callback observation and retained-pointer lifecycle recording
 - Universal safe-interior or `SAFE_COMPATIBLE` acceptance
 
@@ -159,6 +184,7 @@ frf-memorysafety support evaluate FILE [--policy POLICY_FILE] [--expect-policy-d
 frf-memorysafety support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
 frf-memorysafety source scan PATH [--json]
 frf-memorysafety path analyze FILE [--json]
+frf-memorysafety mir scan FILE [--json] [--toolchain NAME]
 frf-memorysafety evidence verify --root DIR
 frf-memorysafety report --case FILE --format json|markdown
 
@@ -254,6 +280,33 @@ failure, so the command exits 0 with that status in the report. See
 [`docs/phase3-path-effects.md`](docs/phase3-path-effects.md) for the algebra,
 qualification rules, seal controls, claim ceiling, and citations.
 
+### Phase 3.3 optional MIR edges
+
+`mir scan FILE [--json] [--toolchain NAME]` invokes the pinned
+`nightly-2025-02-20` toolchain through `rustup run <toolchain> rustc --edition
+2021 -Zunpretty=mir --crate-type=lib FILE`. It uses explicit argv and never a
+shell, runs in a private `0700` temporary directory with null stdin, bounds
+stdout/stderr and wall time, and returns a typed
+`frf-memorysafety.mir-not-run.v1` response with exit 6 when the toolchain or
+invocation is unavailable.
+
+A live `frf-memorysafety.mir-observation.v1` artifact records function
+definitions, basic-block counts, unresolved call edges (including indirect,
+qualified/trait, foreign/provider-possible uncertainty), textual dereferences,
+storage/lifetime markers, drop/free-like calls, and every unrecognised
+construct as an explicit unknown. Every call remains unresolved; a same-name
+local definition is only a name coincidence. `StorageLive`/`StorageDead` may
+be absent from the printed MIR.
+
+`-Zunpretty=mir` is an unstable, human-oriented format that is explicitly
+subject to change without notice. The pin makes a run reproducible for that
+exact toolchain, not the format stable. The adapter does not resolve symbols,
+types, traits, generics, macros, external crates, aliases, provenance, or
+reference intervals, and does not establish whole-program closure. If the
+pinned toolchain is absent, the capability is honestly `NOT_RUN`, not an empty
+successful scan. See [`docs/phase3-mir.md`](docs/phase3-mir.md) for the parsed
+subset, bounds, instability, and citations.
+
 ## Exit statuses
 
 Following SPEC.md §14:
@@ -285,6 +338,13 @@ cargo test --locked --all-targets
 cargo test --locked --release
 ```
 
+`./ci/mir-gate.sh` is a separate optional gate. It uses the same hardened
+flags plus a `frf-rustup` volume, attempts to install the pinned minimal
+`nightly-2025-02-20`, builds the binary, and runs `mir scan` against
+`tests/fixtures/mir/source.rs`. It prints `PASS` for a live observation and
+`NOT_RUN` (exit 6) if installation or execution is unavailable. It is not
+invoked by `ci/gate.sh`.
+
 Every container is hardened as follows:
 
 - `--memory=2g --memory-swap=2g` caps memory and swap together, so the
@@ -314,14 +374,17 @@ docs/             phase-2 requirement alignment, conformance methodology, citati
 src/profile.rs    finite three-rule profile and deterministic buffer model
 src/source.rs     bounded syn-based syntactic source inventory
 src/path_effect.rs finite explicit-input aliases, footprints, intervals, outcomes
+src/mir.rs        optional pinned MIR adapter and conservative text parser
 docs/phase3-source-inventory.md   phase 3.1 categories, limits, claim ceiling, citations
 docs/phase3-path-effects.md       phase 3.2 algebra, qualification, citations
+docs/phase3-mir.md                phase 3.3 pin, invocation, subset, instability, citations
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
 tests/            canonical vectors, support semantics, independent oracle,
                   §12.4 cases, mutant courts, paper corpus, profile model/refusals,
                   source inventory fixtures/limits/symlinks/CLI, path-effect
-                  alias/UnsafeCell/callback seal controls, replay, CLI
+                  alias/UnsafeCell/callback seal controls, MIR fixtures/adapter,
+                  replay, CLI
 ```
 
 ## Non-transfer

@@ -12,8 +12,9 @@ universal memory-safety soundness, and no release below makes such a claim.
 ## [Unreleased]
 
 Phase 3.1: conservative, syntax-only Rust source inventory. Phase 3.2: finite
-explicit-input path effects and qualified outcomes. No version bump and no
-external publication.
+explicit-input path effects and qualified outcomes. Phase 3.3: optional pinned
+MIR text observations with honest `NOT_RUN`. No version bump and no external
+publication.
 
 ### Added
 
@@ -57,8 +58,34 @@ external publication.
 - `docs/phase3-path-effects.md` with the model, event/footprint algebra,
   qualification rules, seal controls, claim ceiling, and authoritative
   citations.
-- 22 new tests (4 unit in `path_effect`, 18 integration), for 155 total in
-  debug and release.
+- `src/mir.rs`: optional MIR adapter pinned to `nightly-2025-02-20` (the stable
+  `1.85.0` release date). It invokes `rustup run <toolchain> rustc --edition
+  2021 -Zunpretty=mir --crate-type=lib FILE` with explicit argv and no shell,
+  a private `0700` temporary working directory, null stdin, bounded
+  stdout/stderr, a bounded timeout, and hard source/observation limits.
+- Conservative MIR text parsing for function definitions, basic blocks,
+  unresolved call edges (plain, qualified/trait, and indirect), dereference
+  projections, storage/lifetime markers, drop/free-like calls, and explicit
+  unknown constructs. Same-name local definitions are name coincidences, not
+  resolution; foreign/provider/trait/indirect uncertainty is retained.
+- Typed `NOT_RUN` reasons (`rustup` missing, toolchain unavailable, timeout,
+  output bound exceeded, invocation failure) and SPEC §14 exit status 6, never a
+  fabricated observation.
+- `mir scan FILE [--json] [--toolchain NAME]` with canonical
+  `frf-memorysafety.mir-observation.v1` or
+  `frf-memorysafety.mir-not-run.v1` JSON.
+- `ci/mir-gate.sh`: same hardened container flags, minimal pinned nightly
+  installation/use, adapter run against a fixture crate, `PASS` on a live
+  observation, and `NOT_RUN` exit 6 when unavailable. It is separate from the
+  default gate.
+- Checked-in MIR text and source fixtures plus 13 new tests (6 unit in
+  `src/mir.rs`, 7 integration in `tests/mir.rs`), including live-or-`NOT_RUN`,
+  missing-`rustup`, source/call/function/unknown bound, canonical determinism,
+  and CLI status controls. No test is ignored.
+- `docs/phase3-mir.md` with the toolchain pin, exact invocation, parsed subset,
+  known `-Zunpretty=mir` instability, claim ceiling, gate result, and
+  authoritative citations.
+- 13 new MIR tests, for 168 total in debug and release.
 
 ### Claim ceiling
 
@@ -72,8 +99,16 @@ aliases, footprints, or intervals from source or MIR; does not observe native
 callback registration, invocation, retention, or after-free use; does not model
 concurrency or synchronization; and does not establish whole-program closure.
 `compatible_within_finite_footprint` is not universal alias compatibility, and
-`not_falsified` is not a weak compatibility result. Phase 3.3
-(source/MIR-extracted semantics and native observation) is not implemented.
+`not_falsified` is not a weak compatibility result.
+
+The MIR adapter observes only the human-readable, unstable
+`-Zunpretty=mir` text. It does not resolve symbols, types, traits, generics,
+macros, external crates, aliases, provenance, reference intervals, or
+monomorphized instances, and does not establish a caller graph or whole-program
+closure. Every call edge is unresolved. The pin makes a run reproducible for
+that exact toolchain, not the format stable. When the toolchain is absent the
+capability is `NOT_RUN` (exit 6), not an empty successful scan. Native
+observation remains unimplemented.
 
 ## [0.3.0] - 2026-10-17
 

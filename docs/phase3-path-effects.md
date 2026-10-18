@@ -1,8 +1,9 @@
 # Phase 3.2: explicit path effects and qualified outcomes
 
 Snapshot: branch `staging`, crate `frf-memorysafety 0.3.0`. This document
-describes the Phase 3.2 finite path-effect model only. Phase 3.3
-(source/MIR-extracted semantics and native observation) is not implemented.
+describes the Phase 3.2 finite path-effect model only. Phase 3.3 adds optional
+MIR text observations, but source/MIR-extracted alias, provenance, footprint,
+reference-interval semantics, and native observation remain unimplemented.
 
 ## Claim ceiling
 
@@ -252,7 +253,8 @@ report embeds the SHA-256 of the canonical consumed input.
 
 * No source-to-model mapping is justified: a real Rust alias, provenance, or
   reference interval is not extracted.
-* No MIR or compiler-assisted alias/type resolution is used.
+* No compiler-resolved alias, type, or ownership identity is used. The Phase
+  3.3 MIR adapter observes unresolved textual edges only.
 * Shared-mapping physical identity is a declared premise, not measured.
 * No native callback registration, invocation, retention, or after-free event is
   observed.
