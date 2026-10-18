@@ -1,27 +1,49 @@
 #![allow(clippy::module_name_repetitions)]
 
-//! Phase 6.1 typed proof manifest, theorem/assumption closure, and admission.
+//! Phase 6 typed proof manifest, theorem/assumption closure, admission, and
+//! live checked-proof adapter.
 //!
-//! This module implements the *manifest* half of Phase 6. It defines a
-//! canonical JSON description of a checked-proof result, its declared theorem
-//! and assumption closure, and the separate Rust/FFI implementation
-//! correspondence obligation. It does **not** invoke Coq, Lean, Isabelle, or
-//! any other proof checker. A live checker adapter is Phase 6.2 work.
+//! This module implements the manifest and classification half of Phase 6 and
+//! the Phase 6.2 live Coq adapter. The manifest is a canonical JSON description
+//! of a checked-proof result, its declared theorem and assumption closure, and
+//! the separate Rust/FFI implementation-correspondence obligation. The live
+//! adapter invokes only an installed `coqc` with explicit argv vectors, stages
+//! digest-bound proof files in a private `0700` directory, and derives theorem
+//! statuses from Coq's `Print Assumptions`; only `Closed under the global
+//! context` is treated as proved.
 //!
 //! # Claim ceiling
 //!
 //! A manifest that passes these checks establishes only that the supplied
 //! declaration is well formed, digest-bound, closed over the declared
-//! assumptions, and accompanied by a separately enumerated implementation
-//! binding. It does **not** establish that a proof assistant ran, that the
-//! proof files compile, that the theorem is true, that the declared dependency
-//! graph is complete, or that the Rust/FFI correspondence evidence is sound.
-//! `proof verify` therefore reports `checker_unavailable` (exit 6) when no
-//! live checker is configured, even for a well-formed manifest.
+//! assumptions, accompanied by a separately enumerated implementation
+//! binding, and (with `--live`) matched by a completed authentic checker run
+//! over the exact proof bytes. It does **not** establish that the theorem is
+//! universally true, that the declared dependency graph is complete, or that
+//! the Rust/FFI correspondence evidence is semantically sound. `proof verify`
+//! reports `checker_unavailable` (exit 6) when no live checker is configured,
+//! even for a well-formed manifest.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+
+#[cfg(unix)]
+use std::ffi::OsStr;
+#[cfg(unix)]
+use std::fs::{File, OpenOptions};
+#[cfg(unix)]
+use std::io::Read;
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+#[cfg(unix)]
+use std::os::unix::process::{CommandExt, ExitStatusExt};
+#[cfg(unix)]
+use std::process::{Command, ExitStatus, Stdio};
+#[cfg(unix)]
+use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(unix)]
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -53,6 +75,14 @@ pub const MAX_TRANSITIONS: usize = 64;
 pub const MAX_CORRESPONDENCE_EVIDENCE: usize = 64;
 /// Maximum bytes accepted for one proof, source, or evidence file.
 pub const MAX_FILE_BYTES: usize = 4 * 1024 * 1024;
+/// Wall-clock bound for one live proof-checker invocation.
+#[cfg(unix)]
+pub const LIVE_CHECKER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+/// Maximum captured stdout or stderr for one live checker stage.
+#[cfg(unix)]
+pub const MAX_LIVE_CHECKER_OUTPUT: usize = 1024 * 1024;
+/// Environment flag that enables the live proof-gate seal tests.
+pub const LIVE_PROOF_ENV: &str = "FRF_PROOF_GATE";
 
 /// Lexical admission constructs that must not occur in the scanned closure.
 ///
@@ -1881,9 +1911,9 @@ pub enum AcceptanceBasis {
 
 /// One recorded checker run supplied by an external adapter.
 ///
-/// Phase 6.1 never constructs this value inside the CLI. Phase 6.2 is expected
-/// to populate it from a live checker invocation and verify the recorded
-/// digests, version, and theorem statuses independently.
+/// The CLI constructs this only from a completed live invocation. Manifest
+/// verification then re-checks the recorded digests, version, executable
+/// identity, and theorem statuses independently.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheckerRun {
     /// Checker family.
@@ -1905,6 +1935,89 @@ pub enum CheckerContext {
     NotConfigured,
     /// A live adapter supplied a recorded checker run.
     Recorded(CheckerRun),
+}
+
+/// Runtime availability of a proof checker.
+///
+/// Availability is an installation observation, not a proof or soundness
+/// claim. A checker may be available and still fail, reject the manifest, or
+/// disagree with the recorded theorem statuses.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CheckerAvailability {
+    /// Stable checker identifier used by the capabilities output.
+    pub id: &'static str,
+    /// Checker family.
+    pub kind: CheckerKind,
+    /// `available` or `not_run`.
+    pub status: &'static str,
+    /// Exact executable name declared for this checker family.
+    pub executable: &'static str,
+    /// Probed exact version, when available.
+    pub version: Option<String>,
+    /// Exact version text or the precise unavailability reason.
+    pub detail: String,
+}
+
+/// Receipt for one live checker invocation.
+///
+/// The receipt records the exact argv vectors, executable digest, captured
+/// stdout/stderr (bounded), their digests, the checker-reported theorem
+/// statuses, and the proof-file digests. Digests bind these bounded bytes;
+/// they are not signatures or attestations.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LiveCheckerReceipt {
+    /// Checker family that was invoked.
+    pub checker_kind: CheckerKind,
+    /// Exact probed checker version.
+    pub checker_version: String,
+    /// Resolved executable path.
+    pub executable: String,
+    /// Lower-case SHA-256 of the resolved executable bytes.
+    pub executable_sha256: String,
+    /// Every explicit argv vector executed, including assumption checks.
+    pub argv: Vec<Vec<String>>,
+    /// Overall process exit code (0 only for a completed run).
+    pub exit_code: i32,
+    /// Lower-case SHA-256 of the captured stdout text.
+    pub stdout_sha256: String,
+    /// Lower-case SHA-256 of the captured stderr text.
+    pub stderr_sha256: String,
+    /// Bounded captured stdout text.
+    pub stdout: String,
+    /// Bounded captured stderr text.
+    pub stderr: String,
+    /// Proof-file digests consumed by this run.
+    pub proof_digests: Vec<ProofDigest>,
+    /// Checker-reported theorem statuses from `Print Assumptions`.
+    pub theorems: Vec<AdmissionTheorem>,
+}
+
+/// Outcome of one live checker attempt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LiveCheckerOutcome {
+    /// The executable or its version probe could not be made available.
+    Unavailable {
+        /// Exact unavailability reason.
+        detail: String,
+    },
+    /// The checker ran but the manifest, version, executable identity, or
+    /// compile did not match; the receipt retains the captured evidence.
+    Failed {
+        /// Exact failure reason.
+        detail: String,
+        /// Captured run evidence.
+        receipt: LiveCheckerReceipt,
+    },
+    /// The checker compiled every proof file and completed its assumption
+    /// checks. Theorem statuses may still be unproved; the admission gate
+    /// never trusts this outcome alone.
+    Completed {
+        /// Recorded checker run ready to bind through `CheckerContext::Recorded`.
+        run: CheckerRun,
+        /// Captured run evidence.
+        receipt: LiveCheckerReceipt,
+    },
 }
 
 /// Complete proof verification report.
@@ -1935,8 +2048,10 @@ pub struct ProofReport {
     pub provenance: Provenance,
     /// Whether a checker run was supplied by an adapter.
     pub live_checker_configured: bool,
-    /// Whether this build invoked a checker. Always false in Phase 6.1.
+    /// Whether this build invoked a checker.
     pub live_checker_invoked: bool,
+    /// Captured live checker evidence, when `--live` invoked one.
+    pub live_run: Option<LiveCheckerReceipt>,
     /// Evidence basis for the outcome.
     pub acceptance_basis: AcceptanceBasis,
     /// Decisive outcome detail.
@@ -2266,6 +2381,16 @@ pub fn verify_manifest_bytes(
     base_dir: &Path,
     checker: &CheckerContext,
 ) -> Result<ProofReport, ProofError> {
+    verify_manifest_bytes_inner(bytes, base_dir, checker, false, None)
+}
+
+fn verify_manifest_bytes_inner(
+    bytes: &[u8],
+    base_dir: &Path,
+    checker: &CheckerContext,
+    live_checker_invoked: bool,
+    live_run: Option<LiveCheckerReceipt>,
+) -> Result<ProofReport, ProofError> {
     let manifest = parse_manifest(bytes)?;
     let admission = evaluate_admission(&manifest, base_dir)?;
     let correspondence = evaluate_correspondence(&manifest, base_dir)?;
@@ -2285,11 +2410,74 @@ pub fn verify_manifest_bytes(
         correspondence,
         provenance: manifest.provenance.clone(),
         live_checker_configured: matches!(checker, CheckerContext::Recorded(_)),
-        live_checker_invoked: false,
+        live_checker_invoked,
+        live_run,
         acceptance_basis,
         outcome_detail,
         universal_soundness: UNIVERSAL_SOUNDNESS.to_owned(),
     })
+}
+
+/// Parse, verify, and classify a manifest while invoking a live checker.
+///
+/// The checker is resolved from the manifest's exact executable name on a
+/// fixed search path, its version and executable identity are node-locked to
+/// the manifest, and every proof file is compiled in declared order in a
+/// private `0700` directory with a cleared environment. A checkout whose
+/// checker is missing returns `checker_unavailable` (exit 6). A checker that
+/// runs but fails, times out, exceeds the output bound, or disagrees with the
+/// manifest returns `checker_failed` (exit 4). Admission and correspondence
+/// rejections keep their more specific outcomes.
+///
+/// # Errors
+///
+/// Returns [`ProofError`] for structural invalidity, missing or tampered files,
+/// or checker/digest mismatch.
+pub fn verify_manifest_bytes_live(
+    bytes: &[u8],
+    base_dir: &Path,
+) -> Result<ProofReport, ProofError> {
+    let manifest = parse_manifest(bytes)?;
+    match run_live_checker(&manifest, base_dir)? {
+        LiveCheckerOutcome::Unavailable { detail } => {
+            let mut report = verify_manifest_bytes_inner(
+                bytes,
+                base_dir,
+                &CheckerContext::NotConfigured,
+                false,
+                None,
+            )?;
+            if report.outcome == ProofOutcome::CheckerUnavailable {
+                report.outcome_detail = detail;
+            }
+            Ok(report)
+        }
+        LiveCheckerOutcome::Failed { detail, receipt } => {
+            let mut report = verify_manifest_bytes_inner(
+                bytes,
+                base_dir,
+                &CheckerContext::NotConfigured,
+                true,
+                Some(receipt),
+            )?;
+            if matches!(
+                report.outcome,
+                ProofOutcome::CheckerUnavailable | ProofOutcome::AcceptedWithinScope
+            ) {
+                report.outcome = ProofOutcome::CheckerFailed;
+                report.acceptance_basis = AcceptanceBasis::None;
+                report.outcome_detail = detail;
+            }
+            Ok(report)
+        }
+        LiveCheckerOutcome::Completed { run, receipt } => verify_manifest_bytes_inner(
+            bytes,
+            base_dir,
+            &CheckerContext::Recorded(run),
+            true,
+            Some(receipt),
+        ),
+    }
 }
 
 fn combine_outcome(
@@ -2360,6 +2548,900 @@ fn combine_outcome(
             Err(detail) => (ProofOutcome::CheckerFailed, AcceptanceBasis::None, detail),
         },
     }
+}
+
+/// Probe the built-in proof-checker families for runtime availability.
+///
+/// The probe runs only the checker's bounded `--version` command with a
+/// cleared environment. It never compiles a fixture and never accepts caller
+/// input.
+#[must_use]
+pub fn checker_availability() -> Vec<CheckerAvailability> {
+    vec![coq_availability()]
+}
+
+#[cfg(unix)]
+fn coq_availability() -> CheckerAvailability {
+    let Some(executable) = resolve_tool("coqc") else {
+        return CheckerAvailability {
+            id: "coq",
+            kind: CheckerKind::Coq,
+            status: "not_run",
+            executable: "coqc",
+            version: None,
+            detail: "coqc is not installed on the fixed checker search path".to_owned(),
+        };
+    };
+    let session = match PrivateCheckerDir::new("probe") {
+        Ok(session) => session,
+        Err(reason) => {
+            return CheckerAvailability {
+                id: "coq",
+                kind: CheckerKind::Coq,
+                status: "not_run",
+                executable: "coqc",
+                version: None,
+                detail: reason,
+            };
+        }
+    };
+    let env = checker_env(session.path());
+    match probe_checker_version(&executable, session.path(), &env) {
+        Ok(version) => CheckerAvailability {
+            id: "coq",
+            kind: CheckerKind::Coq,
+            status: "available",
+            executable: "coqc",
+            version: Some(version.clone()),
+            detail: format!("coqc {version} at {}", executable.display()),
+        },
+        Err(detail) => CheckerAvailability {
+            id: "coq",
+            kind: CheckerKind::Coq,
+            status: "not_run",
+            executable: "coqc",
+            version: None,
+            detail,
+        },
+    }
+}
+
+#[cfg(not(unix))]
+fn coq_availability() -> CheckerAvailability {
+    CheckerAvailability {
+        id: "coq",
+        kind: CheckerKind::Coq,
+        status: "not_run",
+        executable: "coqc",
+        version: None,
+        detail: "live proof-checker invocation requires a unix host".to_owned(),
+    }
+}
+
+#[cfg(not(unix))]
+pub fn run_live_checker(
+    _manifest: &ProofManifest,
+    _base_dir: &Path,
+) -> Result<LiveCheckerOutcome, ProofError> {
+    Ok(LiveCheckerOutcome::Unavailable {
+        detail: "live proof-checker invocation requires a unix host".to_owned(),
+    })
+}
+
+#[cfg(unix)]
+const CHECKER_PATH: &str = "/usr/local/bin:/usr/bin:/bin";
+#[cfg(unix)]
+const VERSION_PROBE_TIMEOUT: Duration = Duration::from_secs(15);
+#[cfg(unix)]
+static LIVE_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+#[cfg(unix)]
+struct StagedProof {
+    module: String,
+    path: PathBuf,
+}
+
+#[cfg(unix)]
+enum StageError {
+    Integrity(ProofError),
+    Failed(String),
+}
+
+#[cfg(unix)]
+struct LiveState {
+    executable: String,
+    executable_sha256: String,
+    version: String,
+    argv: Vec<Vec<String>>,
+    stdout: String,
+    stderr: String,
+    exit_code: i32,
+}
+
+#[cfg(unix)]
+impl LiveState {
+    fn receipt(
+        &self,
+        manifest: &ProofManifest,
+        theorems: Vec<AdmissionTheorem>,
+    ) -> LiveCheckerReceipt {
+        LiveCheckerReceipt {
+            checker_kind: manifest.checker.kind,
+            checker_version: self.version.clone(),
+            executable: self.executable.clone(),
+            executable_sha256: self.executable_sha256.clone(),
+            argv: self.argv.clone(),
+            exit_code: self.exit_code,
+            stdout_sha256: sha256_hex(self.stdout.as_bytes()),
+            stderr_sha256: sha256_hex(self.stderr.as_bytes()),
+            stdout: self.stdout.clone(),
+            stderr: self.stderr.clone(),
+            proof_digests: manifest
+                .proof_files
+                .iter()
+                .map(|file| ProofDigest {
+                    file_id: file.id.clone(),
+                    sha256: file.sha256.clone(),
+                })
+                .collect(),
+            theorems,
+        }
+    }
+}
+
+#[cfg(unix)]
+struct PrivateCheckerDir {
+    path: PathBuf,
+}
+
+#[cfg(unix)]
+impl PrivateCheckerDir {
+    fn new(label: &str) -> Result<Self, String> {
+        let base = std::env::temp_dir();
+        for _ in 0..16 {
+            let sequence = LIVE_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|duration| duration.as_nanos())
+                .unwrap_or(0);
+            let path = base.join(format!(
+                "frf-proof-{label}-{}-{sequence}-{nanos}",
+                std::process::id()
+            ));
+            match fs::create_dir(&path) {
+                Ok(()) => {
+                    fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).map_err(
+                        |error| format!("cannot set 0700 on {}: {error}", path.display()),
+                    )?;
+                    return Ok(Self { path });
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(error) => return Err(format!("cannot create {}: {error}", path.display())),
+            }
+        }
+        Err("could not allocate a unique private proof temporary directory".to_owned())
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+#[cfg(unix)]
+impl Drop for PrivateCheckerDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+#[cfg(unix)]
+struct CapturedProcess {
+    stdout: String,
+    stderr: String,
+    stdout_truncated: bool,
+    stderr_truncated: bool,
+    exit_code: i32,
+    timed_out: bool,
+}
+
+#[cfg(unix)]
+#[allow(clippy::too_many_arguments)]
+fn run_bounded(
+    program: &Path,
+    args: &[String],
+    directory: &Path,
+    env: &BTreeMap<String, String>,
+    timeout: Duration,
+    limit: usize,
+    label: &str,
+) -> Result<CapturedProcess, String> {
+    let sequence = LIVE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let stdout_path = directory.join(format!("{label}-{sequence}.stdout"));
+    let stderr_path = directory.join(format!("{label}-{sequence}.stderr"));
+    let stdout_file = open_private(&stdout_path)?;
+    let stderr_file = open_private(&stderr_path)?;
+
+    let mut command = Command::new(program);
+    command
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout_file))
+        .stderr(Stdio::from(stderr_file))
+        .current_dir(directory)
+        .process_group(0);
+    command.env_clear();
+    for (key, value) in env {
+        command.env(key, value);
+    }
+
+    let started = Instant::now();
+    let mut child = command
+        .spawn()
+        .map_err(|error| format!("cannot execute {}: {error}", program.display()))?;
+    let deadline = started + timeout;
+    let mut timed_out = false;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    timed_out = true;
+                    let _ = child.kill();
+                    break child.wait().ok();
+                }
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("cannot wait for {}: {error}", program.display()));
+            }
+        }
+    };
+
+    let (stdout, stdout_truncated) = read_capture_bounded(&stdout_path, limit)?;
+    let (stderr, stderr_truncated) = read_capture_bounded(&stderr_path, limit)?;
+    let _ = fs::remove_file(&stdout_path);
+    let _ = fs::remove_file(&stderr_path);
+    let exit_code = exit_status(status);
+    Ok(CapturedProcess {
+        stdout,
+        stderr,
+        stdout_truncated,
+        stderr_truncated,
+        exit_code,
+        timed_out,
+    })
+}
+
+#[cfg(unix)]
+fn exit_status(status: Option<ExitStatus>) -> i32 {
+    match status {
+        Some(status) => status
+            .code()
+            .unwrap_or_else(|| status.signal().map_or(1, |signal| 128 + signal)),
+        None => 1,
+    }
+}
+
+#[cfg(unix)]
+fn open_private(path: &Path) -> Result<File, String> {
+    OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|error| format!("cannot create {}: {error}", path.display()))
+}
+
+#[cfg(unix)]
+fn read_capture_bounded(path: &Path, limit: usize) -> Result<(String, bool), String> {
+    let metadata =
+        fs::metadata(path).map_err(|error| format!("cannot stat {}: {error}", path.display()))?;
+    let size = usize::try_from(metadata.len()).unwrap_or(usize::MAX);
+    let mut file =
+        File::open(path).map_err(|error| format!("cannot open {}: {error}", path.display()))?;
+    let mut buffer = Vec::new();
+    file.by_ref()
+        .take(u64::try_from(limit).unwrap_or(u64::MAX).saturating_add(1))
+        .read_to_end(&mut buffer)
+        .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    let truncated = size > limit || buffer.len() > limit;
+    if buffer.len() > limit {
+        buffer.truncate(limit);
+    }
+    Ok((String::from_utf8_lossy(&buffer).into_owned(), truncated))
+}
+
+#[cfg(unix)]
+fn resolve_tool(name: &str) -> Option<PathBuf> {
+    let candidate = Path::new(name);
+    if candidate.components().count() > 1 {
+        return candidate.is_file().then(|| candidate.to_path_buf());
+    }
+    CHECKER_PATH.split(':').find_map(|directory| {
+        let candidate = Path::new(directory).join(name);
+        candidate.is_file().then_some(candidate)
+    })
+}
+
+#[cfg(unix)]
+fn executable_matches(declared: &str, resolved: &Path) -> bool {
+    let declared_path = Path::new(declared);
+    if declared_path.components().count() > 1 {
+        return fs::canonicalize(declared_path)
+            .ok()
+            .zip(fs::canonicalize(resolved).ok())
+            .is_some_and(|(left, right)| left == right);
+    }
+    resolved.file_name() == Some(OsStr::new(declared))
+}
+
+#[cfg(unix)]
+fn checker_env(home: &Path) -> BTreeMap<String, String> {
+    let mut env = BTreeMap::new();
+    env.insert("PATH".to_owned(), CHECKER_PATH.to_owned());
+    env.insert("HOME".to_owned(), home.to_string_lossy().into_owned());
+    env.insert("LC_ALL".to_owned(), "C".to_owned());
+    env.insert("LANG".to_owned(), "C".to_owned());
+    env.insert("TZ".to_owned(), "UTC".to_owned());
+    env
+}
+
+#[cfg(unix)]
+fn parse_coq_version(text: &str) -> Option<String> {
+    for line in text.lines() {
+        if let Some(position) = line.find("version ") {
+            let version = line[position + "version ".len()..]
+                .split_whitespace()
+                .next()
+                .unwrap_or_default();
+            let version = version.trim_end_matches([',', ';', '.']);
+            if version
+                .chars()
+                .next()
+                .is_some_and(|character| character.is_ascii_digit())
+            {
+                return Some(version.to_owned());
+            }
+        }
+    }
+    None
+}
+
+#[cfg(unix)]
+fn probe_checker_version(
+    executable: &Path,
+    directory: &Path,
+    env: &BTreeMap<String, String>,
+) -> Result<String, String> {
+    let captured = run_bounded(
+        executable,
+        &["--version".to_owned()],
+        directory,
+        env,
+        VERSION_PROBE_TIMEOUT,
+        MAX_LIVE_CHECKER_OUTPUT,
+        "version",
+    )?;
+    if captured.timed_out {
+        return Err(format!(
+            "{} --version did not answer within {} seconds",
+            executable.display(),
+            VERSION_PROBE_TIMEOUT.as_secs()
+        ));
+    }
+    if captured.exit_code != 0 {
+        return Err(format!(
+            "{} --version exited with status {}",
+            executable.display(),
+            captured.exit_code
+        ));
+    }
+    parse_coq_version(&captured.stdout)
+        .or_else(|| parse_coq_version(&captured.stderr))
+        .ok_or_else(|| {
+            format!(
+                "{} --version did not report a parseable exact version",
+                executable.display()
+            )
+        })
+}
+
+#[cfg(unix)]
+fn valid_module_name(name: &str) -> bool {
+    let mut characters = name.chars();
+    let Some(first) = characters.next() else {
+        return false;
+    };
+    (first.is_ascii_alphabetic() || first == '_')
+        && characters
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '\''))
+}
+
+#[cfg(unix)]
+fn stage_proofs(
+    manifest: &ProofManifest,
+    base_dir: &Path,
+    directory: &Path,
+) -> Result<Vec<StagedProof>, StageError> {
+    let mut staged = Vec::new();
+    let mut modules = BTreeSet::new();
+    for file in &manifest.proof_files {
+        let bytes =
+            read_digest_bound(base_dir, &file.path, &file.sha256).map_err(StageError::Integrity)?;
+        let Some(module) = Path::new(&file.path)
+            .file_stem()
+            .and_then(OsStr::to_str)
+            .map(str::to_owned)
+        else {
+            return Err(StageError::Failed(format!(
+                "proof file {} has no UTF-8 module stem",
+                file.path
+            )));
+        };
+        if !valid_module_name(&module) {
+            return Err(StageError::Failed(format!(
+                "proof file {} maps to module {module}, which is not a Coq identifier",
+                file.path
+            )));
+        }
+        if !modules.insert(module.clone()) {
+            return Err(StageError::Failed(format!(
+                "two proof files map to the same Coq module {module}"
+            )));
+        }
+        let path = directory.join(format!("{module}.v"));
+        fs::write(&path, &bytes).map_err(|error| {
+            StageError::Integrity(ProofError::Io {
+                path: path.display().to_string(),
+                message: error.to_string(),
+            })
+        })?;
+        let _ = fs::set_permissions(&path, fs::Permissions::from_mode(0o600));
+        staged.push(StagedProof { module, path });
+    }
+    Ok(staged)
+}
+
+#[cfg(unix)]
+fn cap_text(text: &mut String) {
+    if text.len() > MAX_LIVE_CHECKER_OUTPUT {
+        let mut end = MAX_LIVE_CHECKER_OUTPUT;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
+        text.push_str("\n[truncated]\n");
+    }
+}
+
+#[cfg(unix)]
+fn append_capture(
+    state: &mut LiveState,
+    label: &str,
+    argv: Vec<String>,
+    captured: &CapturedProcess,
+) {
+    state.argv.push(argv);
+    state.stdout.push_str(&format!("[{label}]\n"));
+    state.stdout.push_str(&captured.stdout);
+    if !state.stdout.ends_with('\n') {
+        state.stdout.push('\n');
+    }
+    state.stderr.push_str(&format!("[{label}]\n"));
+    state.stderr.push_str(&captured.stderr);
+    if !state.stderr.ends_with('\n') {
+        state.stderr.push('\n');
+    }
+    cap_text(&mut state.stdout);
+    cap_text(&mut state.stderr);
+    state.exit_code = captured.exit_code;
+}
+
+#[cfg(unix)]
+fn full_argv(executable: &Path, args: &[String]) -> Vec<String> {
+    let mut command_line = Vec::with_capacity(args.len() + 1);
+    command_line.push(executable.to_string_lossy().into_owned());
+    command_line.extend_from_slice(args);
+    command_line
+}
+
+#[cfg(unix)]
+fn coq_compile_args(directory: &Path, file: &Path) -> Vec<String> {
+    vec![
+        "-q".to_owned(),
+        "-Q".to_owned(),
+        directory.to_string_lossy().into_owned(),
+        String::new(),
+        file.file_name().map_or_else(
+            || file.to_string_lossy().into_owned(),
+            |name| name.to_string_lossy().into_owned(),
+        ),
+    ]
+}
+
+#[cfg(unix)]
+fn assumption_status(output: &str) -> AdmissionStatus {
+    if output.contains("Closed under the global context") {
+        AdmissionStatus::Proved
+    } else {
+        // Anything the checker does not certify as closed is retained as an
+        // unproved admission. There is no optimistic fallback.
+        AdmissionStatus::Admitted
+    }
+}
+
+/// Invoke a live Coq checker over the manifest's digest-bound proof files.
+///
+/// The adapter uses explicit argv vectors only, a private `0700` session
+/// directory, a cleared environment, a fixed checker search path, a 120-second
+/// wall-clock bound per process, and a 1 MiB capture bound per stream. Proof
+/// files are staged flat by module stem, compiled in manifest order, and then
+/// each declared theorem is checked with `Print Assumptions`; only the exact
+/// `Closed under the global context` result is treated as proved.
+///
+/// # Errors
+///
+/// Returns [`ProofError`] for missing or tampered proof files or an unusable
+/// private temporary directory.
+#[cfg(unix)]
+#[allow(clippy::too_many_lines)]
+pub fn run_live_checker(
+    manifest: &ProofManifest,
+    base_dir: &Path,
+) -> Result<LiveCheckerOutcome, ProofError> {
+    validate_manifest(manifest)?;
+    if manifest.checker.kind != CheckerKind::Coq {
+        return Ok(LiveCheckerOutcome::Unavailable {
+            detail: format!(
+                "no live adapter is implemented for checker kind {}",
+                manifest.checker.kind.as_str()
+            ),
+        });
+    }
+    let Some(executable) = resolve_tool(&manifest.checker.executable) else {
+        return Ok(LiveCheckerOutcome::Unavailable {
+            detail: format!(
+                "checker executable {} was not found on the fixed search path {CHECKER_PATH}",
+                manifest.checker.executable
+            ),
+        });
+    };
+    let executable_sha256 = match sha256_file(&executable) {
+        Ok(digest) => digest,
+        Err(detail) => {
+            return Ok(LiveCheckerOutcome::Unavailable { detail });
+        }
+    };
+    let session = match PrivateCheckerDir::new("run") {
+        Ok(session) => session,
+        Err(reason) => {
+            return Err(ProofError::Io {
+                path: std::env::temp_dir().display().to_string(),
+                message: reason,
+            });
+        }
+    };
+    let env = checker_env(session.path());
+    let mut state = LiveState {
+        executable: executable.display().to_string(),
+        executable_sha256,
+        version: String::new(),
+        argv: Vec::new(),
+        stdout: String::new(),
+        stderr: String::new(),
+        exit_code: 1,
+    };
+
+    let probe_args = vec!["--version".to_owned()];
+    let probe_command = full_argv(&executable, &probe_args);
+    let version_captured = match run_bounded(
+        &executable,
+        &probe_args,
+        session.path(),
+        &env,
+        VERSION_PROBE_TIMEOUT,
+        MAX_LIVE_CHECKER_OUTPUT,
+        "version",
+    ) {
+        Ok(captured) => captured,
+        Err(detail) => return Ok(LiveCheckerOutcome::Unavailable { detail }),
+    };
+    append_capture(&mut state, "version", probe_command, &version_captured);
+    let Some(version) = parse_coq_version(&version_captured.stdout)
+        .or_else(|| parse_coq_version(&version_captured.stderr))
+    else {
+        state.stderr.push_str("version output was not parseable\n");
+        return Ok(LiveCheckerOutcome::Unavailable {
+            detail: format!(
+                "{} --version did not report a parseable exact version",
+                executable.display()
+            ),
+        });
+    };
+    state.version.clone_from(&version);
+    if version_captured.exit_code != 0
+        || version_captured.timed_out
+        || version_captured.stdout_truncated
+    {
+        return Ok(LiveCheckerOutcome::Unavailable {
+            detail: format!(
+                "{} --version did not complete cleanly (exit {})",
+                executable.display(),
+                version_captured.exit_code
+            ),
+        });
+    }
+    if !executable_matches(&manifest.checker.executable, &executable) {
+        let detail = format!(
+            "resolved checker executable {} does not match manifest executable {}",
+            executable.display(),
+            manifest.checker.executable
+        );
+        state.stderr.push_str(&format!("{detail}\n"));
+        state.exit_code = 1;
+        return Ok(LiveCheckerOutcome::Failed {
+            detail,
+            receipt: state.receipt(manifest, Vec::new()),
+        });
+    }
+    if version != manifest.checker.version {
+        let detail = format!(
+            "checker version {version} does not match manifest pinned version {}",
+            manifest.checker.version
+        );
+        state.stderr.push_str(&format!("{detail}\n"));
+        state.exit_code = 1;
+        return Ok(LiveCheckerOutcome::Failed {
+            detail,
+            receipt: state.receipt(manifest, Vec::new()),
+        });
+    }
+
+    let staged = match stage_proofs(manifest, base_dir, session.path()) {
+        Ok(staged) => staged,
+        Err(StageError::Integrity(error)) => return Err(error),
+        Err(StageError::Failed(detail)) => {
+            state.stderr.push_str(&format!("{detail}\n"));
+            state.exit_code = 1;
+            return Ok(LiveCheckerOutcome::Failed {
+                detail,
+                receipt: state.receipt(manifest, Vec::new()),
+            });
+        }
+    };
+    let mut theorem_module = BTreeMap::new();
+    let mut module_order = BTreeMap::new();
+    for (index, (file, staged_file)) in manifest.proof_files.iter().zip(&staged).enumerate() {
+        module_order.insert(staged_file.module.clone(), index);
+        for theorem in &file.theorems {
+            theorem_module.insert(theorem.clone(), staged_file.module.clone());
+        }
+    }
+    for (index, (file, staged_file)) in manifest.proof_files.iter().zip(&staged).enumerate() {
+        for import in &file.imports {
+            let local = module_order
+                .contains_key(import)
+                .then_some(import.as_str())
+                .or_else(|| theorem_module.get(import).map(String::as_str))
+                .or_else(|| {
+                    manifest
+                        .proof_files
+                        .iter()
+                        .find(|candidate| &candidate.id == import)
+                        .and_then(|candidate| {
+                            module_order
+                                .keys()
+                                .find(|module| {
+                                    Path::new(&candidate.path)
+                                        .file_stem()
+                                        .and_then(OsStr::to_str)
+                                        == Some(module.as_str())
+                                })
+                                .map(String::as_str)
+                        })
+                });
+            if let Some(module) = local {
+                match module_order.get(module) {
+                    Some(order) if *order < index => {}
+                    _ => {
+                        let detail = format!(
+                            "proof file {} imports local module {module}, which is not compiled earlier",
+                            file.id
+                        );
+                        state.stderr.push_str(&format!("{detail}\n"));
+                        state.exit_code = 1;
+                        return Ok(LiveCheckerOutcome::Failed {
+                            detail,
+                            receipt: state.receipt(manifest, Vec::new()),
+                        });
+                    }
+                }
+            } else if !manifest
+                .closure
+                .stdlib_allowlist
+                .iter()
+                .any(|allowed| prefix_matches(allowed, import))
+            {
+                let detail = format!(
+                    "proof file {} imports {import}, which is neither a staged local module nor an allowlisted stdlib prefix",
+                    file.id
+                );
+                state.stderr.push_str(&format!("{detail}\n"));
+                state.exit_code = 1;
+                return Ok(LiveCheckerOutcome::Failed {
+                    detail,
+                    receipt: state.receipt(manifest, Vec::new()),
+                });
+            }
+        }
+        if !staged_file.path.is_file() {
+            return Err(ProofError::MissingFile {
+                path: staged_file.path.display().to_string(),
+            });
+        }
+    }
+
+    for staged_file in &staged {
+        let args = coq_compile_args(session.path(), &staged_file.path);
+        let command_line = full_argv(&executable, &args);
+        let captured = match run_bounded(
+            &executable,
+            &args,
+            session.path(),
+            &env,
+            LIVE_CHECKER_TIMEOUT,
+            MAX_LIVE_CHECKER_OUTPUT,
+            &format!("compile-{}", staged_file.module),
+        ) {
+            Ok(captured) => captured,
+            Err(detail) => {
+                state.stderr.push_str(&format!("{detail}\n"));
+                state.exit_code = 1;
+                return Ok(LiveCheckerOutcome::Failed {
+                    detail,
+                    receipt: state.receipt(manifest, Vec::new()),
+                });
+            }
+        };
+        append_capture(
+            &mut state,
+            &format!("compile {}", staged_file.module),
+            command_line,
+            &captured,
+        );
+        let detail = if captured.timed_out {
+            Some(format!(
+                "compiling {} exceeded {} seconds",
+                staged_file.module,
+                LIVE_CHECKER_TIMEOUT.as_secs()
+            ))
+        } else if captured.stdout_truncated || captured.stderr_truncated {
+            Some(format!(
+                "compiling {} exceeded the {MAX_LIVE_CHECKER_OUTPUT}-byte capture bound",
+                staged_file.module
+            ))
+        } else if captured.exit_code != 0 {
+            Some(format!(
+                "compiling {} failed with exit status {}",
+                staged_file.module, captured.exit_code
+            ))
+        } else {
+            None
+        };
+        if let Some(detail) = detail {
+            state.stderr.push_str(&format!("{detail}\n"));
+            if state.exit_code == 0 {
+                state.exit_code = 1;
+            }
+            return Ok(LiveCheckerOutcome::Failed {
+                detail,
+                receipt: state.receipt(manifest, Vec::new()),
+            });
+        }
+    }
+
+    let mut statuses = Vec::new();
+    let mut theorem_modules: Vec<(&String, &String)> = theorem_module.iter().collect();
+    theorem_modules.sort_by(|left, right| left.0.cmp(right.0));
+    for (index, (theorem, module)) in theorem_modules.into_iter().enumerate() {
+        let script_name = format!("frf_assumptions_{index}.v");
+        let script_path = session.path().join(&script_name);
+        let script = format!("Require Import {module}.\nPrint Assumptions {theorem}.\n");
+        fs::write(&script_path, script).map_err(|error| ProofError::Io {
+            path: script_path.display().to_string(),
+            message: error.to_string(),
+        })?;
+        let _ = fs::set_permissions(&script_path, fs::Permissions::from_mode(0o600));
+        let args = coq_compile_args(session.path(), &script_path);
+        let command_line = full_argv(&executable, &args);
+        let captured = match run_bounded(
+            &executable,
+            &args,
+            session.path(),
+            &env,
+            LIVE_CHECKER_TIMEOUT,
+            MAX_LIVE_CHECKER_OUTPUT,
+            &format!("assumptions-{index}"),
+        ) {
+            Ok(captured) => captured,
+            Err(detail) => {
+                state.stderr.push_str(&format!("{detail}\n"));
+                state.exit_code = 1;
+                return Ok(LiveCheckerOutcome::Failed {
+                    detail,
+                    receipt: state.receipt(manifest, statuses),
+                });
+            }
+        };
+        append_capture(
+            &mut state,
+            &format!("assumptions {theorem}"),
+            command_line,
+            &captured,
+        );
+        let detail = if captured.timed_out {
+            Some(format!(
+                "Print Assumptions for {theorem} exceeded {} seconds",
+                LIVE_CHECKER_TIMEOUT.as_secs()
+            ))
+        } else if captured.stdout_truncated || captured.stderr_truncated {
+            Some(format!(
+                "Print Assumptions for {theorem} exceeded the {MAX_LIVE_CHECKER_OUTPUT}-byte capture bound"
+            ))
+        } else if captured.exit_code != 0 {
+            Some(format!(
+                "Print Assumptions for {theorem} failed with exit status {}",
+                captured.exit_code
+            ))
+        } else {
+            None
+        };
+        if let Some(detail) = detail {
+            state.stderr.push_str(&format!("{detail}\n"));
+            if state.exit_code == 0 {
+                state.exit_code = 1;
+            }
+            return Ok(LiveCheckerOutcome::Failed {
+                detail,
+                receipt: state.receipt(manifest, statuses),
+            });
+        }
+        let output = format!("{}{}", captured.stdout, captured.stderr);
+        statuses.push(AdmissionTheorem {
+            name: theorem.clone(),
+            status: assumption_status(&output),
+        });
+    }
+
+    state.exit_code = 0;
+    let proof_digests = manifest
+        .proof_files
+        .iter()
+        .map(|file| ProofDigest {
+            file_id: file.id.clone(),
+            sha256: file.sha256.clone(),
+        })
+        .collect();
+    let run = CheckerRun {
+        kind: manifest.checker.kind,
+        version: version.clone(),
+        exit_code: 0,
+        proof_digests,
+        theorems: statuses.clone(),
+    };
+    Ok(LiveCheckerOutcome::Completed {
+        run,
+        receipt: state.receipt(manifest, statuses),
+    })
+}
+
+#[cfg(unix)]
+fn sha256_file(path: &Path) -> Result<String, String> {
+    let bytes = fs::read(path)
+        .map_err(|error| format!("cannot read checker executable {}: {error}", path.display()))?;
+    Ok(sha256_hex(&bytes))
 }
 
 fn verify_checker_run(

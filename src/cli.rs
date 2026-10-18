@@ -37,8 +37,8 @@ use crate::profile::{
     ProfileEvaluation, ProfileRefusalKind, UNIVERSAL_SOUNDNESS,
 };
 use crate::proof::{
-    verify_manifest_bytes, CheckerContext, GateStatus, ProofErrorCategory, ProofOutcome,
-    ProofReport, PROOF_MANIFEST_SCHEMA, PROOF_REPORT_SCHEMA,
+    verify_manifest_bytes, verify_manifest_bytes_live, CheckerContext, GateStatus,
+    ProofErrorCategory, ProofOutcome, ProofReport, PROOF_MANIFEST_SCHEMA, PROOF_REPORT_SCHEMA,
 };
 use crate::source::{
     scan_source_default, SourceError, SourceErrorCategory, SourceInventory, SOURCE_INVENTORY_SCHEMA,
@@ -74,7 +74,7 @@ Commands:
   path analyze FILE [--json]
   mir scan FILE [--json] [--toolchain NAME]
   court verify FILE [--json]
-  proof verify MANIFEST [--json]
+  proof verify MANIFEST [--live] [--json]
   detector calibrate FILE [--json]
   detector calibrate --live --detector KIND [--json]
   evidence verify --root DIR
@@ -216,6 +216,13 @@ fn command_capabilities(rest: &[String]) -> Result<i32, String> {
             println!(
                 "  - {} [{}]: {}",
                 detector.id, detector.status, detector.detail
+            );
+        }
+        println!("proof checker availability (runtime):");
+        for checker in &capabilities.checkers {
+            println!(
+                "  - {} [{}]: {}",
+                checker.id, checker.status, checker.detail
             );
         }
         println!("external authorities:");
@@ -1069,7 +1076,7 @@ fn command_proof(rest: &[String]) -> i32 {
     if rest.first().map(String::as_str) == Some("verify") {
         command_proof_verify(&rest[1..])
     } else {
-        eprintln!("usage: proof verify MANIFEST [--json]");
+        eprintln!("usage: proof verify MANIFEST [--live] [--json]");
         EXIT_USAGE
     }
 }
@@ -1077,16 +1084,18 @@ fn command_proof(rest: &[String]) -> i32 {
 fn command_proof_verify(rest: &[String]) -> i32 {
     let mut path = None;
     let mut json = false;
+    let mut live = false;
     for argument in rest {
         match argument.as_str() {
             "--json" => json = true,
+            "--live" => live = true,
             value if value.starts_with("--") => {
-                eprintln!("usage: proof verify MANIFEST [--json]");
+                eprintln!("usage: proof verify MANIFEST [--live] [--json]");
                 return EXIT_USAGE;
             }
             value => {
                 if path.is_some() {
-                    eprintln!("usage: proof verify MANIFEST [--json]");
+                    eprintln!("usage: proof verify MANIFEST [--live] [--json]");
                     return EXIT_USAGE;
                 }
                 path = Some(value);
@@ -1094,7 +1103,7 @@ fn command_proof_verify(rest: &[String]) -> i32 {
         }
     }
     let Some(path) = path else {
-        eprintln!("usage: proof verify MANIFEST [--json]");
+        eprintln!("usage: proof verify MANIFEST [--live] [--json]");
         return EXIT_USAGE;
     };
     let bytes = match read_limited(Path::new(path)) {
@@ -1108,7 +1117,12 @@ fn command_proof_verify(rest: &[String]) -> i32 {
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    let report = match verify_manifest_bytes(&bytes, base_dir, &CheckerContext::NotConfigured) {
+    let report = if live {
+        verify_manifest_bytes_live(&bytes, base_dir)
+    } else {
+        verify_manifest_bytes(&bytes, base_dir, &CheckerContext::NotConfigured)
+    };
+    let report = match report {
         Ok(report) => report,
         Err(error) => {
             eprintln!("{error}");
@@ -1148,10 +1162,12 @@ fn write_proof_summary(report: &ProofReport) -> Result<(), String> {
     };
     let checker = if report.live_checker_configured {
         if report.live_checker_invoked {
-            "configured; invoked"
+            "configured; invoked by this build"
         } else {
             "configured; recorded evidence supplied; not invoked by this build"
         }
+    } else if report.live_checker_invoked {
+        "invoked; run failed before a checker result was bound"
     } else {
         "not configured; parser success is not proof acceptance"
     };
@@ -1169,6 +1185,16 @@ fn write_proof_summary(report: &ProofReport) -> Result<(), String> {
         report.claim_ceiling,
         report.universal_soundness,
     );
+    if let Some(run) = &report.live_run {
+        output.push_str(&format!(
+            "live run: {} {} at {} sha256 {} exit {}\n",
+            run.checker_kind.as_str(),
+            run.checker_version,
+            run.executable,
+            run.executable_sha256,
+            run.exit_code,
+        ));
+    }
     if report.outcome != ProofOutcome::AcceptedWithinScope {
         output.push_str(&format!("detail: {}\n", report.outcome_detail));
     }

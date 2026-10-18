@@ -15,10 +15,10 @@
 //! source inventory, finite path effects, an optional pinned MIR text
 //! adapter, responsibility-token lifecycle and race semantics, and a native
 //! event-transcript verifier. Those results are finite-model, textual,
-//! transcript, or bookkeeping results only. Phase 6.1 adds a typed proof
+//! transcript, or bookkeeping results only. Phase 6 adds a typed proof
 //! manifest with digest-bound proof files, a declared theorem/assumption
-//! closure, an admission taxonomy, and a separate Rust/FFI
-//! implementation-correspondence gate.
+//! closure, an admission taxonomy, a separate Rust/FFI
+//! implementation-correspondence gate, and a live pinned Coq adapter.
 //!
 //! # What this build does not establish
 //!
@@ -34,11 +34,11 @@
 //! execute a closed registry of checked-in C and Rust fixtures with bounded
 //! isolation, record their scripted events, and require identical replay; the CLI
 //! still cannot run arbitrary native input (`court run` remains `NOT_RUN`).
-//! No live Coq, Lean, Isabelle, or other proof checker is invoked. `proof
-//! verify` validates a manifest and returns `checker_unavailable` (exit 6)
-//! unless an adapter supplies a recorded checker run; parser success is not
-//! proof acceptance. Universal Rust soundness and `SAFE_COMPATIBLE` are outside
-//! the finite profile and are always withheld.
+//! `proof verify --live` invokes only an installed pinned `coqc`; when the
+//! checker is absent the command returns `checker_unavailable` (exit 6), and
+//! parser success is never proof acceptance. Lean, Isabelle, and other proof
+//! checkers are not invoked. Universal Rust soundness and `SAFE_COMPATIBLE` are
+//! outside the finite profile and are always withheld.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -156,6 +156,9 @@ pub struct Capabilities {
     /// Per-detector runtime availability. This is an installation observation,
     /// not a sensitivity or specificity claim.
     pub detectors: Vec<crate::detector::DetectorAvailability>,
+    /// Per-checker runtime availability. This is an installation observation,
+    /// not a proof or soundness claim.
+    pub checkers: Vec<crate::proof::CheckerAvailability>,
     /// This crate never emits FRF `OpenReceipt`s or Gemel GIDs.
     pub external_authorities: Vec<&'static str>,
 }
@@ -210,6 +213,9 @@ pub fn capabilities() -> Capabilities {
             "separate Rust/FFI implementation-correspondence gate over a Phase 3.1 source inventory or explicit digest-bound binding evidence",
             "checked FFI wrappers and mandatory reentrant-callback transition enumeration",
             "proof verify MANIFEST [--json] with checker_unavailable (exit 6) when no live checker is configured",
+            "live Coq checker adapter with explicit argv, private 0700 staging, cleared environment, bounded time/output, executable digest, and node-locked kind/version/executable",
+            "proof verify MANIFEST --live [--json] compiling digest-bound proof files in order and binding a completed authentic run to CheckerContext::Recorded",
+            "checker-reported theorem statuses from Coq Print Assumptions; only Closed under the global context is treated as proved",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
@@ -217,15 +223,17 @@ pub fn capabilities() -> Capabilities {
         not_run: vec![
             "live Miri/ASan/LSan/TSan/Loom/Kani/crypto detectors are NOT_RUN unless installed and FRF_DETECTOR_LIVE=1; see detectors[] for runtime availability",
             "live detector execution over arbitrary or caller-supplied programs (closed checked-in fixtures only)",
-            "live Coq/Lean/Isabelle proof-checker invocation and authentic proof acceptance (Phase 6.2)",
+            "live Lean/Isabelle proof-checker invocation; only the pinned Coq adapter is implemented",
             "proof acceptance from manifest parsing alone; a live checker run is required for accepted_within_scope",
+            "live Coq proof checking when coqc is absent; proof verify --live reports checker_unavailable (exit 6)",
             "arbitrary native C/Rust event recording and `court run` over caller-supplied programs",
             "real-scheduler concurrency observation and native callback tracing beyond the checked-in fixtures",
             "live FRF court and OpenReceipt verification",
             "live FRF-Fuzz coordinator",
             "live Gemel publication",
             "live OpenSSL-Rust Safe-33 native courts",
-            "native proof-checker adapter beyond manifest validation; Phase 6.2 live invocation is NOT_RUN",
+            "live proof checking of a theorem outside the manifest's declared finite scope",
+            "semantic proof of the implementation-correspondence evidence; the correspondence gate remains an independent digest-bound review",
             "MIR edges: available only when pinned nightly-2025-02-20 is present; otherwise NOT_RUN (exit 6)",
             "source- or MIR-extracted alias, footprint, and reference-interval semantics",
             "native C callback observation and retained-pointer lifecycle recording",
@@ -236,6 +244,7 @@ pub fn capabilities() -> Capabilities {
         detectors: detector::live::availability(),
         #[cfg(not(unix))]
         detectors: Vec::new(),
+        checkers: proof::checker_availability(),
         external_authorities: vec![
             "FRF remains the only FRF receipt producer",
             "FRF-Fuzz remains the only BLAKE3 finding producer",
@@ -276,15 +285,19 @@ mod tests {
     }
 
     #[test]
-    fn proof_capability_is_manifest_only() {
+    fn proof_capability_advertises_the_live_adapter_and_availability() {
         let capabilities = capabilities();
         assert!(capabilities
             .implemented
             .iter()
             .any(|item| item.contains("proof manifest")));
         assert!(capabilities
-            .not_run
+            .implemented
             .iter()
-            .any(|item| item.contains("Phase 6.2")));
+            .any(|item| item.contains("live Coq checker adapter")));
+        assert!(capabilities
+            .checkers
+            .iter()
+            .any(|checker| checker.id == "coq"));
     }
 }
