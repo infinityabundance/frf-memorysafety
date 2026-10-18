@@ -12,6 +12,10 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::court::{
+    verify_transcript_json, CourtError, CourtErrorCategory, COURT_REPORT_SCHEMA,
+    NATIVE_EVENT_TRANSCRIPT_SCHEMA,
+};
 use crate::identity::{parse_strict, require_canonical, MsId, MAX_BYTES};
 use crate::mir::{
     MirAdapter, MirError, MirErrorCategory, MirScanOutcome, MIR_NOT_RUN_SCHEMA,
@@ -57,6 +61,7 @@ Commands:
   source scan PATH [--json]
   path analyze FILE [--json]
   mir scan FILE [--json] [--toolchain NAME]
+  court verify FILE [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -107,7 +112,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "mir" => Ok(command_mir(&args[1..])),
         "evidence" => command_evidence(&args[1..]),
         "report" => command_report(&args[1..]),
-        "court" => command_not_run("court run", args),
+        "court" => command_court(&args[1..]),
         "detector" => command_detector(&args[1..]),
         "frf" => command_not_run("frf promote", args),
         "gemel" => command_not_run("gemel publish", args),
@@ -144,6 +149,8 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
             "path_effects_report_schema": crate::path_effect::PATH_EFFECT_REPORT_SCHEMA,
             "mir_observation_schema": MIR_OBSERVATION_SCHEMA,
             "mir_not_run_schema": MIR_NOT_RUN_SCHEMA,
+            "native_event_transcript_schema": NATIVE_EVENT_TRANSCRIPT_SCHEMA,
+            "court_report_schema": COURT_REPORT_SCHEMA,
             "universal_soundness": UNIVERSAL_SOUNDNESS,
         }))?;
     } else {
@@ -158,6 +165,8 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
             crate::path_effect::PATH_EFFECT_INPUT_SCHEMA
         );
         println!("MIR observation schema: {MIR_OBSERVATION_SCHEMA}");
+        println!("native event transcript schema: {NATIVE_EVENT_TRANSCRIPT_SCHEMA}");
+        println!("court report schema: {COURT_REPORT_SCHEMA}");
         println!("universal soundness: {UNIVERSAL_SOUNDNESS}");
     }
     Ok(EXIT_OK)
@@ -953,6 +962,79 @@ fn render_markdown(case: &str, evaluation: &ProfileEvaluation) -> String {
         ));
     }
     output
+}
+
+fn command_court(rest: &[String]) -> Result<i32, String> {
+    match rest.first().map(String::as_str) {
+        Some("run") => not_run("court run"),
+        Some("verify") => Ok(command_court_verify(&rest[1..])),
+        _ => {
+            eprintln!("usage: court verify FILE [--json] | court run ...");
+            Ok(EXIT_USAGE)
+        }
+    }
+}
+
+fn command_court_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: court verify FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: court verify FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: court verify FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match verify_transcript_json(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return court_error_exit(&error);
+        }
+    };
+    let bytes = match report.canonical_bytes() {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return court_error_exit(&error);
+        }
+    };
+    // `--json` is accepted explicitly; both spellings emit the same canonical
+    // machine form so callers cannot accidentally depend on a lossy pretty form.
+    let _ = json;
+    if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write court report: {error}");
+        return EXIT_HARNESS;
+    }
+    report.outcome.exit_status()
+}
+
+fn court_error_exit(error: &CourtError) -> i32 {
+    match error.category() {
+        CourtErrorCategory::Usage => EXIT_USAGE,
+        CourtErrorCategory::Integrity => EXIT_INTEGRITY,
+        CourtErrorCategory::Harness => EXIT_HARNESS,
+    }
 }
 
 fn command_detector(rest: &[String]) -> Result<i32, String> {
