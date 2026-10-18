@@ -1927,6 +1927,7 @@ fn probe_env() -> BTreeMap<String, String> {
     let mut env = BTreeMap::new();
     env.insert("PATH".to_owned(), COMPILER_PATH.to_owned());
     env.insert("LC_ALL".to_owned(), "C".to_owned());
+    env.insert("RUSTUP_AUTO_INSTALL".to_owned(), "0".to_owned());
     if let Some(home) = std::env::var_os("HOME") {
         env.insert("HOME".to_owned(), home.to_string_lossy().into_owned());
     }
@@ -1951,6 +1952,7 @@ fn compiler_env(home: &Path) -> BTreeMap<String, String> {
     env.insert("HOME".to_owned(), home.display().to_string());
     env.insert("TMPDIR".to_owned(), home.display().to_string());
     env.insert("LC_ALL".to_owned(), "C".to_owned());
+    env.insert("RUSTUP_AUTO_INSTALL".to_owned(), "0".to_owned());
     env.insert("RUSTUP_HOME".to_owned(), rustup_home());
     env.insert("CARGO_HOME".to_owned(), cargo_home());
     env

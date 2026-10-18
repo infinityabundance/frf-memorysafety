@@ -5,15 +5,21 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** Version 0.7.0 is the
-Phase 6 release. It retains the Phase 5 detector evidence, calibration refusal
-rules, and opt-in live detector adapters over a closed checked-in fixture
-registry, and adds a typed proof manifest with a declared theorem/assumption
-closure, an admission taxonomy, a separate Rust/FFI implementation-correspondence
-gate, and a live pinned Coq adapter. **Phase 6 is complete for the declared Coq
-mechanism:** `./ci/proof-gate.sh` installs Debian Coq 8.16.1 and passes all six
-live seal cases. Without Coq, `proof verify --live` reports
-`checker_unavailable` (exit 6); parser success is never proof acceptance.
+**This build makes no memory-safety soundness claim.** Version 0.8.0 is the
+Phase 7 release. It retains the Phase 6 proof manifest with a declared
+theorem/assumption closure, admission taxonomy, separate Rust/FFI
+implementation-correspondence gate, and live pinned Coq adapter, plus the Phase
+5 detector evidence, calibration refusal rules, and opt-in live detector
+adapters over a closed checked-in fixture registry. Phase 7 adds exact contracts
+for the real FRF, FRF-Fuzz, and Gemel providers, provider-typed opaque
+identities, a fail-closed custody pipeline, and a live
+FRF-Fuzz -> FRF -> Gemel chain. **Phase 7 is complete for the defined chain:**
+`./ci/bridge-gate.sh` produces a real candidate-bound chain with independent
+re-execution and actual loader-map closure, and all six seal controls fail
+closed. **Phase 6 is complete for the declared Coq mechanism:**
+`./ci/proof-gate.sh` installs Debian Coq 8.16.1 and passes all six live seal
+cases. Without Coq, `proof verify --live` reports `checker_unavailable`
+(exit 6); parser success is never proof acceptance.
 
 It adds Phase 4.1 and Phase 4.2 to the phase-2/phase-3 bookkeeping core: strict
 encoding, typed evidence, founded support with policy custody, a finite
@@ -34,9 +40,8 @@ of the crate and is not a universal soundness claim.
 
 Phase 7.1 added exact discovery and pinning of the real FRF, FRF-Fuzz, and
 Gemel repositories, opaque provider-typed identities, and the fail-closed
-custody pipeline. Phase 7.2 (unreleased on `staging`; no version bump)
-unblocks pinned FRF-Fuzz with a dedicated `rust:1.98-slim` +
-`nightly-2026-07-24` image and produces a real
+custody pipeline. Phase 7.2, released as 0.8.0, unblocks pinned FRF-Fuzz with a
+dedicated `rust:1.98-slim` + `nightly-2026-07-24` image and produces a real
 `FRF-Fuzz finding -> FRF court/exact replay/OpenReceipt -> Gemel evidence/GID`
 chain. The live chain records the exact candidate, real provider executables,
 two independent executions per provider, and the actual loader-map closure,
@@ -47,7 +52,7 @@ re-execution-mismatch, and tampered-object seals. The default
 `OpenReceipt`, finding, GCE object, or GID. See
 [`docs/phase7-live-chain.md`](docs/phase7-live-chain.md).
 
-## Status (0.7.0 / phase 6 + phase 7.2 live chain)
+## Status (0.8.0 / phase 7 complete)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -61,7 +66,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
-| `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` |
+| `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` (Python 3.11.2 local image) |
 
 The default gate executes all 311 tests, including the six proof-live tests on
 their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
@@ -79,12 +84,38 @@ tests that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or
 `FRF_DETECTOR_LIVE` is unset in the default gate.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
-Phase 4 (0.5.0), Phase 5 (0.6.0), and Phase 6 (0.7.0) are in
+Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), and Phase 7 (0.8.0) are in
 [`CHANGELOG.md`](CHANGELOG.md).
+
+### Live native chain (Phase 7)
+
+`./ci/bridge-gate.sh` builds the three pinned providers and records this chain
+against one candidate artifact:
+
+```text
+candidate  b594c294f4d34d28c34b018f9bb5e07c449a3bb8dc3d4b55b4a118608d93acbf
+finding    9eea34004a284cdeacf1633253ccd0ce342b53e02c9347d884a9c075e6a1fb34
+receipt    receipt-run-frf-fuzz-4f775512ad38df0305be933b1238e0d6f4743ab45eff5e470852aa62d70aa2f2-debbf82bbc86f0cbc7b348525dc2f98c9ccd873147bab0ad6d901640f5e1dccb
+GID        evidence.2cae082c010569b59a7bcff46a70f6cb69fec46a30d1701561f36f4a8c091ae9
+```
+
+Custody stages are `Discover -> Reconstruct -> NativeConfirm -> FrfReceipt ->
+GemelCustody`. The bundle carries exact provider pins, executable and closure
+SHA-256 values, two byte-identical `RunRecord`s per provider, and the actual
+`/proc/self/maps` closure. The six seals are independent re-execution,
+stale candidate, tampered candidate, substituted DSO, recorded re-execution
+mismatch, and tampered finding object; all fail closed with zero authentic
+native identities. The FRF-Fuzz finding is a real fixed-seed campaign output;
+the recorded reference run performed 93,500 executions and produced 27 findings,
+while rerun counts vary with scheduling. A rerun may select a different finding
+and produces a new Gemel producer/GID; every admitted chain is rechecked against
+the same bytes, schema, candidate, replay, closure, and re-execution rules. See
+[`docs/phase7-live-chain.md`](docs/phase7-live-chain.md) for images,
+toolchains, commands, closure hashes, and the claim ceiling.
 
 ### Capability matrix
 
-| Capability | 0.7.0 availability |
+| Capability | 0.8.0 availability |
 |---|---|
 | Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
 | `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
@@ -97,10 +128,10 @@ Phase 4 (0.5.0), Phase 5 (0.6.0), and Phase 6 (0.7.0) are in
 | `detector calibrate FILE [--json]` | Implemented; refuses dead, misconfigured, harmless, mock-provider, and fake-marker evidence |
 | Live detector calibration (`detector calibrate --live --detector KIND`) | Implemented for closed checked-in fixtures when the instrument is installed and `FRF_DETECTOR_LIVE=1`; otherwise `NOT_RUN`, exit 6 |
 | `proof verify MANIFEST [--live] [--json]` | Implemented; validates manifest, closure, admission, and separate correspondence; `--live` invokes pinned Coq and returns `checker_unavailable`, exit 6, when it is absent |
-| `bridge verify FILE [--json]` | Implemented; validates a supplied evidence bundle, opaque identities, schemas, digests, candidate binding, provenance, live-capture closure, and re-execution records; does not execute a provider |
+| `bridge verify FILE [--json] [--candidate SHA256]` | Implemented; validates a supplied evidence bundle, opaque identities, schemas, digests, candidate binding, provenance, live-capture closure, and re-execution records; does not execute a provider |
 | `bridge capture OUT ... [--json]` | Implemented; executes only the pinned providers named on the command line and records exact bytes, executable/closure hashes, candidate binding, and two independent runs |
 | `bridge status [--json]` | Implemented; reports exact pins, recorded builds, and executable availability; exit 6 unless every provider executable matches its recorded digest |
-| Live FRF/FRF-Fuzz/Gemel custody chain | Implemented in `./ci/bridge-gate.sh`: real finding `9eea3400...`, receipt `receipt-run-frf-fuzz-4f7755...-debbf8...`, GID `evidence.2cae082c...`, candidate `b594c294...`; 6 of 6 seals PASS |
+| Live FRF/FRF-Fuzz/Gemel custody chain | Implemented in `./ci/bridge-gate.sh`: real finding `9eea34004a28...` from a 93,500-execution campaign, receipt `receipt-run-frf-fuzz-4f7755...-debbf82b...`, GID `evidence.2cae082c01...`, candidate `b594c294f4d3...`; 6 of 6 seals PASS |
 | Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
@@ -282,8 +313,8 @@ ceiling.
 - A custody pipeline with typed `NOT_RUN` and refusal reasons for modeled,
   modified-provider, substitute, stale-candidate, substituted-DSO, schema,
   tamper, and re-execution-mismatch evidence.
-- `bridge verify FILE [--json] [--candidate SHA256]` and `bridge status
-  [--json]` with SPEC §14 exit statuses.
+- `bridge verify FILE [--json] [--candidate SHA256]`, `bridge capture OUT ...`
+  [options], and `bridge status [--json]` with SPEC §14 exit statuses.
 - `capabilities --json` reports bounded proof-checker availability.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
@@ -306,7 +337,7 @@ conflicts and no adjudicated observation; this matches the original
 `research/paper/research/worked_bundle.py` results. The replay test checks the
 original counts and makes this scoping difference explicit.
 
-### Claim ceiling (finite and transcript-scoped through phase 6)
+### Claim ceiling (finite and transcript-scoped through phase 7)
 
 Every positive result in this README is limited to the named finite domain and
 the checks that were actually executed. The claim ceiling is syntactic, finite,
@@ -360,7 +391,18 @@ two-claim support fixed-point theorem over the exact bytes; it does not prove
 universal soundness. Implementation correspondence is a reviewed evidence
 binding over a source inventory or explicit digest-bound evidence, not a
 machine-proved semantic refinement; no result here proves the crate or arbitrary
-FFI implementations.
+FFI implementations. Phase 7 bridge verification establishes only that a
+supplied bundle has exact recorded bytes, external byte identities, schema
+tokens, candidate binding, live-capture loader closures, two byte-identical
+provider re-executions, and typed custody stages. `authentic_native`
+provenance is a recorded, digest-checked execution record, not authenticated
+provenance: it is not a signature, transparency log, or trusted build root. The
+crate writes no `OpenReceipt`, finding, GCE object, or GID, and produces none of
+those identities. A same-directory modified DSO would satisfy the path-based
+binding rule; the substituted-DSO seal uses an out-of-tree preload. Full FRF
+semantic conformance and full Gemel schema conformance remain outside the
+bridge's checked subset, and the abort fixture is a custody-chain control, not
+evidence of a real memory-safety defect.
 
 ### NOT_RUN in this build
 
@@ -414,6 +456,7 @@ frf-memorysafety mir scan FILE [--json] [--toolchain NAME]
 frf-memorysafety court verify FILE [--json]
 frf-memorysafety proof verify MANIFEST [--live] [--json]
 frf-memorysafety bridge verify FILE [--json] [--candidate SHA256]
+frf-memorysafety bridge capture OUT [--json] [capture options]
 frf-memorysafety bridge status [--json]
 frf-memorysafety detector calibrate FILE [--json]
 frf-memorysafety detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto [--json]
@@ -667,7 +710,7 @@ Both `detector calibrate FILE [--json]` and
 fixture registry when `FRF_DETECTOR_LIVE=1` and the instrument is installed.
 The selectors are `miri`, `asan`, `lsan`, `tsan`, `loom`, `kani`, and `crypto`.
 The detector gate's live availability and results, last recorded at 0.6.0 and
-not rerun for 0.7.0, are:
+not rerun for 0.7.0 or 0.8.0, are:
 
 | Mechanism | Selector | Recorded tool | Live result | Build separation |
 |---|---|---|---|---|
@@ -742,7 +785,14 @@ Following SPEC.md §14:
 7  internal harness error
 ```
 
-Exit 0 never means universal soundness was established.
+Exit 0 never means universal soundness was established. For `bridge verify`
+and `bridge capture`, exit 0 means `Complete`: every custody stage passed.
+`bridge status` exits 0 only when every configured provider executable matches
+its recorded digest and exits 6 otherwise. Bridge refusals use exit 4
+(`Refused`: modeled/modified/substitute evidence, stale candidate, substituted
+DSO); bridge integrity failures use exit 3 (`Integrity`: schema, digest,
+candidate binding, missing live capture, or re-execution mismatch); an
+unavailable provider or absent bundle is exit 6 (`NotRun`).
 
 ## Verification
 

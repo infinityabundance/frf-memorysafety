@@ -11,68 +11,101 @@ universal memory-safety soundness, and no release below makes such a claim.
 
 ## [Unreleased]
 
-Phase 7.2: live native chain and seals. No version bump and no publish.
-**Phase 7 is complete for the defined FRF-Fuzz -> FRF -> Gemel chain:** the
-pinned `rust:1.98-slim` + `nightly-2026-07-24` image unblocks FRF-Fuzz, and
-`ci/bridge-gate.sh` produces a real candidate-bound chain with exact replay,
-actual loader-map closure, two independent runs per provider, and six PASS
-seals. The default `ci/gate.sh` remains on `rust:1.85.0-slim` and asserts typed
-`NOT_RUN` without the external tools.
+## [0.8.0] - 2026-10-18
+
+Phase 7: pinned native provider contracts, opaque external identities, a
+fail-closed custody pipeline, and a live FRF-Fuzz -> FRF -> Gemel chain.
+**Phase 7 is complete for the defined chain:** the pinned `rust:1.98-slim` +
+`nightly-2026-07-24` image unblocks FRF-Fuzz, and `ci/bridge-gate.sh` produces
+a real candidate-bound chain with exact replay, actual loader-map closure, two
+independent runs per provider, and six PASS seals. The default `ci/gate.sh`
+remains on `rust:1.85.0-slim` and asserts typed `NOT_RUN` without the external
+tools. No OpenReceipt, finding, GCE object, or GID is written by this crate.
 
 ### Added
 
+- Exact pinned native contracts for `infinityabundance/frf`
+  (`ce461ce311bfe10fe90d2be03fba6217a6e8ba28`, `frf-receipt-v20`),
+  `infinityabundance/frf-fuzz`
+  (`054b45cda974852ccce62bc14dbeacb5fef0336b`, `FRFZ` family `0x02`,
+  framing `0.1`), and `infinityabundance/gemel`
+  (`54fc581bff09e67b9d4cc533d157a8c9fc575424`, `gemel.evidence.v1`/GCE
+  family `0x0B`), including repository, branch, license, schema token, build
+  command, and executable digest.
+- Provider-typed opaque identities (`BridgeFrfReceiptId`,
+  `BridgeFrfFuzzFindingId`, `BridgeGemelGceId`) with private fields and no
+  public string constructor. Admission requires exact bytes, provider pin,
+  schema token, identity form, and digest; identity strings cannot be
+  synthesized by callers.
+- Custody pipeline with explicit stages `Discover`, `Reconstruct`,
+  `NativeConfirm`, `FrfReceipt`, and `GemelCustody`, and typed outcomes
+  `Complete`, `NotRun`, `Refused`, and `Integrity`. Refusal reasons include
+  modeled/modified/substitute evidence, stale candidate, and substituted DSO;
+  integrity reasons include schema, digest, candidate binding, and
+  re-execution mismatch. `authentic_native_identities` is zero on every
+  non-`Complete` outcome and `generated_identities` is always zero.
+- Provenance and capture records: `EvidenceProvenance` distinguishes
+  `AuthenticNative`, `ModifiedProvider`, `Substitute`, and `Modeled`;
+  `DsoBinding` distinguishes `Native`, `Substituted`, and `Unknown`;
+  `Reexecution` records `Matched`, `Mismatch`, or `NotRun`.
 - `bridge capture OUT ...`: live capture of exact provider bytes, executable
   digests, repository/commit pins, candidate binding, actual
   `/proc/self/maps` closures with recomputed hashes, and two independent
-  executions per provider.
-- Real chain in `ci/bridge-gate.sh`: FRF-Fuzz finding
-  `9eea3400...`, FRF receipt `receipt-run-frf-fuzz-4f7755...-debbf8...`,
-  Gemel evidence `evidence.2cae082c...`, candidate `b594c294...`.
+  executions per provider. `bridge verify FILE [--json] [--candidate SHA256]`
+  validates a supplied bundle without executing a provider; `bridge status
+  [--json]` reports pins and executable availability.
+- Independent re-execution: two `RunRecord`s (exit, stdout SHA-256, stderr
+  SHA-256) per provider, required to be byte-identical; the FRF exact replay
+  reproduces both sides with matching residual fingerprints.
+- DSO closure from the provider's actual loader map, with every file-backed
+  object re-hashed, sorted by path, and reduced to a closure SHA-256; the probe
+  and main executable are excluded.
+- Seal controls for stale candidates, tampered candidates, substituted DSOs,
+  re-execution mismatches, and tampered finding objects. Every failure exits
+  with its typed status (3 or 4), reports zero authentic native identities,
+  and generates no external identity.
+- Real live chain in `ci/bridge-gate.sh`: FRF-Fuzz finding
+  `9eea34004a284cdeacf1633253ccd0ce342b53e02c9347d884a9c075e6a1fb34`,
+  FRF receipt
+  `receipt-run-frf-fuzz-4f775512ad38df0305be933b1238e0d6f4743ab45eff5e470852aa62d70aa2f2-debbf82bbc86f0cbc7b348525dc2f98c9ccd873147bab0ad6d901640f5e1dccb`,
+  Gemel GID
+  `evidence.2cae082c010569b59a7bcff46a70f6cb69fec46a30d1701561f36f4a8c091ae9`,
+  and candidate
+  `b594c294f4d34d28c34b018f9bb5e07c449a3bb8dc3d4b55b4a118608d93acbf`;
+  6 of 6 seals PASS.
 - Checked-in `ci/fixtures/bridge_abort_target.rs` deterministic FRF-Fuzz
   target, `dso_probe.c` loader-map probe, and `dso_substitute.c` control.
-- `tests/bridge_live.rs`: one test that requires `Complete` with
-  `FRF_BRIDGE_LIVE_BUNDLE` or asserts typed `NOT_RUN` without it; no
-  `#[ignore]`.
-- Seal controls for stale candidates, tampered candidates, substituted DSOs,
-  re-execution mismatches, and tampered finding objects; every failure reports
-  zero authentic native identities and generates no external identity.
-- `docs/phase7-live-chain.md` with exact images/toolchains, commands, schemas,
-  IDs, closure hashes, seal results, and the claim ceiling.
+- `ci/bridge-gate.sh`, a hardened external-tool gate with stages A-D that
+  builds the three pinned providers, runs the fixed-seed bounded campaign,
+  executes the live chain, and exercises all seals. `tests/bridge_live.rs`
+  requires `Complete` with `FRF_BRIDGE_LIVE_BUNDLE` or asserts typed `NOT_RUN`
+  without it; no test is `#[ignore]`d.
+- `docs/phase7-bridge-discovery.md` and `docs/phase7-live-chain.md` with exact
+  repositories/commits, schemas, images/toolchains, commands, IDs, closure
+  hashes, seal results, and the claim ceiling.
 
 ### Changed
 
-- The FRF-Fuzz provider pin now records the real build: `fa45c704d804...` in
-  `rust:1.98-slim`.
-- `authentic_native_identities` is zero on every non-Complete outcome.
+- The FRF-Fuzz provider pin records the real build: `fa45c704d804...` in
+  `rust:1.98-slim`; FRF is `0728aac10c...` and Gemel `01b7f4cc22...`.
+- `authentic_native_identities` is zero on every non-`Complete` outcome.
 - Gemel admission requires the GCE's own subject (field `0x03`) to match the
   retained receipt and the result outcome to be `pass`.
 - The FRF-Fuzz finding input SHA-256 must be an FRF receipt fixture hash.
-
-### Phase 7.1 foundation retained
-
-- Exact pins for `infinityabundance/frf`
-  (`ce461ce311bfe10fe90d2be03fba6217a6e8ba28`),
-  `infinityabundance/frf-fuzz`
-  (`054b45cda974852ccce62bc14dbeacb5fef0336b`), and
-  `infinityabundance/gemel`
-  (`54fc581bff09e67b9d4cc533d157a8c9fc575424`).
-- Provider-typed opaque identities with private fields and no public string
-  constructor; admission only through exact-byte, schema, provider-pin,
-  identity-form, and digest verification.
-- Custody pipeline with typed `NOT_RUN`, refusal, and integrity reasons, and
-  fail-closed controls for modeled/modified/substitute evidence, missing or
-  mismatched schemas, tampered objects, stale candidates, substituted DSOs,
-  and re-execution mismatch.
-- `bridge verify` and `bridge status` with SPEC §14 exit statuses.
+- Live capture without an executable digest, loader closure, or two-run record
+  is `Integrity::MissingLiveCapture` for an `AuthenticNative` observation.
 
 ### Known limitations
 
-- Provenance is an execution record, not a signature, transparency log, or
-  trusted build root; the bridge still performs no authentication.
+- Provenance is a recorded, digest-checked execution record, not a signature,
+  transparency log, or trusted build root; the bridge does not authenticate
+  `authentic_native` provenance.
 - A modified DSO placed in the provider executable's own directory would pass
   the path-based binding rule; the seal exercises an out-of-tree preload.
 - Full FRF semantic and Gemel full-schema conformance remain capped at the
   bridge's checked subset.
+- The abort fixture is a deterministic custody-chain fixture, not evidence of
+  a real memory-safety defect.
 
 ## [0.7.0] - 2026-10-18
 

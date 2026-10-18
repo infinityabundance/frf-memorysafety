@@ -829,7 +829,8 @@ impl MirAdapter {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .env("RUST_BACKTRACE", "0");
+            .env("RUST_BACKTRACE", "0")
+            .env("RUSTUP_AUTO_INSTALL", "0");
         run_bounded(command, self.limits).map_err(|error| {
             if error.kind() == ErrorKind::NotFound {
                 InvocationFailure::NotFound(error)

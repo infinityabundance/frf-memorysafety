@@ -1,7 +1,7 @@
 # Phase 7.2: live native chain and seals
 
 Snapshot: `staging` after the Phase 7.1 bridge foundation, crate
-`frf-memorysafety 0.7.0`, no version bump. Phase 7.2 unblocks pinned FRF-Fuzz,
+`frf-memorysafety 0.8.0` (Phase 7 release). Phase 7.2 unblocks pinned FRF-Fuzz,
 runs a real fixed-seed campaign, produces a real native chain
 
 ```text
