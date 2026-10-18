@@ -20,10 +20,12 @@
 //! closure, an admission taxonomy, a separate Rust/FFI
 //! implementation-correspondence gate, and a live pinned Coq adapter. Phase
 //! 7.1 adds exact provider discovery, opaque native identities, and a
-//! fail-closed custody bridge for FRF, FRF-Fuzz, and Gemel. The bridge
-//! verifies external bytes, schemas, identity digests, candidate binding,
-//! provenance, DSO binding, and declared re-execution; it does not execute a
-//! provider, and it never writes an `OpenReceipt`, finding, GCE object, or GID.
+//! fail-closed custody bridge for FRF, FRF-Fuzz, and Gemel. Phase 7.2 adds an
+//! opt-in live capture: it executes the explicitly configured provider
+//! executables, records exact bytes, executable and loader-map hashes, and two
+//! independent runs, and derives identities from those bytes. The default build
+//! still does not execute a provider, and the bridge never writes an
+//! `OpenReceipt`, finding, GCE object, or GID.
 //!
 //! # What this build does not establish
 //!
@@ -42,11 +44,13 @@
 //! `proof verify --live` invokes only an installed pinned `coqc`; when the
 //! checker is absent the command returns `checker_unavailable` (exit 6), and
 //! parser success is never proof acceptance. Lean, Isabelle, and other proof
-//! checkers are not invoked. Phase 7.1 performs no live FRF court, FRF-Fuzz
-//! replay, or Gemel publication: it validates caller-supplied evidence bundles
-//! against exact pins, and a declared `authentic_native` provenance is not
-//! authenticated beyond that contract. Universal Rust soundness and
-//! `SAFE_COMPATIBLE` are outside the finite profile and are always withheld.
+//! checkers are not invoked. The default build performs no live FRF court,
+//! FRF-Fuzz replay, or Gemel publication: it validates caller-supplied evidence
+//! bundles against exact pins. The opt-in `bridge capture` command and
+//! `ci/bridge-gate.sh` execute only the provider executables named on their
+//! command line, record the observed execution, and still do not authenticate
+//! provenance. Universal Rust soundness and `SAFE_COMPATIBLE` are outside the
+//! finite profile and are always withheld.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -240,7 +244,8 @@ pub fn capabilities() -> Capabilities {
             "opaque FRF receipt, FRF-Fuzz finding, and Gemel GCE/GID identities with private fields and no public string constructor",
             "custody pipeline discover -> reconstruct -> native_confirm -> frf_receipt -> gemel_custody with typed NOT_RUN and refusal reasons",
             "fail-closed bridge verification of external bytes, schemas, digests, candidate identity, provenance, DSO binding, and re-execution",
-            "bridge verify FILE [--json] and bridge status [--json] with SPEC.md section 14 exit statuses",
+            "bridge verify FILE [--json], bridge capture OUT ... [--json], and bridge status [--json] with SPEC.md section 14 exit statuses",
+            "opt-in live FRF-Fuzz -> FRF court/exact replay/OpenReceipt -> Gemel evidence/GID chain in ci/bridge-gate.sh, with actual loader-map closure and two independent runs per provider",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
@@ -253,10 +258,9 @@ pub fn capabilities() -> Capabilities {
             "live Coq proof checking when coqc is absent; proof verify --live reports checker_unavailable (exit 6)",
             "arbitrary native C/Rust event recording and `court run` over caller-supplied programs",
             "real-scheduler concurrency observation and native callback tracing beyond the checked-in fixtures",
-            "live FRF court and OpenReceipt verification (Phase 7.1 validates supplied receipts only)",
-            "live FRF-Fuzz coordinator and native finding replay (the pinned provider is not buildable in the 1.85 container)",
-            "live Gemel publication (Phase 7.1 validates supplied GCE evidence only)",
-            "authenticated provenance for bridge evidence; authentic_native is a declared, digest-checked label, not a signature or trust root",
+            "live FRF, FRF-Fuzz, or Gemel execution in the default ci/gate.sh path; the default gate asserts typed NOT_RUN, and ci/bridge-gate.sh is the opt-in live path",
+            "authenticated provenance for bridge evidence; authentic_native is a recorded, digest-checked execution label, not a signature or trust root",
+            "full FRF semantic conformance and full Gemel evidence-schema conformance beyond the bridge's checked fields",
             "live OpenSSL-Rust Safe-33 native courts",
             "live proof checking of a theorem outside the manifest's declared finite scope",
             "semantic proof of the implementation-correspondence evidence; the correspondence gate remains an independent digest-bound review",
@@ -294,7 +298,14 @@ mod tests {
         assert!(!capabilities
             .implemented
             .iter()
-            .any(|item| item.contains("live FRF")));
+            .any(|item| item.contains("live FRF") && !item.contains("opt-in")));
+        assert!(capabilities.implemented.iter().any(
+            |item| item.contains("opt-in live FRF-Fuzz") && item.contains("ci/bridge-gate.sh")
+        ));
+        assert!(capabilities
+            .not_run
+            .iter()
+            .any(|item| item.contains("default ci/gate.sh")));
         assert!(capabilities
             .not_run
             .iter()
