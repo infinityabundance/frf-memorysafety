@@ -15,7 +15,10 @@
 //! source inventory, finite path effects, an optional pinned MIR text
 //! adapter, responsibility-token lifecycle and race semantics, and a native
 //! event-transcript verifier. Those results are finite-model, textual,
-//! transcript, or bookkeeping results only.
+//! transcript, or bookkeeping results only. Phase 6.1 adds a typed proof
+//! manifest with digest-bound proof files, a declared theorem/assumption
+//! closure, an admission taxonomy, and a separate Rust/FFI
+//! implementation-correspondence gate.
 //!
 //! # What this build does not establish
 //!
@@ -31,8 +34,11 @@
 //! execute a closed registry of checked-in C and Rust fixtures with bounded
 //! isolation, record their scripted events, and require identical replay; the CLI
 //! still cannot run arbitrary native input (`court run` remains `NOT_RUN`).
-//! Universal Rust soundness and `SAFE_COMPATIBLE` are outside the finite profile
-//! and are always withheld.
+//! No live Coq, Lean, Isabelle, or other proof checker is invoked. `proof
+//! verify` validates a manifest and returns `checker_unavailable` (exit 6)
+//! unless an adapter supplies a recorded checker run; parser success is not
+//! proof acceptance. Universal Rust soundness and `SAFE_COMPATIBLE` are outside
+//! the finite profile and are always withheld.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -49,6 +55,7 @@ pub mod model;
 pub mod native;
 pub mod path_effect;
 pub mod profile;
+pub mod proof;
 pub mod source;
 pub mod support;
 
@@ -105,6 +112,20 @@ pub use profile::{
     ProfileClaim, ProfileEvaluation, ProfilePolicy, ProfileRefusal, ProfileRefusalKind,
     ProfileRule, BUFFER_MODEL_ID, BUFFER_RECORD_COUNT, CLAIMS_PER_VARIANT, PROFILE_SCHEMA,
     PROFILE_SPEC, SCENARIOS_PER_VARIANT, UNIVERSAL_SOUNDNESS,
+};
+pub use proof::{
+    evaluate_admission, evaluate_correspondence, parse_manifest, verify_manifest_bytes,
+    AcceptanceBasis, AdmissionRecord, AdmissionReport, AdmissionStatus, AdmissionTheorem,
+    Assumption, AssumptionKind, AssumptionReport, AssumptionStatus, BindingEvidence,
+    CheckerContext, CheckerIdentity, CheckerKind, CheckerRun, ClosureDeclaration,
+    CorrespondenceEvidence, CorrespondenceEvidenceKind, CorrespondenceReport, FfiBinding,
+    ForbiddenFinding, GateStatus, ImplementationBinding, LocalDependency, ProofDigest, ProofError,
+    ProofErrorCategory, ProofFile, ProofFileRole, ProofManifest, ProofOrigin, ProofOutcome,
+    ProofReport, ScannedFile, SourceInventoryRef, SymbolBinding, SymbolKind, SymbolReport,
+    TheoremBinding, TheoremScope, Transition, TransitionKind, FORBIDDEN_ADMISSION_TOKENS,
+    MAX_ASSUMPTIONS, MAX_CLOSURE_THEOREMS, MAX_CORRESPONDENCE_EVIDENCE, MAX_FILE_BYTES,
+    MAX_PROOF_FILES, MAX_SYMBOL_BINDINGS, MAX_TRANSITIONS, PROOF_CLAIM_CEILING,
+    PROOF_MANIFEST_SCHEMA, PROOF_REPORT_SCHEMA, PROOF_SPEC, REQUIRED_REENTRANT_TRANSITION,
 };
 pub use source::{
     scan_source, scan_source_default, FindingKind, ScanLimits, SourceError, SourceErrorCategory,
@@ -182,7 +203,13 @@ pub fn capabilities() -> Capabilities {
             "opt-in live detector adapters over closed checked-in fixtures: Miri, ASan, LSan, TSan, loom, Kani, and OpenSSL SHA-256/signature controls",
             "live detector evidence with real stdout/stderr capture, digests, tool versions, separate build identities, and typed NOT_RUN",
             "detector calibrate --live --detector KIND [--json] with per-detector availability",
-            "detector calibration receipt adjudication types",
+            "typed proof manifest with canonical JSON, exact checker identity, digest-bound proof files, and finite theorem scope",
+            "theorem and assumption closure with local dependencies, stdlib allowlist, and named justified hypotheses",
+            "lexical rejection of Admitted, admit, sorry, Axiom, Parameter, and Conjecture inside the reachable proof closure",
+            "admission taxonomy: accepted_within_scope, rejected_assumption, rejected_unrelated, rejected_unchecked_implementation, rejected_missing_transition, checker_unavailable, and checker_failed",
+            "separate Rust/FFI implementation-correspondence gate over a Phase 3.1 source inventory or explicit digest-bound binding evidence",
+            "checked FFI wrappers and mandatory reentrant-callback transition enumeration",
+            "proof verify MANIFEST [--json] with checker_unavailable (exit 6) when no live checker is configured",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
@@ -190,13 +217,15 @@ pub fn capabilities() -> Capabilities {
         not_run: vec![
             "live Miri/ASan/LSan/TSan/Loom/Kani/crypto detectors are NOT_RUN unless installed and FRF_DETECTOR_LIVE=1; see detectors[] for runtime availability",
             "live detector execution over arbitrary or caller-supplied programs (closed checked-in fixtures only)",
+            "live Coq/Lean/Isabelle proof-checker invocation and authentic proof acceptance (Phase 6.2)",
+            "proof acceptance from manifest parsing alone; a live checker run is required for accepted_within_scope",
             "arbitrary native C/Rust event recording and `court run` over caller-supplied programs",
             "real-scheduler concurrency observation and native callback tracing beyond the checked-in fixtures",
             "live FRF court and OpenReceipt verification",
             "live FRF-Fuzz coordinator",
             "live Gemel publication",
             "live OpenSSL-Rust Safe-33 native courts",
-            "native proof-checker adapter",
+            "native proof-checker adapter beyond manifest validation; Phase 6.2 live invocation is NOT_RUN",
             "MIR edges: available only when pinned nightly-2025-02-20 is present; otherwise NOT_RUN (exit 6)",
             "source- or MIR-extracted alias, footprint, and reference-interval semantics",
             "native C callback observation and retained-pointer lifecycle recording",
@@ -244,5 +273,18 @@ mod tests {
             .implemented
             .iter()
             .any(|item| item.contains("finite three-rule")));
+    }
+
+    #[test]
+    fn proof_capability_is_manifest_only() {
+        let capabilities = capabilities();
+        assert!(capabilities
+            .implemented
+            .iter()
+            .any(|item| item.contains("proof manifest")));
+        assert!(capabilities
+            .not_run
+            .iter()
+            .any(|item| item.contains("Phase 6.2")));
     }
 }
