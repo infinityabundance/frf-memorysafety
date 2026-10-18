@@ -1,14 +1,16 @@
 # Phase 5.1: detector evidence and calibration refusal rules
 
 Snapshot: branch `staging`, crate `frf-memorysafety 0.5.0` (no version bump).
-This document describes `src/detector.rs`, the typed detector-evidence receipt,
-the calibration adjudicator, the refusal taxonomy, and the
-`detector calibrate FILE [--json]` command. It is **Phase 5.1 only**.
+This document describes `src/detector/mod.rs`, the typed detector-evidence
+receipt, the calibration adjudicator, the refusal taxonomy, and the
+`detector calibrate FILE [--json]` command. It is the **Phase 5.1** adjudication
+layer; the Phase 5.2 live adapters are documented separately in
+[`phase5-live-detectors.md`](phase5-live-detectors.md).
 
-Live instrument integration (Miri, ASan/LSan/TSan, Loom, Kani, and
-crypto/secret oracles) is Phase 5.2 and is deliberately **not implemented**.
-`detector calibrate --live` remains `NOT_RUN` (exit 6). No detector process is
-executed by this phase.
+The Phase 5.1 adjudicator executes no detector process. It adjudicates a
+caller-supplied receipt. Phase 5.2 adds opt-in live adapters that produce this
+same shape from real runs of a closed checked-in fixture registry; an
+unavailable instrument remains a typed `NOT_RUN` (exit 6).
 
 ## Scope and claim ceiling
 
@@ -17,7 +19,9 @@ internally consistent with the declared mechanism, tool identity, separate
 build, capture, provenance, and known-bad/known-good rules in this document.
 It does **not** establish:
 
-* that any detector process actually ran;
+* that a detector process actually ran when only a Phase 5.1 receipt is
+  supplied (the Phase 5.2 live adapters capture real output, but a live run is
+  still one mechanism-and-case-specific observation);
 * that the executable, version, argv, environment digest, or build identities
   are authentic (there is no signature, transparency log, or trusted execution
   root);
@@ -307,7 +311,7 @@ Exit statuses follow SPEC §14:
 2  usage, missing file, or unreadable input
 3  integrity refusal (malformed, tampered, duplicate, unknown field, oversize)
 5  detector refusal (dead, misconfigured, harmless control, non-authentic)
-6  detector calibrate --live (NOT_RUN in Phase 5.1)
+6  live detector or calibration instrument unavailable (NOT_RUN)
 7  internal encoding/harness failure
 ```
 
@@ -343,20 +347,22 @@ Phase 5 seal control has its own fixture:
 | Determinism | identical canonical bytes and digests |
 | CLI statuses and canonical output | 0/2/3/5/6 as specified |
 
-## What is still Phase 5.2
+## Phase 5.2 delivery
 
-* Execute a real instrument under the hardened container and record this
-  receipt shape from live stdout/stderr.
-* Miri applicability and FFI/skipped-code reporting.
-* ASan/LSan/TSan real flag/runtime wiring for the selected target, including
-  the Rust `-Zsanitizer` path and nightly/toolchain pinning.
-* Loom/Kani bounded-model execution and their model-to-concrete caveats.
-* Secret/crypto oracle execution and leakage-model specificity.
-* Signed/attested provenance and an independent re-run. Structural identity
-  checks in this phase are not authentication.
+Phase 5.2 is implemented in `src/detector/live.rs`, the checked-in fixtures
+under `tests/detector/fixtures/`, `detector calibrate --live --detector KIND`,
+and `ci/detector-gate.sh`. The live adapters run pinned Miri, gcc
+ASan/LSan/TSan, loom, Kani 0.60.0, and an OpenSSL SHA-256 known-answer plus
+signature pair, and produce this receipt shape from real stdout/stderr. They
+still cover only a closed checked-in fixture registry, and an unavailable
+tool is an honest typed `NOT_RUN` (exit 6), never a fabricated pass.
 
-Until then, the live command is `NOT_RUN` and no detector sensitivity claim is
-made.
+Miri applicability and FFI/skipped-code reporting, the Rust `-Zsanitizer`
+path, loom/Kani model-to-concrete caveats, secret/crypto leakage-model
+specificity, and signed/attested provenance with an independent re-run remain
+outside this phase. See [`phase5-live-detectors.md`](phase5-live-detectors.md)
+for exact install/invocation, versions, flags, live results, availability,
+build separation, claim ceiling, and citations.
 
 ## Citations
 

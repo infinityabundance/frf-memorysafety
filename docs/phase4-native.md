@@ -223,7 +223,8 @@ substitute/modeled origin refusal. No test is ignored.
 
 * The transcript schedule is scripted; it is not a real thread scheduler,
   sanitizer, or dynamic race detector.
-* There is no live Miri, ASan/LSan/TSan, Loom, or Kani integration.
+* The Phase 5.2 live detector adapters are a separate closed fixture registry;
+  they do not extend this native transcript harness or accept arbitrary input.
 * The harness does not sign provenance, publish attestations, or provide a
   trusted build root.
 * Only the closed fixture registry can run; arbitrary native input remains

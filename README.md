@@ -7,20 +7,23 @@ universal soundness claims.
 
 **This build makes no memory-safety soundness claim.** Version 0.5.0 is the
 Phase 4 release, extended on `staging` with Phase 5.1 detector evidence and
-calibration refusal rules. It adds Phase 4.1 and Phase 4.2 to the phase-2/phase-3
-bookkeeping core: strict encoding, typed evidence, founded support with policy
-custody, a finite three-rule profile, bounded `syn`-based source discovery,
-typed alias/footprint/reference-interval qualification, conservative MIR edge
+calibration refusal rules and Phase 5.2 live detector adapters. It adds Phase
+4.1 and Phase 4.2 to the phase-2/phase-3 bookkeeping core: strict encoding,
+typed evidence, founded support with policy custody, a finite three-rule
+profile, bounded `syn`-based source discovery, typed
+alias/footprint/reference-interval qualification, conservative MIR edge
 observations when the pinned toolchain is present, responsibility-token
 lifecycle and race semantics, a native event-transcript verifier, a test-only
 harness that records and replays checked-in native fixtures, typed detector
-evidence with mechanism-specific calibration refusal rules, and an honest CLI.
-Universal safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite
-profile and are always reported as `WITHHELD_NOT_RUN`. The harness cannot run
-arbitrary C/Rust input; `court run` remains `NOT_RUN`. Live detector execution
-and calibration remain `NOT_RUN`.
+evidence with mechanism-specific calibration refusal rules, opt-in live
+calibration over a closed fixture registry, and an honest CLI. Universal
+safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite profile and
+are always reported as `WITHHELD_NOT_RUN`. The harness cannot run arbitrary
+C/Rust input; `court run` remains `NOT_RUN`. Live detector execution is
+opt-in (`FRF_DETECTOR_LIVE=1`), uses only checked-in fixtures, and reports a
+typed `NOT_RUN` when an instrument is unavailable.
 
-## Status (0.5.0 / phase 4)
+## Status (0.5.0 / phase 4 + phase 5)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -29,16 +32,17 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 250 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 250 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 261 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 261 passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
+| `./ci/detector-gate.sh` | 7 live mechanisms PASS; 11 live seal tests passed; no mechanism fabricated |
 
-The optional `ci/mir-gate.sh` was not rerun for the Phase 4 changes; the MIR
-path is unchanged from 0.4.0. The four default gates above were run in the
-pinned container. The same container image is used by the native gate after
-installing only `gcc` and `libc6-dev`; its 17 live tests are the same tests
-that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` is unset in the default
-gate.
+The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5 changes; the MIR
+path is unchanged from 0.4.0. The default gates above were run in the pinned
+container. The same container image is used by the native and detector gates
+after installing only their declared packages; the live tests are the same
+tests that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or
+`FRF_DETECTOR_LIVE` is unset in the default gate.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0), and
 Phase 4 (0.5.0) are in [`CHANGELOG.md`](CHANGELOG.md).
@@ -54,12 +58,12 @@ Phase 4 (0.5.0) are in [`CHANGELOG.md`](CHANGELOG.md).
 | Responsibility-token lifecycle, generation, failure, and race semantics | Implemented; caller-supplied finite transcript only |
 | `court verify` native event-transcript verification | Implemented; rejects incomplete/fictitious evidence |
 | Native event recording and replay | Test-only checked-in C/Rust fixtures through `src/native.rs`; identical replay or `unresolved` |
-| Detector evidence and calibration adjudication | Implemented; structural and finite-case only, no live tool execution |
+| Detector evidence and calibration adjudication | Implemented; structural and finite-case only |
 | `detector calibrate FILE [--json]` | Implemented; refuses dead, misconfigured, harmless, mock-provider, and fake-marker evidence |
-| Live detector calibration (`detector calibrate --live`) | Not implemented; `NOT_RUN`, exit 6 |
+| Live detector calibration (`detector calibrate --live --detector KIND`) | Implemented for closed checked-in fixtures when the instrument is installed and `FRF_DETECTOR_LIVE=1`; otherwise `NOT_RUN`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
 | MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
-| Live Miri/sanitizers/Kani/Loom, FRF, FRF-Fuzz, Gemel, native proof checkers | `NOT_RUN`, exit 6 |
+| Live Miri/sanitizers/Kani/Loom over arbitrary input, FRF, FRF-Fuzz, Gemel, native proof checkers | `NOT_RUN`, exit 6 |
 | Universal safe-interior soundness and `SAFE_COMPATIBLE` | Withheld; `WITHHELD_NOT_RUN` |
 
 The conformance tests **execute**; they are not ignored. The shipping engine is
@@ -179,7 +183,16 @@ ceiling.
 - `detector calibrate FILE [--json]` with the canonical
   `frf-memorysafety.calibration-report.v1`, finite sensitivity/specificity
   counts, build-separation and authenticity statuses, named refusal reasons,
-  and SPEC §14 exit statuses. Live calibration remains `NOT_RUN`.
+  and SPEC §14 exit statuses. Live calibration is opt-in through
+  `detector calibrate --live --detector KIND`.
+- Phase 5.2 live adapters over a closed checked-in fixture registry: pinned
+  Miri (`nightly-2025-02-20`), gcc ASan/LSan/TSan, a loom race model and atomic
+  control, a bounded Kani proof pair, and an OpenSSL SHA-256 known-answer plus
+  valid/corrupt signature pair. Real stdout/stderr, exit status, signal,
+  duration, tool version, executable digest, argv, environment digest, bindings,
+  and separate build identities are captured. An unavailable instrument, a
+  refused network fetch, an unsupported runtime, a timeout, or an oversized
+  capture is `NOT_RUN`, never a fabricated pass.
 - Two-run replay of identical executable input with byte-identical canonical
   transcripts required; any difference is reported as `unresolved` with a
   `replay_mismatch` finding.
@@ -242,15 +255,24 @@ closure. A `NOT_RUN` response is not an empty successful scan. No result here
 implies native Rust soundness, detector sensitivity, real-FFI coverage, or
 universal safe-interior soundness. `SAFE_COMPATIBLE` is never accepted by this
 build. Detector calibration is structural and mechanism-/case-specific: a
-`CALIBRATED` report does not prove that a tool ran, does not authenticate its
-digests, and does not establish universal detector sensitivity or specificity.
+`CALIBRATED` report does not authenticate its digests, and does not establish
+universal detector sensitivity or specificity. Phase 5.2 can additionally
+capture a real run of a closed checked-in fixture, but the result remains one
+mechanism-and-case-specific observation. Miri does not execute native C/FFI;
+ASan/LSan/TSan depend on instrumentation, runtime, optimization, and the
+executed path; loom models only loom-instrumented operations; Kani is bounded
+by its unwinding and modeling assumptions; and the OpenSSL SHA-256/signature
+control is not a constant-time or secret-lifecycle measurement. A `NOT_RUN`
+response is not an empty successful calibration.
 
 ### NOT_RUN in this build
 
-- Live Miri, AddressSanitizer, LeakSanitizer, ThreadSanitizer
-- Live Kani or Loom
-- Live detector calibration (`detector calibrate --live`, exit 6)
-- Live crypto/secret oracles
+- Live detectors over arbitrary or caller-supplied input (only the closed
+  checked-in registry runs)
+- Live detectors when the instrument is unavailable, the network fetch is
+  refused, the runtime is unsupported, or `FRF_DETECTOR_LIVE` is unset
+- Constant-time/secret-lifecycle measurement (the OpenSSL control is a
+  SHA-256 known-answer and signature-verification control, not a leakage oracle)
 - Live FRF court / OpenReceipt verification
 - Live FRF-Fuzz coordinator
 - Live Gemel publication
@@ -286,11 +308,11 @@ frf-memorysafety path analyze FILE [--json]
 frf-memorysafety mir scan FILE [--json] [--toolchain NAME]
 frf-memorysafety court verify FILE [--json]
 frf-memorysafety detector calibrate FILE [--json]
+frf-memorysafety detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto [--json]
 frf-memorysafety evidence verify --root DIR
 frf-memorysafety report --case FILE --format json|markdown
 
 frf-memorysafety court run ...              # NOT_RUN, exit 6
-frf-memorysafety detector calibrate --live  # NOT_RUN, exit 6
 frf-memorysafety frf promote ...            # NOT_RUN, exit 6
 frf-memorysafety gemel publish ...          # NOT_RUN, exit 6
 ```
@@ -479,9 +501,10 @@ the replay rule, exact commands, claim ceiling, and citations.
 
 ### Phase 5.1 detector evidence and calibration
 
-`src/detector.rs` adds a typed `frf-memorysafety.detector-evidence.v1` receipt
-and a deterministic adjudicator. It does not execute a detector. The receipt
-records:
+`src/detector/mod.rs` adds a typed `frf-memorysafety.detector-evidence.v1`
+receipt and a deterministic adjudicator. The Phase 5.1 adjudicator does not
+execute a detector; the Phase 5.2 adapters in `src/detector/live.rs` produce the
+same receipt from real runs. The receipt records:
 
 * detector kind (Miri, ASan, LSan, TSan, Loom, Kani, crypto/secret oracle, or
   custom);
@@ -514,10 +537,37 @@ The report contains finite sensitivity and specificity counts, `PASS`/`FAIL`/
 `NOT_EVALUATED` build-separation and authenticity statuses, sorted named
 refusals, and an embedded claim ceiling. Calibration is mechanism- and
 case-specific; it is not a universal detector sensitivity claim and it does not
-authenticate the tool. `detector calibrate --live` remains `NOT_RUN` (exit 6)
-for Phase 5.2. See
+authenticate the tool. See
 [`docs/phase5-calibration.md`](docs/phase5-calibration.md) for the schema,
 rules, refusal taxonomy, claim ceiling, test controls, and citations.
+
+### Phase 5.2 live detector adapters
+
+`detector calibrate --live --detector KIND [--json]` runs a closed checked-in
+fixture registry when `FRF_DETECTOR_LIVE=1` and the instrument is installed.
+The selectors are `miri`, `asan`, `lsan`, `tsan`, `loom`, `kani`, and `crypto`.
+The detector gate's live results on this branch are:
+
+| Mechanism | Live result |
+|---|---|
+| Miri (`nightly-2025-02-20`, `ub`/`clean`/`harmless`) | PASS, sensitivity 1/1, specificity 2/2 |
+| AddressSanitizer (heap use-after-free, clean control) | PASS, 1/1, 1/1 |
+| LeakSanitizer (leak, clean control) | PASS, 1/1, 1/1 |
+| ThreadSanitizer (barrier race, atomic control) | PASS, 1/1, 1/1 |
+| loom (race model, atomic control) | PASS, 1/1, 1/1 |
+| Kani 0.60.0 (`known_bad`, `proof_control`) | PASS, 1/1, 1/1 |
+| OpenSSL SHA-256 KAT + signature pair | PASS, 1/1, 2/2 |
+
+Every run captures real stdout/stderr with per-stream SHA-256, exit status,
+signal, duration, tool version, executable digest, explicit argv, environment
+digest, fixture digest, authentic-live provenance, and separate build
+identities. Missing tools, refused network fetches, unsupported runtimes,
+timeouts, and oversized captures are typed `NOT_RUN` (exit 6), never a pass.
+The `crypto` selector uses the custom `openssl-sha256-kat` kind because a
+known-answer/signature control is not a constant-time leakage measurement. See
+[`docs/phase5-live-detectors.md`](docs/phase5-live-detectors.md) for exact
+install/invocation commands, versions, flags, build separation, live results,
+claim ceiling, and citations.
 
 ## Exit statuses
 
@@ -603,13 +653,16 @@ src/path_effect.rs finite explicit-input aliases, footprints, intervals, outcome
 src/mir.rs        optional pinned MIR adapter and conservative text parser
 src/court.rs      responsibility tokens, races, and transcript verification
 src/native.rs     test-only isolated native fixture recording and replay
-src/detector.rs   typed detector evidence and calibration refusal rules
+src/detector/mod.rs  typed detector evidence and calibration refusal rules
+src/detector/live.rs live adapters over closed checked-in fixtures
 docs/phase3-source-inventory.md   phase 3.1 categories, limits, claim ceiling, citations
 docs/phase3-path-effects.md       phase 3.2 algebra, qualification, citations
 docs/phase3-mir.md                phase 3.3 pin, invocation, subset, instability, citations
 docs/phase4-ownership.md          phase 4.1 token algebra, races, completeness, citations
 docs/phase4-native.md              phase 4.2 isolation, provenance, replay, citations
 docs/phase5-calibration.md         phase 5.1 evidence schema, refusal rules, citations
+docs/phase5-live-detectors.md      phase 5.2 live install, invocation, results, citations
+src/detector/     Phase 5.1 evidence/adjudication and Phase 5.2 live adapters
 src/cli.rs        manual command parser and file-only commands
 src/lib.rs        public API and capability matrix
 tests/            canonical vectors, support semantics, independent oracle,

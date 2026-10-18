@@ -9,14 +9,14 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
-## [Unreleased] - Phase 5.1
+## [Unreleased] - Phase 5.1 and 5.2
 
-Typed detector evidence and calibration refusal rules. No version bump; live
-instrument execution remains `NOT_RUN` for Phase 5.2.
+Typed detector evidence and calibration refusal rules, plus opt-in live
+detector adapters over a closed checked-in fixture registry. No version bump.
 
 ### Added
 
-- `src/detector.rs`: `frf-memorysafety.detector-evidence.v1` with detector kind,
+- `src/detector/mod.rs`: `frf-memorysafety.detector-evidence.v1` with detector kind,
   exact tool name/version/executable digest/argv/environment digest,
   mechanism-enablement tokens, build flags/target/profile, separate detector
   and baseline build identities, bounded stdout/stderr capture with SHA-256,
@@ -30,14 +30,37 @@ instrument execution remains `NOT_RUN` for Phase 5.2.
 - Deterministic canonical `frf-memorysafety.calibration-report.v1` with finite
   sensitivity/specificity counts, build-separation and authenticity statuses,
   sorted refusal reasons, and an embedded claim ceiling.
-- `detector calibrate FILE [--json]` with SPEC §14 exit statuses 0/2/3/5/6/7;
-  `detector calibrate --live` remains `NOT_RUN` (exit 6).
+- `detector calibrate FILE [--json]` with SPEC §14 exit statuses 0/2/3/5/6/7.
 - `tests/detector.rs`: 26 executing tests covering every Phase 5 seal control,
   positive sensitivity/specificity, build-separation pass/fail, tampered
   digests, duplicate/unknown fields, oversize/truncation, custom detectors,
   canonical determinism, and CLI statuses. None is ignored.
 - `docs/phase5-calibration.md`: evidence schema, calibration rules, refusal
   taxonomy, claim ceiling, test controls, and citations.
+
+### Phase 5.2
+
+- `src/detector/live.rs` and `tests/detector/fixtures/`: opt-in live adapters
+  for pinned Miri (`nightly-2025-02-20`), gcc ASan/LSan/TSan, loom, Kani, and an
+  OpenSSL SHA-256 known-answer/signature control. Each adapter runs a closed
+  checked-in fixture registry with explicit argv, no shell, private `0700`
+  directories, `0600` capture files, cleared fixture environments, bounded
+  time/output, null stdin, and its own process group.
+- `detector calibrate --live --detector KIND [--json]` for the seven built-in
+  selectors, with the canonical Phase 5.1 report on a run and a typed
+  `frf-memorysafety.live-detector-not-run.v1` response (exit 6) when the tool is
+  unavailable. `FRF_DETECTOR_LIVE=1` is required.
+- `capabilities --json` now reports per-detector runtime availability.
+- `ci/detector-gate.sh` uses the same hardened flags, installs only the needed
+  detector packages, pinned nightly miri/rust-src, and a bounded Kani 0.60.0
+  attempt; it reports each mechanism as PASS or NOT_RUN with the reason.
+- `tests/detector_live.rs`: 11 executing seal tests (no `#[ignore]`) covering
+  the typed `NOT_RUN` path, structural live evidence, sensitivity/specificity,
+  build separation, digest binding, missing-finding, mock-origin, and tampered-
+  capture refusals. The default gate runs them with live execution disabled.
+- `docs/phase5-live-detectors.md`: exact install/invocation, versions, flags,
+  live results, availability table, build separation, claim ceiling, remaining
+  limits, and citations.
 
 ## [0.5.0] - 2026-10-18
 
