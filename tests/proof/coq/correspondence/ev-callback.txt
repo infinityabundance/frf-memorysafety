@@ -1,0 +1,1 @@
+correspondence: frf_wrapper_callback is a reentrant callback transition

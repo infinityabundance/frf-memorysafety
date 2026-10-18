@@ -1,0 +1,1 @@
+correspondence: lifecycle allocation and initialization are enumerated

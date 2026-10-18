@@ -1,0 +1,1 @@
+correspondence: frf_safe_create inspects the frf_foreign_create result and refuses null
