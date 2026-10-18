@@ -9,6 +9,38 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased]
+
+Phase 6.1: proof manifest, theorem/assumption closure, admission taxonomy, and
+a separate Rust/FFI implementation-correspondence gate. **Phase 6 is not
+complete:** this entry does not add a live proof checker.
+
+### Added
+
+- `src/proof.rs`: `frf-memorysafety.proof-manifest.v1` with exact checker
+  identity/version, digest-bound proof files, finite theorem scope, declared
+  theorem/assumption closure, recorded admission statuses, separate Rust/FFI
+  implementation binding, and authentic-versus-substituted provenance.
+- Canonical `frf-memorysafety.proof-verification-report.v1` with separate
+  admission and correspondence reports, deterministic ordering, and an embedded
+  claim ceiling.
+- Closure and admission checks rejecting `Admitted`, `admit`, `sorry`,
+  `Axiom`, `Parameter`, and `Conjecture` in the reachable closure; undeclared
+  or undischarged assumptions; unrelated theorems; scope mismatch;
+  checker/version/digest mismatch; and missing files.
+- Separate correspondence gate over a Phase 3.1 source inventory or explicit
+  digest-bound evidence, with checked FFI wrappers and mandatory reentrant-
+  callback transition coverage.
+- `proof verify MANIFEST [--json]`, returning `checker_unavailable` (exit 6)
+  when no live checker is configured and never accepting parser success alone.
+- `tests/proof.rs`: 22 executing tests (no `#[ignore]`) covering approved
+  shape, admitted/sorry/axiom, unrelated theorem, missing/tampered files,
+  duplicate/unknown fields, scope mismatch, unchecked FFI wrapper, missing
+  reentrant transition, independence, determinism, source-inventory binding,
+  and CLI statuses.
+- `docs/phase6-proof-adapter.md`: schema, closure rules, admission taxonomy,
+  correspondence gate, claim ceiling, Phase 6.2 requirements, and citations.
+
 ## [0.6.0] - 2026-10-18
 
 Phase 5: typed detector evidence and calibration refusal rules, plus opt-in

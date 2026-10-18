@@ -6,11 +6,18 @@ and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
 **This build makes no memory-safety soundness claim.** Version 0.6.0 is the
-Phase 5 release: detector evidence and calibration refusal rules plus opt-in
-live detector adapters over a closed checked-in fixture registry. It adds Phase
-4.1 and Phase 4.2 to the phase-2/phase-3 bookkeeping core: strict encoding,
-typed evidence, founded support with policy custody, a finite three-rule
-profile, bounded `syn`-based source discovery, typed
+Phase 5 release, extended on `staging` with the Phase 6.1 proof-manifest
+validator. It contains detector evidence and calibration refusal rules plus
+opt-in live detector adapters over a closed checked-in fixture registry, and it
+adds a typed proof manifest with a declared theorem/assumption closure, an
+admission taxonomy, and a separate Rust/FFI implementation-correspondence gate.
+**Phase 6 is not complete:** no live Coq, Lean, Isabelle, or other proof checker
+is invoked in this build. `proof verify` reports `checker_unavailable` (exit 6)
+for a well-formed manifest until Phase 6.2 demonstrates a live checker run.
+
+It adds Phase 4.1 and Phase 4.2 to the phase-2/phase-3 bookkeeping core: strict
+encoding, typed evidence, founded support with policy custody, a finite
+three-rule profile, bounded `syn`-based source discovery, typed
 alias/footprint/reference-interval qualification, conservative MIR edge
 observations when the pinned toolchain is present, responsibility-token
 lifecycle and race semantics, a native event-transcript verifier, a test-only
@@ -21,9 +28,10 @@ safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite profile and
 are always reported as `WITHHELD_NOT_RUN`. The harness cannot run arbitrary
 C/Rust input; `court run` remains `NOT_RUN`. Live detector execution is
 opt-in (`FRF_DETECTOR_LIVE=1`), uses only checked-in fixtures, and reports a
-typed `NOT_RUN` when an instrument is unavailable.
+typed `NOT_RUN` when an instrument is unavailable. Proof-manifest validation is
+not proof checking and is not a universal soundness claim.
 
-## Status (0.6.0 / phase 5)
+## Status (0.6.0 / phase 5 + phase 6.1)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -32,8 +40,8 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 261 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 261 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 284 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 284 passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 
@@ -61,6 +69,8 @@ Phase 4 (0.5.0), and Phase 5 (0.6.0) are in [`CHANGELOG.md`](CHANGELOG.md).
 | Detector evidence and calibration adjudication | Implemented; structural and finite-case only |
 | `detector calibrate FILE [--json]` | Implemented; refuses dead, misconfigured, harmless, mock-provider, and fake-marker evidence |
 | Live detector calibration (`detector calibrate --live --detector KIND`) | Implemented for closed checked-in fixtures when the instrument is installed and `FRF_DETECTOR_LIVE=1`; otherwise `NOT_RUN`, exit 6 |
+| `proof verify MANIFEST [--json]` | Implemented; validates manifest, closure, admission record, and separate correspondence; returns `checker_unavailable`, exit 6, without a live checker |
+| Live Coq/Lean/Isabelle proof checking | Not implemented; Phase 6.2; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
 | MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
 | Live Miri/sanitizers/Kani/Loom over arbitrary input, FRF, FRF-Fuzz, Gemel, native proof checkers | `NOT_RUN`, exit 6 |
@@ -201,6 +211,26 @@ ceiling.
   deferred callback after free, data race, and an atomic control, plus
   seeded skipped-event, fictitious-completeness, output-bound, and
   nondeterminism controls.
+- A typed Phase 6.1 proof manifest (`frf-memorysafety.proof-manifest.v1`)
+  with exact checker identity/version, digest-bound proof files, requested
+  theorem, declared finite scope, theorem/assumption closure, recorded
+  admission classification, separate Rust/FFI binding, and authentic-versus-
+  substituted provenance.
+- Closure and admission checks that reject `Admitted`, `admit`, `sorry`,
+  `Axiom`, `Parameter`, and `Conjecture` inside the reachable proof closure;
+  reject undeclared or undischarged assumptions, unrelated theorems, scope
+  mismatch, checker/version/digest mismatch, and missing proof files; and
+  distinguish `accepted_within_scope`, `rejected_assumption`,
+  `rejected_unrelated`, `rejected_unchecked_implementation`,
+  `rejected_missing_transition`, `checker_unavailable`, and `checker_failed`.
+- A separate Rust/FFI implementation-correspondence gate that runs
+  independently of proof acceptance, binds symbols and source digests to a
+  Phase 3.1 source inventory or explicit evidence, requires a checked FFI
+  wrapper, and requires an enumerated reentrant-callback transition.
+- `proof verify MANIFEST [--json]` with a canonical
+  `frf-memorysafety.proof-verification-report.v1`; it returns
+  `checker_unavailable` and exit 6 when no live checker is configured and never
+  fabricates acceptance from parser success.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
 
@@ -263,7 +293,15 @@ ASan/LSan/TSan depend on instrumentation, runtime, optimization, and the
 executed path; loom models only loom-instrumented operations; Kani is bounded
 by its unwinding and modeling assumptions; and the OpenSSL SHA-256/signature
 control is not a constant-time or secret-lifecycle measurement. A `NOT_RUN`
-response is not an empty successful calibration.
+response is not an empty successful calibration. Proof-manifest validation is
+not proof checking: a well-formed manifest does not establish that a checker
+ran, that the proof files compile, that the theorem is true, that the declared
+dependency graph is complete, or that the implementation correspondence is
+semantically sound. The lexical admission scan is conservative and may reject
+an unrelated textual occurrence in a scanned file; it is not a Coq, Lean, or
+Isabelle parser. `proof verify` returns `checker_unavailable` (exit 6) without
+a live checker, and no universal soundness claim follows from manifest
+validation.
 
 ### NOT_RUN in this build
 
@@ -277,7 +315,10 @@ response is not an empty successful calibration.
 - Live FRF-Fuzz coordinator
 - Live Gemel publication
 - Live OpenSSL-Rust Safe-33 native courts
-- Native proof-checker adapters
+- Live Coq/Lean/Isabelle proof-checker invocation and authentic proof
+  acceptance (Phase 6.2)
+- Proof acceptance from manifest parsing alone
+- Live proof-checker adapters beyond Phase 6.1 manifest validation
 - MIR/compiler-resolved caller graphs and whole-program closure
 - Source/MIR-extracted alias, provenance, footprint, and reference-interval
   semantics
@@ -307,6 +348,7 @@ frf-memorysafety source scan PATH [--json]
 frf-memorysafety path analyze FILE [--json]
 frf-memorysafety mir scan FILE [--json] [--toolchain NAME]
 frf-memorysafety court verify FILE [--json]
+frf-memorysafety proof verify MANIFEST [--json]
 frf-memorysafety detector calibrate FILE [--json]
 frf-memorysafety detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto [--json]
 frf-memorysafety evidence verify --root DIR
@@ -588,6 +630,35 @@ claim ceiling, and citations. Each PASS is one mechanism-and-case-specific
 observation over checked-in fixtures; it does not establish universal detector
 sensitivity or specificity, and it is not a memory-safety result.
 
+### Phase 6.1 proof manifest validation
+
+`proof verify MANIFEST [--json]` validates a typed
+`frf-memorysafety.proof-manifest.v1` document. It checks strict canonical JSON,
+exact checker kind/version, proof-file SHA-256 digests, the requested theorem
+and finite scope, the declared theorem/assumption closure, the recorded
+admission statuses, and a separate Rust/FFI implementation binding. The
+binding is checked against a Phase 3.1 source inventory or explicit
+digest-bound evidence; every FFI declaration needs a checked wrapper, and the
+enumerated transitions must include a reentrant callback.
+
+The verifier rejects `Admitted`, `admit`, `sorry`, `Axiom`, `Parameter`, and
+`Conjecture` in the reachable proof closure, undeclared or undischarged
+assumptions, unrelated theorems, scope mismatch, checker/version/digest
+mismatch, and missing proof or evidence files. It distinguishes
+`accepted_within_scope`, `rejected_assumption`, `rejected_unrelated`,
+`rejected_unchecked_implementation`, `rejected_missing_transition`,
+`checker_unavailable`, and `checker_failed`.
+
+**This is not proof checking.** The command never invokes a checker. Even for a
+well-formed manifest it returns `checker_unavailable` and exit 6, because no
+live checker is configured. A recorded authentic checker run supplied by an
+adapter can classify `accepted_within_scope`; Phase 6.2 must add that live run
+and must demonstrate the positive and negative seals before Phase 6 can be
+called complete. See
+[`docs/phase6-proof-adapter.md`](docs/phase6-proof-adapter.md) for the schema,
+closure rules, admission taxonomy, correspondence gate, claim ceiling, and
+citations.
+
 ## Exit statuses
 
 Following SPEC.md §14:
@@ -630,7 +701,7 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-default gate executes 261 base tests (including the 11 detector-live tests on
+default gate executes 284 base tests (including the 11 detector-live tests on
 their typed `NOT_RUN` path) and the native gate executes 17 live native tests;
 none is ignored or filtered out.
 
@@ -682,6 +753,8 @@ src/path_effect.rs finite explicit-input aliases, footprints, intervals, outcome
 src/mir.rs        optional pinned MIR adapter and conservative text parser
 src/court.rs      responsibility tokens, races, and transcript verification
 src/native.rs     test-only isolated native fixture recording and replay
+src/proof.rs      Phase 6.1 proof manifest, closure, admission, correspondence
+docs/phase6-proof-adapter.md      proof schema, closure, taxonomy, correspondence, citations
 src/detector/mod.rs  typed detector evidence and calibration refusal rules
 src/detector/live.rs live adapters over closed checked-in fixtures
 docs/phase3-source-inventory.md   phase 3.1 categories, limits, claim ceiling, citations
@@ -700,7 +773,8 @@ tests/            canonical vectors, support semantics, independent oracle,
                   alias/UnsafeCell/callback seal controls, MIR fixtures/adapter,
                   court token/race/completeness/CLI controls, native fixture
                   pairs/skipped-event/replay controls, detector evidence/calibration
-                  seal controls, replay, CLI
+                  seal controls, proof manifest/closure/admission/correspondence
+                  controls, replay, CLI
 ```
 
 ## Non-transfer
@@ -710,4 +784,7 @@ finite-model result in this repository is a universal soundness claim.
 A sanitizer or Miri pass does not imply soundness. Absence of `unsafe` does not
 imply soundness. A bounded model result does not imply a universal native
 result. An authentic-looking JSON file is not proof of execution. A clean
-detector run is not proof of detector sensitivity. See `SPEC.md` §1.
+detector run is not proof of detector sensitivity. A well-formed proof manifest
+is not a proof: manifest validation does not establish that a checker ran, that
+the theorem is true, or that the implementation correspondence is sound. See
+`SPEC.md` §1.
