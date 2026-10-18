@@ -9,6 +9,36 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - Phase 5.1
+
+Typed detector evidence and calibration refusal rules. No version bump; live
+instrument execution remains `NOT_RUN` for Phase 5.2.
+
+### Added
+
+- `src/detector.rs`: `frf-memorysafety.detector-evidence.v1` with detector kind,
+  exact tool name/version/executable digest/argv/environment digest,
+  mechanism-enablement tokens, build flags/target/profile, separate detector
+  and baseline build identities, bounded stdout/stderr capture with SHA-256,
+  exit status, signal, duration, truncation, provenance, case id, fixture
+  digest, mechanism, legality, and typed mechanism-specific findings.
+- Calibration adjudication with named refusals for dead detectors, missing
+  findings, wrong/missing build flags or enablement, build-separation
+  mismatches, harmless-control findings, substitute/mock/modeled transports,
+  untrusted identities, fake stdout markers, and integrity failures (tampered
+  digests, duplicate ids/keys, unknown fields, oversized or truncated capture).
+- Deterministic canonical `frf-memorysafety.calibration-report.v1` with finite
+  sensitivity/specificity counts, build-separation and authenticity statuses,
+  sorted refusal reasons, and an embedded claim ceiling.
+- `detector calibrate FILE [--json]` with SPEC §14 exit statuses 0/2/3/5/6/7;
+  `detector calibrate --live` remains `NOT_RUN` (exit 6).
+- `tests/detector.rs`: 26 executing tests covering every Phase 5 seal control,
+  positive sensitivity/specificity, build-separation pass/fail, tampered
+  digests, duplicate/unknown fields, oversize/truncation, custom detectors,
+  canonical determinism, and CLI statuses. None is ignored.
+- `docs/phase5-calibration.md`: evidence schema, calibration rules, refusal
+  taxonomy, claim ceiling, test controls, and citations.
+
 ## [0.5.0] - 2026-10-18
 
 Phase 4: responsibility-token lifecycle, failure, borrow, generation, and race
