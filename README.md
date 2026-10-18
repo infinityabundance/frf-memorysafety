@@ -6,14 +6,15 @@ and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
 **This build makes no memory-safety soundness claim.** Version 0.6.0 is the
-Phase 5 release, extended on `staging` with the Phase 6.1 proof-manifest
-validator. It contains detector evidence and calibration refusal rules plus
-opt-in live detector adapters over a closed checked-in fixture registry, and it
-adds a typed proof manifest with a declared theorem/assumption closure, an
-admission taxonomy, and a separate Rust/FFI implementation-correspondence gate.
-**Phase 6 is not complete:** no live Coq, Lean, Isabelle, or other proof checker
-is invoked in this build. `proof verify` reports `checker_unavailable` (exit 6)
-for a well-formed manifest until Phase 6.2 demonstrates a live checker run.
+Phase 5 release, extended on `staging` with the Phase 6 proof adapter. It
+contains detector evidence and calibration refusal rules plus opt-in live
+detector adapters over a closed checked-in fixture registry, and it adds a
+typed proof manifest with a declared theorem/assumption closure, an admission
+taxonomy, a separate Rust/FFI implementation-correspondence gate, and a live
+pinned Coq adapter. **Phase 6 is complete for the declared Coq mechanism:**
+`./ci/proof-gate.sh` installs Debian Coq 8.16.1 and passes all six live seal
+cases. Without Coq, `proof verify --live` reports `checker_unavailable`
+(exit 6); parser success is never proof acceptance.
 
 It adds Phase 4.1 and Phase 4.2 to the phase-2/phase-3 bookkeeping core: strict
 encoding, typed evidence, founded support with policy custody, a finite
@@ -28,10 +29,11 @@ safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite profile and
 are always reported as `WITHHELD_NOT_RUN`. The harness cannot run arbitrary
 C/Rust input; `court run` remains `NOT_RUN`. Live detector execution is
 opt-in (`FRF_DETECTOR_LIVE=1`), uses only checked-in fixtures, and reports a
-typed `NOT_RUN` when an instrument is unavailable. Proof-manifest validation is
-not proof checking and is not a universal soundness claim.
+typed `NOT_RUN` when an instrument is unavailable. Proof checking is limited to
+the checked-in finite Coq theorem and its negative controls; it is not a proof
+of the crate and is not a universal soundness claim.
 
-## Status (0.6.0 / phase 5 + phase 6.1)
+## Status (0.6.0 / phase 5 + phase 6)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -40,10 +42,11 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 284 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 284 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 290 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 290 passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
+| `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed |
 
 The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5 changes; the MIR
 path is unchanged from 0.4.0. The default gates above were run in the pinned
@@ -69,8 +72,9 @@ Phase 4 (0.5.0), and Phase 5 (0.6.0) are in [`CHANGELOG.md`](CHANGELOG.md).
 | Detector evidence and calibration adjudication | Implemented; structural and finite-case only |
 | `detector calibrate FILE [--json]` | Implemented; refuses dead, misconfigured, harmless, mock-provider, and fake-marker evidence |
 | Live detector calibration (`detector calibrate --live --detector KIND`) | Implemented for closed checked-in fixtures when the instrument is installed and `FRF_DETECTOR_LIVE=1`; otherwise `NOT_RUN`, exit 6 |
-| `proof verify MANIFEST [--json]` | Implemented; validates manifest, closure, admission record, and separate correspondence; returns `checker_unavailable`, exit 6, without a live checker |
-| Live Coq/Lean/Isabelle proof checking | Not implemented; Phase 6.2; `checker_unavailable`, exit 6 |
+| `proof verify MANIFEST [--live] [--json]` | Implemented; validates manifest, closure, admission, and separate correspondence; `--live` invokes pinned Coq and returns `checker_unavailable`, exit 6, when it is absent |
+| Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
+| Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
 | MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
 | Live Miri/sanitizers/Kani/Loom over arbitrary input, FRF, FRF-Fuzz, Gemel, native proof checkers | `NOT_RUN`, exit 6 |
@@ -211,7 +215,7 @@ ceiling.
   deferred callback after free, data race, and an atomic control, plus
   seeded skipped-event, fictitious-completeness, output-bound, and
   nondeterminism controls.
-- A typed Phase 6.1 proof manifest (`frf-memorysafety.proof-manifest.v1`)
+- A typed Phase 6 proof manifest (`frf-memorysafety.proof-manifest.v1`)
   with exact checker identity/version, digest-bound proof files, requested
   theorem, declared finite scope, theorem/assumption closure, recorded
   admission classification, separate Rust/FFI binding, and authentic-versus-
@@ -227,10 +231,20 @@ ceiling.
   independently of proof acceptance, binds symbols and source digests to a
   Phase 3.1 source inventory or explicit evidence, requires a checked FFI
   wrapper, and requires an enumerated reentrant-callback transition.
-- `proof verify MANIFEST [--json]` with a canonical
+- Phase 6.2 live Coq adapter with explicit argv, a private `0700` session, a
+  cleared environment, 120-second and 1 MiB bounds, executable digest,
+  node-locked kind/version/executable, manifest-order local-module resolution,
+  and `Print Assumptions` status derivation in which only
+  `Closed under the global context` is `proved`.
+- Checked-in Coq fixtures (`tests/proof/coq/`) for the finite support
+  fixed-point theorem and the `Admitted`, `Axiom`, unrelated, unchecked-wrapper,
+  and missing-reentrant-transition seals.
+- `proof verify MANIFEST [--live] [--json]` with a canonical
   `frf-memorysafety.proof-verification-report.v1`; it returns
-  `checker_unavailable` and exit 6 when no live checker is configured and never
-  fabricates acceptance from parser success.
+  `checker_unavailable` and exit 6 when no live checker is configured, binds a
+  completed run to `CheckerContext::Recorded`, and never fabricates acceptance
+  from parser success.
+- `capabilities --json` reports bounded proof-checker availability.
 - A manual CLI (no `clap`, no shell execution) with SPEC §14 exit statuses and
   explicit `NOT_RUN` responses.
 
@@ -293,15 +307,17 @@ ASan/LSan/TSan depend on instrumentation, runtime, optimization, and the
 executed path; loom models only loom-instrumented operations; Kani is bounded
 by its unwinding and modeling assumptions; and the OpenSSL SHA-256/signature
 control is not a constant-time or secret-lifecycle measurement. A `NOT_RUN`
-response is not an empty successful calibration. Proof-manifest validation is
-not proof checking: a well-formed manifest does not establish that a checker
-ran, that the proof files compile, that the theorem is true, that the declared
-dependency graph is complete, or that the implementation correspondence is
-semantically sound. The lexical admission scan is conservative and may reject
-an unrelated textual occurrence in a scanned file; it is not a Coq, Lean, or
-Isabelle parser. `proof verify` returns `checker_unavailable` (exit 6) without
-a live checker, and no universal soundness claim follows from manifest
-validation.
+response is not an empty successful calibration. Manifest-only validation is
+not proof checking: a well-formed manifest does not by itself establish that a
+checker ran, that the proof files compile, that the theorem is true, that the
+declared dependency graph is complete, or that the implementation
+correspondence is semantically sound. The lexical admission scan is
+conservative and may reject an unrelated textual occurrence in a scanned file;
+it is not a Coq, Lean, or Isabelle parser. `proof verify --live` returns
+`checker_unavailable` (exit 6) without a live checker. A completed live run
+establishes only that the pinned Coq checked the declared finite theorem over
+the exact bytes; it does not prove universal soundness or semantic
+implementation correspondence.
 
 ### NOT_RUN in this build
 
@@ -315,10 +331,11 @@ validation.
 - Live FRF-Fuzz coordinator
 - Live Gemel publication
 - Live OpenSSL-Rust Safe-33 native courts
-- Live Coq/Lean/Isabelle proof-checker invocation and authentic proof
-  acceptance (Phase 6.2)
+- Live Lean/Isabelle proof-checker invocation
+- Live Coq proof checking when `coqc` is absent (`checker_unavailable`, exit 6)
 - Proof acceptance from manifest parsing alone
-- Live proof-checker adapters beyond Phase 6.1 manifest validation
+- Live proof checking outside the declared finite theorem scope
+- Semantic proof of the implementation-correspondence evidence
 - MIR/compiler-resolved caller graphs and whole-program closure
 - Source/MIR-extracted alias, provenance, footprint, and reference-interval
   semantics
@@ -348,7 +365,7 @@ frf-memorysafety source scan PATH [--json]
 frf-memorysafety path analyze FILE [--json]
 frf-memorysafety mir scan FILE [--json] [--toolchain NAME]
 frf-memorysafety court verify FILE [--json]
-frf-memorysafety proof verify MANIFEST [--json]
+frf-memorysafety proof verify MANIFEST [--live] [--json]
 frf-memorysafety detector calibrate FILE [--json]
 frf-memorysafety detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto [--json]
 frf-memorysafety evidence verify --root DIR
@@ -630,9 +647,9 @@ claim ceiling, and citations. Each PASS is one mechanism-and-case-specific
 observation over checked-in fixtures; it does not establish universal detector
 sensitivity or specificity, and it is not a memory-safety result.
 
-### Phase 6.1 proof manifest validation
+### Phase 6 proof manifest and live checking
 
-`proof verify MANIFEST [--json]` validates a typed
+`proof verify MANIFEST [--live] [--json]` validates a typed
 `frf-memorysafety.proof-manifest.v1` document. It checks strict canonical JSON,
 exact checker kind/version, proof-file SHA-256 digests, the requested theorem
 and finite scope, the declared theorem/assumption closure, the recorded
@@ -649,15 +666,17 @@ mismatch, and missing proof or evidence files. It distinguishes
 `rejected_unchecked_implementation`, `rejected_missing_transition`,
 `checker_unavailable`, and `checker_failed`.
 
-**This is not proof checking.** The command never invokes a checker. Even for a
-well-formed manifest it returns `checker_unavailable` and exit 6, because no
-live checker is configured. A recorded authentic checker run supplied by an
-adapter can classify `accepted_within_scope`; Phase 6.2 must add that live run
-and must demonstrate the positive and negative seals before Phase 6 can be
-called complete. See
+Without `--live` the command never invokes a checker. Even for a well-formed
+manifest it returns `checker_unavailable` and exit 6, because no live checker is
+configured. With `--live`, Debian Coq 8.16.1 compiles the digest-bound proof
+files in manifest order and derives theorem statuses from `Print Assumptions`.
+The positive seal is accepted within its finite two-claim support lattice, and
+the dependent-`Admitted`, dependent-`Axiom`, unrelated, unchecked-wrapper, and
+missing-reentrant-transition seals are all rejected. See
+[`docs/phase6-live-checker.md`](docs/phase6-live-checker.md) for install,
+invocation, theorem, seal results, and claim ceiling, and
 [`docs/phase6-proof-adapter.md`](docs/phase6-proof-adapter.md) for the schema,
-closure rules, admission taxonomy, correspondence gate, claim ceiling, and
-citations.
+closure rules, admission taxonomy, correspondence gate, and citations.
 
 ## Exit statuses
 
@@ -753,8 +772,11 @@ src/path_effect.rs finite explicit-input aliases, footprints, intervals, outcome
 src/mir.rs        optional pinned MIR adapter and conservative text parser
 src/court.rs      responsibility tokens, races, and transcript verification
 src/native.rs     test-only isolated native fixture recording and replay
-src/proof.rs      Phase 6.1 proof manifest, closure, admission, correspondence
+src/proof.rs      Phase 6 manifest, closure, admission, correspondence, live Coq adapter
 docs/phase6-proof-adapter.md      proof schema, closure, taxonomy, correspondence, citations
+docs/phase6-live-checker.md       install, invocation, theorem, seals, claim ceiling, citations
+tests/proof/coq/                  checked-in Coq fixtures, evidence, canonical manifests
+tests/proof_live.rs               live/unavailable seal tests
 src/detector/mod.rs  typed detector evidence and calibration refusal rules
 src/detector/live.rs live adapters over closed checked-in fixtures
 docs/phase3-source-inventory.md   phase 3.1 categories, limits, claim ceiling, citations
@@ -774,7 +796,7 @@ tests/            canonical vectors, support semantics, independent oracle,
                   court token/race/completeness/CLI controls, native fixture
                   pairs/skipped-event/replay controls, detector evidence/calibration
                   seal controls, proof manifest/closure/admission/correspondence
-                  controls, replay, CLI
+                  controls, live Coq/unavailable seals, replay, CLI
 ```
 
 ## Non-transfer
@@ -786,5 +808,7 @@ imply soundness. A bounded model result does not imply a universal native
 result. An authentic-looking JSON file is not proof of execution. A clean
 detector run is not proof of detector sensitivity. A well-formed proof manifest
 is not a proof: manifest validation does not establish that a checker ran, that
-the theorem is true, or that the implementation correspondence is sound. See
+the theorem is true, or that the implementation correspondence is sound. A live
+Coq run establishes only that the checked-in finite theorem compiled and was
+reported closed; it does not prove the crate or the FFI implementation. See
 `SPEC.md` §1.

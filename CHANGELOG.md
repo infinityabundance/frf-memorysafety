@@ -11,11 +11,37 @@ universal memory-safety soundness, and no release below makes such a claim.
 
 ## [Unreleased]
 
-Phase 6.1: proof manifest, theorem/assumption closure, admission taxonomy, and
-a separate Rust/FFI implementation-correspondence gate. **Phase 6 is not
-complete:** this entry does not add a live proof checker.
+Phase 6: proof manifest, theorem/assumption closure, admission taxonomy, a
+separate Rust/FFI implementation-correspondence gate, and a live checked-proof
+adapter. **Phase 6 is complete for the declared Coq mechanism:**
+`./ci/proof-gate.sh` installs Debian Coq 8.16.1 and all six live seal cases
+pass. Without Coq, `proof verify --live` remains fail-closed at exit 6.
 
 ### Added
+
+- Phase 6.2 live Coq adapter: explicit argv only, private `0700` staging,
+  cleared environment, 120-second per-process and 1 MiB per-stream bounds,
+  executable digest, node-locked checker kind/version/executable,
+  manifest-order local-module compilation, and `Print Assumptions` status
+  derivation in which only `Closed under the global context` is `proved`.
+- Checked-in Coq corpus in `tests/proof/coq/`: `model.v`, `approved.v`,
+  `admitted.v`, `axiom.v`, `unrelated.v`, digest-bound source/evidence, and six
+  canonical seal manifests for the finite two-claim support fixed-point
+  theorem.
+- `proof verify MANIFEST [--live] [--json]`, binding only a completed run to
+  `CheckerContext::Recorded` and reporting `checker_unavailable` (exit 6) when
+  `coqc` is absent.
+- `capabilities --json` proof-checker availability (`coq`, `available` or
+  `not_run`) from a bounded `coqc --version` probe.
+- `ci/proof-gate.sh` with the same hardened container flags; installs Coq and
+  jq, records `coqc --version` and the executable digest, runs the six live
+  seal cases, and runs the live tests.
+- `tests/proof_live.rs`: 6 executing tests (no `#[ignore]`) that assert each
+  live seal under `FRF_PROOF_GATE=1` and the typed `checker_unavailable` path
+  in the default gate.
+- `docs/phase6-live-checker.md`: install/version/invocation, theorem and
+  proved scope, closure behavior, correspondence limits, all seal results,
+  claim ceiling, and citations.
 
 - `src/proof.rs`: `frf-memorysafety.proof-manifest.v1` with exact checker
   identity/version, digest-bound proof files, finite theorem scope, declared
@@ -33,6 +59,7 @@ complete:** this entry does not add a live proof checker.
   callback transition coverage.
 - `proof verify MANIFEST [--json]`, returning `checker_unavailable` (exit 6)
   when no live checker is configured and never accepting parser success alone.
+  Phase 6.2 extends this to `--live`.
 - `tests/proof.rs`: 22 executing tests (no `#[ignore]`) covering approved
   shape, admitted/sorry/axiom, unrelated theorem, missing/tampered files,
   duplicate/unknown fields, scope mismatch, unchecked FFI wrapper, missing

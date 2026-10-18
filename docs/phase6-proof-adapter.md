@@ -1,16 +1,16 @@
-# Phase 6.1: proof manifest, closure, admission, and correspondence
+# Phase 6: proof manifest, closure, admission, correspondence, and live checker
 
 Snapshot: branch `staging`, crate `frf-memorysafety 0.6.0`.
 
-Phase 6.1 implements the **manifest and classification half** of the Phase 6
-checked-proof adapter. It does **not** invoke Coq, Lean, Isabelle, or any other
-proof checker. Phase 6 remains **incomplete** until Phase 6.2 demonstrates a
-live checker run, independently re-checks the proof digests and theorem
-statuses, and records authentic provenance. A parser test or an approved
-manifest is not proof checking.
+Phase 6.1 implemented the **manifest and classification half** of the Phase 6
+checked-proof adapter. Phase 6.2 completes the live half with a pinned Debian
+Coq 8.16.1 checker, checked-in Coq fixtures, and `proof verify --live`. See
+[`phase6-live-checker.md`](phase6-live-checker.md) for the install, theorem,
+seal results, and claim ceiling.
 
-The implementation is in `src/proof.rs`. Tests are in `tests/proof.rs`. The CLI
-is `proof verify MANIFEST [--json]`.
+The manifest implementation is in `src/proof.rs`. Tests are in
+`tests/proof.rs` (manifest) and `tests/proof_live.rs` (live/unavailable). The
+CLI is `proof verify MANIFEST [--live] [--json]`.
 
 ## Scope and claim ceiling
 
@@ -30,7 +30,8 @@ A manifest that passes these checks establishes only that:
 * the recorded admission statuses and checker identity are internally
   consistent with the manifest.
 
-It does **not** establish that:
+Manifest-only verification (the default, without `--live`) does **not**
+establish that:
 
 * a proof assistant was installed, executed, or exited successfully;
 * the proof files compile or the theorem is true;
@@ -42,10 +43,17 @@ It does **not** establish that:
 * any universal Rust soundness, `SOUND_SAFE_INTERIOR`, or `SAFE_COMPATIBLE`
   claim.
 
+A `--live` run does establish that the declared proof bytes compiled and that
+the exact theorem names were reported by `Print Assumptions`; any status other
+than `Closed under the global context` is retained as unproved. It still does
+not establish theorem truth outside the declared finite scope, dependency-graph
+completeness, or semantic correspondence.
+
 `proof verify` therefore returns `checker_unavailable` and exit status 6 when
-no live checker is configured, even for a well-formed manifest. A recorded
-authentic checker run supplied by an adapter can classify
-`accepted_within_scope`; the current CLI never supplies one.
+no live checker is configured, even for a well-formed manifest. `proof verify
+--live` invokes the pinned Coq adapter and binds only a completed authentic run
+to `CheckerContext::Recorded`; the manifest parser alone never promotes a
+recorded field into acceptance.
 
 ## Canonical manifest schema
 
@@ -279,17 +287,21 @@ symbol binding, or transition enumeration.
 ## CLI
 
 ```text
-proof verify MANIFEST [--json]
+proof verify MANIFEST [--live] [--json]
 ```
 
 The command parses and verifies the manifest, closure, admission record, and
 correspondence gate, then emits a canonical
 `frf-memorysafety.proof-verification-report.v1` report (with `--json`) or a
-human summary. It never invokes a checker. For a well-formed manifest the
+human summary. Without `--live` it never invokes a checker. For a well-formed manifest the
 outcome is `checker_unavailable` and the exit status is 6, because no live
-checker is configured. A rejected assumption, unrelated theorem, unchecked
-wrapper, or missing transition returns 4. Integrity failures return 3. Usage
-errors return 2.
+checker is configured. With `--live`, the adapter compiles the digest-bound
+proof files in declared order in a private `0700` directory and derives
+theorem statuses from `Print Assumptions`. A missing checker still returns
+`checker_unavailable` (6); a checker that runs but fails, times out, exceeds
+the output bound, or disagrees with the manifest returns `checker_failed` (4).
+A rejected assumption, unrelated theorem, unchecked wrapper, or missing
+transition returns 4. Integrity failures return 3. Usage errors return 2.
 
 The report always includes:
 
@@ -299,8 +311,8 @@ The report always includes:
 * every assumption and its status;
 * every symbol, transition, missing transition, unchecked wrapper, and
   correspondence-evidence digest;
-* `live_checker_configured`, `live_checker_invoked` (always `false` in 6.1),
-  and the acceptance basis; and
+* `live_checker_configured`, `live_checker_invoked`, the acceptance basis,
+  and (with `--live`) the bounded captured `live_run` receipt; and
 * `universal_soundness: WITHHELD_NOT_RUN` and the claim ceiling.
 
 ## Provenance and non-fabrication
@@ -336,25 +348,20 @@ re-execution. Digests bind bytes, not origin or truth.
 * imports outside the closure and stdlib allowlist; and
 * CLI statuses 6, 4, 3, and 2.
 
-## Required Phase 6.2 work
+## Phase 6.2 completion
 
-Phase 6 is not complete. To finish it, 6.2 must:
+Phase 6.2 installs Debian Coq 8.16.1 in `ci/proof-gate.sh`, invokes it with
+an explicit argv, a private `0700` session, a cleared environment, a 120-second
+per-process bound, a 1 MiB capture bound, and a recorded exact version and
+executable digest. It compiles the checked-in corpus in manifest order,
+resolves local modules, derives each theorem status from `Print Assumptions`,
+and node-locks checker kind, version, and executable to the manifest. Only a
+completed run is bound to `CheckerContext::Recorded`; a missing checker keeps
+`proof verify --live` fail-closed at exit 6.
 
-1. Install and invoke a pinned Coq, Lean 4, or Isabelle checker in the
-   hardened container, with an explicit argv, bounded wall clock, bounded
-   output, and a recorded exact tool version.
-2. Run the checker over the digest-bound proof corpus and capture its real
-   exit status, diagnostics, and dependency/admission output.
-3. Parse or otherwise establish the checker's actual theorem dependency
-   closure and admission statuses; do not rely on the manifest's declared
-   edges.
-4. Bind the live run to the manifest by checker kind, version, proof digests,
-   theorem statuses, and execution provenance, and reject any mismatch.
-5. Demonstrate a positive accepted-within-scope run and the negative
-   admitted/`sorry`/axiom, unrelated-theorem, unchecked-wrapper, and
-   missing-reentrant-transition controls against the live checker.
-6. Record the authentic run as `CheckerContext::Recorded` only after those
-   checks, and keep `proof verify` fail-closed when the tool is unavailable.
+The live seal passes all six cases (approved, admitted, axiom, unrelated,
+unchecked wrapper, missing reentrant transition). Exact results and claim
+limits are in [`phase6-live-checker.md`](phase6-live-checker.md).
 
 ## Citations
 
