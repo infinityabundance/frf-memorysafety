@@ -62,6 +62,7 @@ pub mod closure;
 pub mod conversion;
 pub mod court;
 pub mod detector;
+pub mod evaluation;
 pub mod identity;
 pub mod mir;
 pub mod model;
@@ -198,6 +199,7 @@ pub struct Capabilities {
 
 /// Return the capability matrix for this build.
 #[must_use]
+#[allow(clippy::too_many_lines)]
 pub fn capabilities() -> Capabilities {
     Capabilities {
         version: VERSION,
@@ -260,6 +262,10 @@ pub fn capabilities() -> Capabilities {
             "conversion evidence reuse revokes on property, candidate, boundary, dependency, tool, loader, revision, provenance, witness command/output/mechanism, or DSO-byte change",
             "live OpenSSL-Rust up_ref overflow witness (28c9e34) and checked-add repair (1d9c335) with curl 8.22.0 TLS1.3 positive/negative and candidate loader closure in ci/conversion-gate.sh",
             "synthetic seeded witnesses are rejected when presented as organic discoveries, and unconfirmed mechanisms are rejected",
+            "pre-registered Phase 9.1 evaluation protocol with a SHA-256 freeze and a hash-defined held-out split",
+            "isolated child-process ablation harness for support, path/alias, detector, proof, discovery, and decision-quality arms",
+            "canonical evaluation receipts with wall time, ru_maxrss, output size, digests, toolchain/image identity, and exact command",
+            "fail-closed receipt verification: missing measurement, fabricated digest, missing receipt, and unbacked claim rejection",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
@@ -277,6 +283,8 @@ pub fn capabilities() -> Capabilities {
             "full FRF semantic conformance and full Gemel evidence-schema conformance beyond the bridge's checked fields",
             "live OpenSSL-Rust tests and consumer replay in the default ci/gate.sh path; full Safe-33 cohort replay, all owner/allocator/callback cases, and organic vulnerability discovery; the live gate covers one up_ref boundary and the curl workload",
             "memory-safety, compatibility, or SAFE_COMPATIBLE claims beyond the typed evidence for that boundary and workflow",
+            "live detector, live Coq, and authentic native chain evaluation arms are typed NOT_RUN in the default ci/eval-gate.sh path",
+            "population-level detector sensitivity, defect recall, or verification-cost inference; Phase 9.1 is a finite pre-registered control-family ablation, not a sampling study",
             "live consumer (nginx/HAProxy/Redis/OpenSSH) replay against a newly built candidate",
             "reuse across a changed OpenSSL-Rust candidate, boundary, dependency, toolchain, loader, revision, provenance, or witness byte; those changes are typed revocations, not continued reuse",
             "live proof checking of a theorem outside the manifest's declared finite scope",
