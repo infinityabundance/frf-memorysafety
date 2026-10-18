@@ -1,6 +1,6 @@
 # Phase 6: proof manifest, closure, admission, correspondence, and live checker
 
-Snapshot: branch `staging`, crate `frf-memorysafety 0.6.0`.
+Snapshot: branch `staging`, crate `frf-memorysafety 0.7.0`.
 
 Phase 6.1 implemented the **manifest and classification half** of the Phase 6
 checked-proof adapter. Phase 6.2 completes the live half with a pinned Debian

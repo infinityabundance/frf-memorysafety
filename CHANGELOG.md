@@ -9,7 +9,7 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
-## [Unreleased]
+## [0.7.0] - 2026-10-18
 
 Phase 6: proof manifest, theorem/assumption closure, admission taxonomy, a
 separate Rust/FFI implementation-correspondence gate, and a live checked-proof
@@ -67,6 +67,25 @@ pass. Without Coq, `proof verify --live` remains fail-closed at exit 6.
   and CLI statuses.
 - `docs/phase6-proof-adapter.md`: schema, closure rules, admission taxonomy,
   correspondence gate, claim ceiling, Phase 6.2 requirements, and citations.
+
+### Verification
+
+- `cargo fmt --all -- --check`: clean
+- `cargo clippy --all-targets --all-features -- -D warnings`: clean
+- `cargo test --locked --all-targets --features native-harness`: 290 base
+  tests passed, 0 failed, 0 ignored
+- `cargo test --locked --release --features native-harness`: 290 base tests
+  passed, 0 failed, 0 ignored
+- `./ci/proof-gate.sh`: Debian Coq 8.16.1 (`coqc` SHA-256
+  `aae9841a59ea5a4d04c759d8328f52b3fa84f3b0e4fc7711507325d70639a240`),
+  6 of 6 live seal cases PASS: `approved` -> `accepted_within_scope` (exit
+  0), `admitted` and `axiom` -> `rejected_assumption` (exit 4), `unrelated` ->
+  `rejected_unrelated` (exit 4), `unchecked` ->
+  `rejected_unchecked_implementation` (exit 4), and `missing_transition` ->
+  `rejected_missing_transition` (exit 4); 6 live tests passed, 0 failed, 0
+  ignored.
+- `cargo publish --dry-run --locked`: 109 files, 1.4 MiB (305.4 KiB
+  compressed); no `research/`, `target/`, `.git/`, or credentials.
 
 ## [0.6.0] - 2026-10-18
 

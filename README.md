@@ -5,16 +5,15 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** Version 0.6.0 is the
-Phase 5 release, extended on `staging` with the Phase 6 proof adapter. It
-contains detector evidence and calibration refusal rules plus opt-in live
-detector adapters over a closed checked-in fixture registry, and it adds a
-typed proof manifest with a declared theorem/assumption closure, an admission
-taxonomy, a separate Rust/FFI implementation-correspondence gate, and a live
-pinned Coq adapter. **Phase 6 is complete for the declared Coq mechanism:**
-`./ci/proof-gate.sh` installs Debian Coq 8.16.1 and passes all six live seal
-cases. Without Coq, `proof verify --live` reports `checker_unavailable`
-(exit 6); parser success is never proof acceptance.
+**This build makes no memory-safety soundness claim.** Version 0.7.0 is the
+Phase 6 release. It retains the Phase 5 detector evidence, calibration refusal
+rules, and opt-in live detector adapters over a closed checked-in fixture
+registry, and adds a typed proof manifest with a declared theorem/assumption
+closure, an admission taxonomy, a separate Rust/FFI implementation-correspondence
+gate, and a live pinned Coq adapter. **Phase 6 is complete for the declared Coq
+mechanism:** `./ci/proof-gate.sh` installs Debian Coq 8.16.1 and passes all six
+live seal cases. Without Coq, `proof verify --live` reports
+`checker_unavailable` (exit 6); parser success is never proof acceptance.
 
 It adds Phase 4.1 and Phase 4.2 to the phase-2/phase-3 bookkeeping core: strict
 encoding, typed evidence, founded support with policy custody, a finite
@@ -33,7 +32,7 @@ typed `NOT_RUN` when an instrument is unavailable. Proof checking is limited to
 the checked-in finite Coq theorem and its negative controls; it is not a proof
 of the crate and is not a universal soundness claim.
 
-## Status (0.6.0 / phase 5 + phase 6)
+## Status (0.7.0 / phase 6)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -42,13 +41,18 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 290 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 290 passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 290 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 290 base tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
-| `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed |
+| `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
 
-The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5 changes; the MIR
+The default gate executes all 290 tests, including the six proof-live tests on
+their typed `checker_unavailable` path. `./ci/proof-gate.sh` re-runs those same
+six tests against live Coq; the live count is a subset of the base total, not
+additional to it.
+
+The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5/6 changes; the MIR
 path is unchanged from 0.4.0. The default gates above were run in the pinned
 container. The same container image is used by the native and detector gates
 after installing only their declared packages; the live tests are the same
@@ -56,11 +60,12 @@ tests that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or
 `FRF_DETECTOR_LIVE` is unset in the default gate.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
-Phase 4 (0.5.0), and Phase 5 (0.6.0) are in [`CHANGELOG.md`](CHANGELOG.md).
+Phase 4 (0.5.0), Phase 5 (0.6.0), and Phase 6 (0.7.0) are in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ### Capability matrix
 
-| Capability | 0.6.0 availability |
+| Capability | 0.7.0 availability |
 |---|---|
 | Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
 | `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
@@ -266,7 +271,7 @@ conflicts and no adjudicated observation; this matches the original
 `research/paper/research/worked_bundle.py` results. The replay test checks the
 original counts and makes this scoping difference explicit.
 
-### Claim ceiling (transcript-scoped for phase 4)
+### Claim ceiling (finite and transcript-scoped through phase 6)
 
 Every positive result in this README is limited to the named finite domain and
 the checks that were actually executed. The claim ceiling is syntactic, finite,
@@ -315,9 +320,12 @@ correspondence is semantically sound. The lexical admission scan is
 conservative and may reject an unrelated textual occurrence in a scanned file;
 it is not a Coq, Lean, or Isabelle parser. `proof verify --live` returns
 `checker_unavailable` (exit 6) without a live checker. A completed live run
-establishes only that the pinned Coq checked the declared finite theorem over
-the exact bytes; it does not prove universal soundness or semantic
-implementation correspondence.
+establishes only that the pinned Coq checked the declared small finite
+two-claim support fixed-point theorem over the exact bytes; it does not prove
+universal soundness. Implementation correspondence is a reviewed evidence
+binding over a source inventory or explicit digest-bound evidence, not a
+machine-proved semantic refinement; no result here proves the crate or arbitrary
+FFI implementations.
 
 ### NOT_RUN in this build
 
@@ -617,7 +625,8 @@ Both `detector calibrate FILE [--json]` and
 `detector calibrate --live --detector KIND [--json]` runs a closed checked-in
 fixture registry when `FRF_DETECTOR_LIVE=1` and the instrument is installed.
 The selectors are `miri`, `asan`, `lsan`, `tsan`, `loom`, `kani`, and `crypto`.
-The detector gate's live availability and results for 0.6.0 are:
+The detector gate's live availability and results, last recorded at 0.6.0 and
+not rerun for 0.7.0, are:
 
 | Mechanism | Selector | Recorded tool | Live result | Build separation |
 |---|---|---|---|---|
@@ -720,9 +729,9 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-default gate executes 284 base tests (including the 11 detector-live tests on
-their typed `NOT_RUN` path) and the native gate executes 17 live native tests;
-none is ignored or filtered out.
+default gate executes 290 base tests (including the 11 detector-live tests and
+the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths) and
+the native gate executes 17 live native tests; none is ignored or filtered out.
 
 `./ci/detector-gate.sh` is a separate live gate for Phase 5.2. It uses the same
 hardened Docker flags, installs only `gcc`, `libc6-dev`, `openssl`, `curl`, and
@@ -732,6 +741,16 @@ of the seven built-in mechanisms and the 11 live seal tests. On this release all
 seven mechanisms reported PASS and all 11 tests passed, 0 failed, 0 ignored. A
 mechanism that is unavailable is reported as `NOT_RUN` with its reason, not as
 a pass.
+
+`./ci/proof-gate.sh` is the separate Phase 6 live proof gate. It uses the same
+hardened Docker flags, installs Debian Coq 8.16.1 with `jq`, records the
+`coqc --version` string and executable SHA-256, asserts that `capabilities
+--json` reports `coq` as `available`, and runs the six live seal cases against
+the checked-in manifests. The expected results are `accepted_within_scope`
+(exit 0) for the positive seal and `rejected_assumption`, `rejected_unrelated`,
+`rejected_unchecked_implementation`, and `rejected_missing_transition` (exit 4)
+for the five negative seals. It then runs the six live tests. The gate does not
+weaken any container limit.
 
 `./ci/mir-gate.sh` is a separate optional gate. It uses the same hardened
 flags plus a `frf-rustup` volume, attempts to install the pinned minimal
@@ -808,7 +827,9 @@ imply soundness. A bounded model result does not imply a universal native
 result. An authentic-looking JSON file is not proof of execution. A clean
 detector run is not proof of detector sensitivity. A well-formed proof manifest
 is not a proof: manifest validation does not establish that a checker ran, that
-the theorem is true, or that the implementation correspondence is sound. A live
-Coq run establishes only that the checked-in finite theorem compiled and was
-reported closed; it does not prove the crate or the FFI implementation. See
-`SPEC.md` §1.
+the theorem is true, or that the implementation correspondence is sound. The
+Rust/FFI correspondence check is reviewed evidence binding, not a machine-proved
+semantic refinement. A live Coq run establishes only that the checked-in small
+finite two-claim support fixed-point theorem compiled and was reported closed;
+it does not prove the crate, arbitrary FFI implementations, or universal
+soundness. See `SPEC.md` §1.

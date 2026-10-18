@@ -1,6 +1,6 @@
 # Phase 6.2: live checked-proof adapter
 
-Snapshot: branch `staging`, crate `frf-memorysafety 0.6.0`.
+Snapshot: branch `staging`, crate `frf-memorysafety 0.7.0`.
 
 Phase 6 is complete for the declared Coq mechanism. The default gate installs
 no checker and executes the typed `checker_unavailable` path. The separate
