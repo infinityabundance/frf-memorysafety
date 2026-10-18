@@ -36,6 +36,10 @@ use crate::profile::{
     canonical_bundle_bytes, evaluate_profile_json, local_buffer_bundle, local_buffer_records,
     ProfileEvaluation, ProfileRefusalKind, UNIVERSAL_SOUNDNESS,
 };
+use crate::proof::{
+    verify_manifest_bytes, CheckerContext, GateStatus, ProofErrorCategory, ProofOutcome,
+    ProofReport, PROOF_MANIFEST_SCHEMA, PROOF_REPORT_SCHEMA,
+};
 use crate::source::{
     scan_source_default, SourceError, SourceErrorCategory, SourceInventory, SOURCE_INVENTORY_SCHEMA,
 };
@@ -70,6 +74,7 @@ Commands:
   path analyze FILE [--json]
   mir scan FILE [--json] [--toolchain NAME]
   court verify FILE [--json]
+  proof verify MANIFEST [--json]
   detector calibrate FILE [--json]
   detector calibrate --live --detector KIND [--json]
   evidence verify --root DIR
@@ -124,6 +129,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "evidence" => command_evidence(&args[1..]),
         "report" => command_report(&args[1..]),
         "court" => command_court(&args[1..]),
+        "proof" => Ok(command_proof(&args[1..])),
         "detector" => command_detector(&args[1..]),
         "frf" => command_not_run("frf promote", args),
         "gemel" => command_not_run("gemel publish", args),
@@ -162,6 +168,8 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
             "mir_not_run_schema": MIR_NOT_RUN_SCHEMA,
             "native_event_transcript_schema": NATIVE_EVENT_TRANSCRIPT_SCHEMA,
             "court_report_schema": COURT_REPORT_SCHEMA,
+            "proof_manifest_schema": PROOF_MANIFEST_SCHEMA,
+            "proof_report_schema": PROOF_REPORT_SCHEMA,
             "universal_soundness": UNIVERSAL_SOUNDNESS,
         }))?;
     } else {
@@ -178,6 +186,8 @@ fn command_version(rest: &[String]) -> Result<i32, String> {
         println!("MIR observation schema: {MIR_OBSERVATION_SCHEMA}");
         println!("native event transcript schema: {NATIVE_EVENT_TRANSCRIPT_SCHEMA}");
         println!("court report schema: {COURT_REPORT_SCHEMA}");
+        println!("proof manifest schema: {PROOF_MANIFEST_SCHEMA}");
+        println!("proof report schema: {PROOF_REPORT_SCHEMA}");
         println!("universal soundness: {UNIVERSAL_SOUNDNESS}");
     }
     Ok(EXIT_OK)
@@ -1053,6 +1063,118 @@ fn court_error_exit(error: &CourtError) -> i32 {
         CourtErrorCategory::Integrity => EXIT_INTEGRITY,
         CourtErrorCategory::Harness => EXIT_HARNESS,
     }
+}
+
+fn command_proof(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) == Some("verify") {
+        command_proof_verify(&rest[1..])
+    } else {
+        eprintln!("usage: proof verify MANIFEST [--json]");
+        EXIT_USAGE
+    }
+}
+
+fn command_proof_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: proof verify MANIFEST [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: proof verify MANIFEST [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: proof verify MANIFEST [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let base_dir = Path::new(path)
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let report = match verify_manifest_bytes(&bytes, base_dir, &CheckerContext::NotConfigured) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return proof_error_exit(error.category());
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return proof_error_exit(error.category());
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write proof report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else if let Err(error) = write_proof_summary(&report) {
+        eprintln!("cannot write proof summary: {error}");
+        return EXIT_HARNESS;
+    }
+    report.outcome.exit_code()
+}
+
+fn proof_error_exit(category: ProofErrorCategory) -> i32 {
+    match category {
+        ProofErrorCategory::Integrity => EXIT_INTEGRITY,
+        ProofErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn write_proof_summary(report: &ProofReport) -> Result<(), String> {
+    let gate = |status: GateStatus| match status {
+        GateStatus::Pass => "pass",
+        GateStatus::Fail => "fail",
+    };
+    let checker = if report.live_checker_configured {
+        if report.live_checker_invoked {
+            "configured; invoked"
+        } else {
+            "configured; recorded evidence supplied; not invoked by this build"
+        }
+    } else {
+        "not configured; parser success is not proof acceptance"
+    };
+    let mut output = format!(
+        "proof: {}\ntheorem: {}\nchecker: {} {}\nadmission: {} ({})\ncorrespondence: {} ({})\nlive checker: {}\nclaim ceiling: {}\nuniversal soundness: {}\n",
+        report.outcome.as_str(),
+        report.theorem.name,
+        report.checker.kind.as_str(),
+        report.checker.version,
+        report.admission.outcome.as_str(),
+        report.admission.detail,
+        gate(report.correspondence.status),
+        report.correspondence.detail,
+        checker,
+        report.claim_ceiling,
+        report.universal_soundness,
+    );
+    if report.outcome != ProofOutcome::AcceptedWithinScope {
+        output.push_str(&format!("detail: {}\n", report.outcome_detail));
+    }
+    std::io::stdout()
+        .write_all(output.as_bytes())
+        .map_err(|error| error.to_string())
 }
 
 fn command_detector(rest: &[String]) -> Result<i32, String> {
