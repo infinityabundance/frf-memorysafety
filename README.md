@@ -5,20 +5,19 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** Version 0.4.0 remains
-the published release. This branch adds Phase 4.1 and Phase 4.2 to the
-phase-2/phase-3 bookkeeping core: strict encoding, typed evidence, founded
-support with policy custody, a finite three-rule profile, bounded `syn`-based
-source discovery, typed alias/footprint/reference-interval qualification,
-conservative MIR edge observations when the pinned toolchain is present,
-responsibility-token lifecycle and race semantics, a native event-transcript
-verifier, a test-only harness that records and replays checked-in native
-fixtures, and an honest CLI. Universal safe-interior soundness and
-`SAFE_COMPATIBLE` are outside the finite profile and are always reported as
-`WITHHELD_NOT_RUN`. The harness cannot run arbitrary C/Rust input; `court run`
-remains `NOT_RUN`.
+**This build makes no memory-safety soundness claim.** Version 0.5.0 is the
+Phase 4 release. It adds Phase 4.1 and Phase 4.2 to the phase-2/phase-3
+bookkeeping core: strict encoding, typed evidence, founded support with policy
+custody, a finite three-rule profile, bounded `syn`-based source discovery,
+typed alias/footprint/reference-interval qualification, conservative MIR edge
+observations when the pinned toolchain is present, responsibility-token
+lifecycle and race semantics, a native event-transcript verifier, a test-only
+harness that records and replays checked-in native fixtures, and an honest CLI.
+Universal safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite
+profile and are always reported as `WITHHELD_NOT_RUN`. The harness cannot run
+arbitrary C/Rust input; `court run` remains `NOT_RUN`.
 
-## Status (0.4.0 + phase 4.1 + phase 4.2)
+## Status (0.5.0 / phase 4)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -27,24 +26,23 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets` | 224 passed, 0 failed, 0 ignored |
-| `cargo test --locked --release` | 224 passed, 0 failed, 0 ignored |
-| `./ci/native-gate.sh` | 17 live native tests passed |
+| `cargo test --locked --all-targets --features native-harness` | 224 passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 224 passed, 0 failed, 0 ignored |
+| `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 
-The optional `ci/mir-gate.sh` was not rerun for the Phase 4.1/4.2 changes; the
-MIR path is unchanged. The four default gates above were run in the pinned
-container. The same container image is used by the native gate after installing
-only `gcc` and `libc6-dev`; its 17 tests are the same tests that assert typed
-`NOT_RUN` when the live flag is unset in the default gate.
+The optional `ci/mir-gate.sh` was not rerun for the Phase 4 changes; the MIR
+path is unchanged from 0.4.0. The four default gates above were run in the
+pinned container. The same container image is used by the native gate after
+installing only `gcc` and `libc6-dev`; its 17 live tests are the same tests
+that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` is unset in the default
+gate.
 
-Version 0.4.0 is the Phase 3 release. Phase 4.1 is an unreleased branch
-addition; release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), and Phase 3
-(0.4.0) are in [`CHANGELOG.md`](CHANGELOG.md), and the unreleased Phase 4.1
-entry records this change.
+Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0), and
+Phase 4 (0.5.0) are in [`CHANGELOG.md`](CHANGELOG.md).
 
 ### Capability matrix
 
-| Capability | 0.4.0 availability |
+| Capability | 0.5.0 availability |
 |---|---|
 | Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
 | `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
@@ -190,7 +188,7 @@ conflicts and no adjudicated observation; this matches the original
 `research/paper/research/worked_bundle.py` results. The replay test checks the
 original counts and makes this scoping difference explicit.
 
-### Claim ceiling
+### Claim ceiling (transcript-scoped for phase 4)
 
 Every positive result in this README is limited to the named finite domain and
 the checks that were actually executed. The claim ceiling is syntactic, finite,
@@ -397,10 +395,20 @@ unordered, at least one write, not both atomic".
 
 The transcript must declare authentic-native/substitute/modeled origin,
 tool/library versions, executable and fixture digests, case legality, and scope.
-Only `authentic_native` can reach a clean verdict. Outcomes are
-`verified_compatible_within_transcript`, `observed_violation`,
-`incomplete_transcript`, `unresolved`, and `illegal_case`; exit statuses are
-0, 4, 5, 4, and 4 respectively. Malformed or non-conforming instances exit 3.
+Only `authentic_native` can reach a clean verdict. Outcomes and exit statuses
+are:
+
+```text
+verified_compatible_within_transcript  0
+observed_violation                     4
+incomplete_transcript                  5
+unresolved                             4
+illegal_case                           4
+```
+
+Malformed or non-conforming instances exit 3. This mapping is the
+SPEC.md §14 policy used by `court verify FILE [--json]`; no outcome is
+translated into a universal memory-safety result.
 
 The seeded skipped-event detector rejects missing create, free, borrow-end,
 generation transition, required callback, and event-count facts as
@@ -484,7 +492,9 @@ root because the reduced capability set prevents its `_apt` sandbox user from
 switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests.
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
-OOM and resource caps belong in the gate invocation, not in an image.
+OOM and resource caps belong in the gate invocation, not in an image. Across
+both gates, 224 base tests and 17 live native-gate tests execute, with none
+ignored or filtered out.
 
 `./ci/mir-gate.sh` is a separate optional gate. It uses the same hardened
 flags plus a `frf-rustup` volume, attempts to install the pinned minimal

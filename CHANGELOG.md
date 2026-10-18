@@ -9,13 +9,13 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
-## [Unreleased]
+## [0.5.0] - 2026-10-18
 
-Phase 4.1: responsibility-token lifecycle, generation, failure, and race
-semantics plus a native event-transcript verifier. Phase 4.2: a test-only
-isolated native harness that compiles, records, replays, and verifies checked-in
-C and Rust fixtures. No version bump and no publish; arbitrary caller-supplied
-native execution (`court run`) remains `NOT_RUN`.
+Phase 4: responsibility-token lifecycle, failure, borrow, generation, and race
+semantics plus a native event-transcript verifier (`court verify`), and a
+test-only isolated native harness that compiles, records, replays, and verifies
+checked-in C and Rust fixtures. Arbitrary caller-supplied native execution
+(`court run`) remains `NOT_RUN`.
 
 ### Added
 
@@ -75,17 +75,24 @@ native execution (`court run`) remains `NOT_RUN`.
   assert the typed `NOT_RUN` path; with the flag they exercise the live path.
   None is ignored.
 - `ci/native-gate.sh`: the same hardened container flags as `ci/gate.sh`, an
-  in-container install of only `gcc` and `libc6-dev`, and the live native tests.
+  in-container install of only `gcc` and `libc6-dev`, and the 17 live native
+  tests.
 - `docs/phase4-native.md`: isolation, provenance, replay rule, fixture legality,
   exact commands, claim ceiling, and citations.
+- The non-default `native-harness` feature. Default builds compile no native
+  execution code; only the gates enable it.
 
 ### Verification
 
 - `cargo fmt --all -- --check`: clean
 - `cargo clippy --all-targets --all-features -- -D warnings`: clean
-- `cargo test --locked --all-targets`: 224 passed, 0 failed, 0 ignored
-- `cargo test --locked --release`: 224 passed, 0 failed, 0 ignored
-- `ci/native-gate.sh`: 17 live native tests passed
+- `cargo test --locked --all-targets --features native-harness`: 224 passed,
+  0 failed, 0 ignored
+- `cargo test --locked --release --features native-harness`: 224 passed,
+  0 failed, 0 ignored
+- `ci/native-gate.sh`: 17 live native tests passed, 0 failed, 0 ignored
+- `cargo publish --dry-run --locked`: packaged without `research/`, `target/`,
+  `.git/`, or credentials
 
 ## [0.4.0] - 2026-10-18
 
