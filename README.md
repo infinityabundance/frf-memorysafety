@@ -77,7 +77,7 @@ organic discovery, unconfirmed mechanisms are rejected, and evidence is revoked
 when the property, candidate, boundary, dependency, tool, loader, revision,
 provenance, or witness bytes change.
 
-## Status (0.9.0 / phases 7 and 8 complete for their declared chains)
+## Status (0.9.0 / phases 7 and 8 complete; Phase 9.1 evaluation measured)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -86,18 +86,20 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 |---|---|
 | `cargo fmt --all -- --check` | clean |
 | `cargo clippy --all-targets --all-features -- -D warnings` | clean |
-| `cargo test --locked --all-targets --features native-harness` | 341 base tests passed, 0 failed, 0 ignored |
-| `cargo test --locked --release --features native-harness` | 341 base tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --all-targets --features native-harness` | 350 tests passed, 0 failed, 0 ignored |
+| `cargo test --locked --release --features native-harness` | 350 tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
 | `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` (Python 3.11.2 local image) |
 | `./ci/conversion-gate.sh` | pin built; 22 boundary tests passed; fault/repair 4/4; curl positive/negative PASS; ABI-LOAD 6499/0; 27 live crate tests passed |
+| `./ci/eval-gate.sh` | 60/60 receipts pass; 20 held-out / 11 development; 11/11 claims supported; fresh and committed receipts deterministic-identical |
 
-The default gate executes all 341 tests, including the six proof-live tests on
+The default gate executes all 350 tests, including the six proof-live tests on
 their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
-unit tests, the 1 live/`NOT_RUN` chain test, and the 30 Phase 8 conversion-court
-tests (27 integration, including 7 live-capture/reuse tests, and 3 unit).
+unit tests, the 1 live/`NOT_RUN` chain test, the 30 Phase 8 conversion-court
+tests (27 integration, including 7 live-capture/reuse tests, and 3 unit), and the
+9 Phase 9.1 evaluation tests.
 `./ci/proof-gate.sh` re-runs those same six tests against live Coq; the live
 count is a subset of the base total, not additional to it.
 `./ci/bridge-gate.sh` builds and runs the three pinned providers and executes
@@ -468,6 +470,36 @@ toolchain, authority, and loader closure. The target's own ledger remains
 **0/33** `SAFE_COMPATIBLE`; the conversion model remains fail-closed
 bookkeeping, not a memory-safety or compatibility claim.
 
+### Phase 9.1 evaluation surface
+
+Phase 9.1 is pre-registration and measurement only; `PAPER.md` is Phase 9.2.
+[`evaluation/PRE-REGISTRATION.md`](evaluation/PRE-REGISTRATION.md) fixes the
+hypotheses, metrics, thresholds, ablation definitions, held-out rule, blocked
+controls, resource accounting, and claim-to-receipt rule. The machine-readable
+protocol is [`evaluation/protocol.json`](evaluation/protocol.json), frozen at
+SHA-256
+`02deb982c61c2a8307dbf3d34cf90f5aeb367e9ea7b1d794314aea9dd094d5ce`.
+
+`frf-eval` runs each pre-registered `(case, arm)` in an isolated child process
+and records wall time, peak RSS (`/usr/bin/time -v` / `ru_maxrss`, with `VmHWM`
+fallback), output size, input/observation/stdout/stderr digests, crate and
+`rustc` versions, container image identity, and the exact command. It emits
+canonical `frf-memorysafety.evaluation-receipt.v1` JSON under
+[`evaluation/receipts/`](evaluation/receipts/). The harness refuses to emit a
+receipt without a required measurement, and `frf-eval verify` rejects
+non-canonical receipts, stale observation digests, missing receipts, and any
+claim not backed by an observed receipt.
+
+The committed corpus is **60 receipts** over **31 cases** (**20 held-out**,
+**11 development**) and six hypotheses: founded graph support, path/alias
+semantics, calibrated detector, proof closure/correspondence, empirical
+discovery, and decision quality. All 60 receipts match their pre-registered
+expected observation; all 11 claims are supported. Live Miri/Miri-class
+detectors, live Coq checking, and an authentic native FRF/FRF-Fuzz/Gemel chain
+are typed `NOT_RUN` in the default evaluation image, not passes. The measured
+false-accept/false-refuse counts, negative findings, and limitations are in
+[`evaluation/METHOD.md`](evaluation/METHOD.md).
+
 ### NOT_RUN in this build
 
 - Live detectors over arbitrary or caller-supplied input (only the closed
@@ -507,6 +539,11 @@ bookkeeping, not a memory-safety or compatibility claim.
 - Signed provenance attestations, transparency logs, or a trusted build root
 - Real-scheduler race observation, sanitizer evidence, or whole-program closure
 - Universal safe-interior or `SAFE_COMPATIBLE` acceptance
+- Live detector, live Coq, and authentic native-chain evaluation arms in the
+  default `./ci/eval-gate.sh` path (they are typed `NOT_RUN`; use the separate
+  live gates)
+- Population-level detector sensitivity/specificity, defect recall, or
+  verification-cost inference from the Phase 9.1 finite control-family corpus
 
 FRF remains the only FRF receipt producer, FRF-Fuzz the only BLAKE3 finding
 producer, and Gemel the only GCE/GID producer. This crate does not synthesize
@@ -891,11 +928,11 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-The default gate executes 311 base tests (including the 11 detector-live tests,
+The default gate executes 350 tests (including the 11 detector-live tests,
 the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, the
-17 bridge seal tests, the 3 bridge unit tests, and the 1 live/`NOT_RUN` chain
-test) and the native gate executes 17 live native tests; none is ignored or
-filtered out.
+17 bridge seal tests, the 3 bridge unit tests, the 1 live/`NOT_RUN` chain test,
+and the 9 Phase 9.1 evaluation tests) and the native gate executes 17 live native
+tests; none is ignored or filtered out.
 
 `./ci/detector-gate.sh` is a separate live gate for Phase 5.2. It uses the same
 hardened Docker flags, installs only `gcc`, `libc6-dev`, `openssl`, `curl`, and
@@ -936,6 +973,16 @@ flags plus a `frf-rustup` volume, attempts to install the pinned minimal
 `NOT_RUN` (exit 6) if installation or execution is unavailable. It is not
 invoked by `ci/gate.sh`.
 
+`./ci/eval-gate.sh` is the Phase 9.1 evaluation gate. It uses the same hardened
+flags, installs only Debian `time`, builds `frf-eval`, runs all 60 pre-registered
+`(case, arm)` receipts in isolated child processes, verifies the fresh run, and
+verifies the committed receipts under `evaluation/receipts/`. It then compares
+the deterministic fields of fresh and committed receipts (resource values may
+differ). It fails closed if a hypothesis loses a receipt, a required measurement
+is absent, an observation digest is stale, or a claim does not map to an
+observed receipt. Live detector, live Coq, and authentic-chain arms remain typed
+`NOT_RUN` in this default path.
+
 Every container is hardened as follows:
 
 - `--memory=2g --memory-swap=2g` caps memory and swap together, so the
@@ -974,6 +1021,14 @@ src/proof.rs      Phase 6 manifest, closure, admission, correspondence, live Coq
 src/bridge.rs     Phase 7.1/7.2 provider pins, opaque identities, custody,
                   bundle verification, live capture, and loader closure
 src/conversion.rs Phase 8.1/8.2 typed conversion-court evidence, live capture, and reuse/revocation
+src/evaluation.rs Phase 9.1 protocol, isolated ablation harness, receipts, and claim verification
+src/bin/frf-eval.rs Phase 9.1 harness CLI
+ci/eval-gate.sh                  Phase 9.1 receipt, measurement, and claim gate
+evaluation/PRE-REGISTRATION.md   frozen hypotheses, metrics, thresholds, held-out rule, and blocked controls
+evaluation/protocol.json         machine-readable frozen protocol
+evaluation/METHOD.md             methodology, ablations, measured results, negative findings, limitations
+evaluation/receipts/             committed canonical receipts and deterministic manifest
+tests/evaluation.rs              protocol freeze, measurement refusal, fabrication, missing-receipt, and claim tests
 docs/phase6-proof-adapter.md      proof schema, closure, taxonomy, correspondence, citations
 docs/phase6-live-checker.md       install, invocation, theorem, seals, claim ceiling, citations
 docs/phase7-bridge-discovery.md   Phase 7.1 repos/commits/schemas, builds, identity boundary, seals
