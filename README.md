@@ -5,8 +5,10 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** Version 0.8.0 is the
-Phase 7 release. It retains the Phase 6 proof manifest with a declared
+**This build makes no memory-safety soundness claim.** Version 0.9.0 is the
+Phase 8 release. It retains the Phase 7 live FRF-Fuzz -> FRF -> Gemel chain,
+pinned provider contracts, provider-typed opaque identities, and fail-closed
+custody pipeline, the Phase 6 proof manifest with a declared
 theorem/assumption closure, admission taxonomy, separate Rust/FFI
 implementation-correspondence gate, and live pinned Coq adapter, plus the Phase
 5 detector evidence, calibration refusal rules, and opt-in live detector
@@ -52,7 +54,8 @@ re-execution-mismatch, and tampered-object seals. The default
 `OpenReceipt`, finding, GCE object, or GID. See
 [`docs/phase7-live-chain.md`](docs/phase7-live-chain.md).
 
-Phase 8.2 completes the declared OpenSSL-Rust conversion scope. The pinned
+Phase 8.2, released as 0.9.0, completes the declared OpenSSL-Rust conversion
+scope. The pinned
 `infinityabundance/openssl-rs` Safe-33 candidate (`integrate/safe-c33` at
 `56ba894594ed3df0fdf117a15747d205b4f0ecd9`) builds and runs under a 4g hard cap
 on the recorded 134.7 GB / 16-CPU host; the 2 GiB kill in 8.1 was an envelope
@@ -74,7 +77,7 @@ organic discovery, unconfirmed mechanisms are rejected, and evidence is revoked
 when the property, candidate, boundary, dependency, tool, loader, revision,
 provenance, or witness bytes change.
 
-## Status (0.8.0 / phases 7 and 8 complete for their declared chains)
+## Status (0.9.0 / phases 7 and 8 complete for their declared chains)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -89,6 +92,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 | `./ci/proof-gate.sh` | Coq 8.16.1; 6 of 6 live seal cases PASS; 6 live tests passed, 0 failed, 0 ignored |
 | `./ci/bridge-gate.sh` | live chain `Complete`; 6 of 6 seals PASS; `FRF_GOLDEN=PASS` (Python 3.11.2 local image) |
+| `./ci/conversion-gate.sh` | pin built; 22 boundary tests passed; fault/repair 4/4; curl positive/negative PASS; ABI-LOAD 6499/0; 27 live crate tests passed |
 
 The default gate executes all 341 tests, including the six proof-live tests on
 their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
@@ -110,7 +114,8 @@ tests that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or
 `FRF_DETECTOR_LIVE` is unset in the default gate.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
-Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), and Phase 7 (0.8.0) are in
+Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), and
+Phase 8 (0.9.0) are in
 [`CHANGELOG.md`](CHANGELOG.md).
 
 ### Live native chain (Phase 7)
@@ -141,7 +146,7 @@ toolchains, commands, closure hashes, and the claim ceiling.
 
 ### Capability matrix
 
-| Capability | 0.8.0 availability |
+| Capability | 0.9.0 availability |
 |---|---|
 | Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
 | `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
@@ -388,7 +393,7 @@ conflicts and no adjudicated observation; this matches the original
 `research/paper/research/worked_bundle.py` results. The replay test checks the
 original counts and makes this scoping difference explicit.
 
-### Claim ceiling (finite and transcript-scoped through phase 7)
+### Claim ceiling (finite and transcript-scoped through phase 8)
 
 Every positive result in this README is limited to the named finite domain and
 the checks that were actually executed. The claim ceiling is syntactic, finite,
@@ -776,7 +781,7 @@ Both `detector calibrate FILE [--json]` and
 fixture registry when `FRF_DETECTOR_LIVE=1` and the instrument is installed.
 The selectors are `miri`, `asan`, `lsan`, `tsan`, `loom`, `kani`, and `crypto`.
 The detector gate's live availability and results, last recorded at 0.6.0 and
-not rerun for 0.7.0 or 0.8.0, are:
+not rerun for 0.7.0, 0.8.0, or 0.9.0, are:
 
 | Mechanism | Selector | Recorded tool | Live result | Build separation |
 |---|---|---|---|---|

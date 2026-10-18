@@ -9,30 +9,57 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
-## [Unreleased]
+## [0.9.0] - 2026-10-18
 
-Phase 8.2: live OpenSSL-Rust Safe-33 conversion witness and repair. The pinned
-`openssl-rs` candidate builds under a 4g hard cap; `ci/conversion-gate.sh`
-runs the real boundary tests, reproduces the `up_ref` overflow fault and its
-`checked_add` repair, builds and runs unmodified curl 8.22.0 against the
-candidate prefix with TLS 1.3 positive/negative cases, captures the candidate
-loader closure, and feeds the exact files through a typed live-capture model.
-No version bump and no `SAFE_COMPATIBLE` claim.
+Phase 8: pinned OpenSSL-Rust Safe-33 conversion evidence, a live
+refcount-overflow witness, a compatible repair, a real consumer workload, and
+an ABI loader proof. The pinned `openssl-rs` candidate builds under a 4g hard
+cap; `ci/conversion-gate.sh` runs the owner/allocator/callback boundary tests,
+reproduces the `up_ref` overflow fault and its `checked_add` repair, builds and
+runs unmodified curl 8.22.0 against the candidate prefix with TLS 1.3
+positive/negative cases, captures the candidate loader closure, and feeds the
+exact files through a typed live-capture model.
+
+**Declared scope only:** one `up_ref` owner/refcount boundary, one compatible
+repair, one curl 8.22.0 TLS 1.3 workflow, and one candidate loader closure. The
+witness is not an organic vulnerability discovery (the target's own repair
+commit records the defect), and this release makes no all-33-consumer,
+compatibility, memory-safety, or `SAFE_COMPATIBLE` claim.
 
 ### Added
 
+- Pinned `infinityabundance/openssl-rs` Safe-33 candidate
+  (`integrate/safe-c33` at `56ba894594ed3df0fdf117a15747d205b4f0ecd9`, tree
+  `b54cc2b96d0e12af4a534d9237aadbe089b38660`, `openssl-rs 0.0.27`) with exact
+  source-manifest, owner/refcount, allocator, callback, and alias boundary
+  cases recorded in `docs/phase8-conversion-discovery.md`.
+- Live refcount-overflow witness: the fault revision `28c9e34` panics with
+  `attempt to add with overflow` when checks are on and silently wraps a live
+  `i32::MAX` count to `count=-2147483648` (`answer=1`) when checks are off; the
+  independently captured mechanism pair is `mechanism.txt`.
+- Compatible repair `1d9c335`: `up_ref` uses `checked_add`, passes the overflow
+  test with compiler checks on and off, and preserves the positive-count answer.
+- Live consumer workflow: unmodified curl 8.22.0 built against the candidate
+  prefix, verified TLS 1.3 fetch (`exit=0`, `http_code=200`,
+  `ssl_verify_result=0`) and unrelated-CA rejection (`exit=60`, `http_code=000`,
+  `ssl_verify_result=20`), with `ldd`/`LD_DEBUG` resolution under the candidate.
+- ABI loader proof: Phase-2 `ABI-LOAD` reports libcrypto `5896/5896`, libssl
+  `603/603`, **6499 resolved, 0 unresolved**; `ABI-DYNAMIC`, `ABI-SUBSTITUTION`,
+  and contamination courts pass, and both candidate DSO digests are recomputed
+  from exact bytes.
 - Live conversion capture (`capture_live`, `capture_live_from_env`) that
   computes source, DSO, tool, loader, mechanism, and dependency digests from
   exact files, requires authentic-native provenance, and returns typed
   `NOT_RUN` without `FRF_CONVERSION_CAPTURE`.
 - `ci/conversion-gate.sh` and its fixtures: the real `up_ref` fault/repaired
   witness, the curl TLS 1.3 workload, the Phase-2 loader courts, and the
-  live-capture/reuse test.
+  live-capture/reuse test, all under a hard 4g memory/swap cap.
 
 ### Changed
 
 - Evidence reuse now also revokes on witness provenance, command, output,
-  mechanism, and DSO-byte changes.
+  mechanism, and DSO-byte changes, in addition to property, candidate,
+  boundary, dependency, tool, loader, and revision changes.
 - `./ci/gate.sh` now runs 341 tests; the 30 conversion-court tests include the
   live-capture and revocation cases and execute the typed `NOT_RUN` path
   without the external repository.
