@@ -5,9 +5,9 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** Version 0.5.0 is the
-Phase 4 release, extended on `staging` with Phase 5.1 detector evidence and
-calibration refusal rules and Phase 5.2 live detector adapters. It adds Phase
+**This build makes no memory-safety soundness claim.** Version 0.6.0 is the
+Phase 5 release: detector evidence and calibration refusal rules plus opt-in
+live detector adapters over a closed checked-in fixture registry. It adds Phase
 4.1 and Phase 4.2 to the phase-2/phase-3 bookkeeping core: strict encoding,
 typed evidence, founded support with policy custody, a finite three-rule
 profile, bounded `syn`-based source discovery, typed
@@ -23,7 +23,7 @@ C/Rust input; `court run` remains `NOT_RUN`. Live detector execution is
 opt-in (`FRF_DETECTOR_LIVE=1`), uses only checked-in fixtures, and reports a
 typed `NOT_RUN` when an instrument is unavailable.
 
-## Status (0.5.0 / phase 4 + phase 5)
+## Status (0.6.0 / phase 5)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -35,7 +35,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `cargo test --locked --all-targets --features native-harness` | 261 passed, 0 failed, 0 ignored |
 | `cargo test --locked --release --features native-harness` | 261 passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
-| `./ci/detector-gate.sh` | 7 live mechanisms PASS; 11 live seal tests passed; no mechanism fabricated |
+| `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
 
 The optional `ci/mir-gate.sh` was not rerun for the Phase 4/5 changes; the MIR
 path is unchanged from 0.4.0. The default gates above were run in the pinned
@@ -44,12 +44,12 @@ after installing only their declared packages; the live tests are the same
 tests that assert typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or
 `FRF_DETECTOR_LIVE` is unset in the default gate.
 
-Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0), and
-Phase 4 (0.5.0) are in [`CHANGELOG.md`](CHANGELOG.md).
+Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
+Phase 4 (0.5.0), and Phase 5 (0.6.0) are in [`CHANGELOG.md`](CHANGELOG.md).
 
 ### Capability matrix
 
-| Capability | 0.5.0 availability |
+| Capability | 0.6.0 availability |
 |---|---|
 | Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
 | `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
@@ -541,22 +541,39 @@ authenticate the tool. See
 [`docs/phase5-calibration.md`](docs/phase5-calibration.md) for the schema,
 rules, refusal taxonomy, claim ceiling, test controls, and citations.
 
+Both `detector calibrate FILE [--json]` and
+`detector calibrate --live --detector KIND [--json]` use the SPEC §14 statuses:
+
+```text
+0  CALIBRATED: the declared finite checks passed
+2  usage error or unreadable input
+3  evidence integrity failure
+5  REFUSED: a named calibration refusal
+6  NOT_RUN: live instrument unavailable or `FRF_DETECTOR_LIVE` unset
+7  internal harness error
+```
+
 ### Phase 5.2 live detector adapters
 
 `detector calibrate --live --detector KIND [--json]` runs a closed checked-in
 fixture registry when `FRF_DETECTOR_LIVE=1` and the instrument is installed.
 The selectors are `miri`, `asan`, `lsan`, `tsan`, `loom`, `kani`, and `crypto`.
-The detector gate's live results on this branch are:
+The detector gate's live availability and results for 0.6.0 are:
 
-| Mechanism | Live result |
-|---|---|
-| Miri (`nightly-2025-02-20`, `ub`/`clean`/`harmless`) | PASS, sensitivity 1/1, specificity 2/2 |
-| AddressSanitizer (heap use-after-free, clean control) | PASS, 1/1, 1/1 |
-| LeakSanitizer (leak, clean control) | PASS, 1/1, 1/1 |
-| ThreadSanitizer (barrier race, atomic control) | PASS, 1/1, 1/1 |
-| loom (race model, atomic control) | PASS, 1/1, 1/1 |
-| Kani 0.60.0 (`known_bad`, `proof_control`) | PASS, 1/1, 1/1 |
-| OpenSSL SHA-256 KAT + signature pair | PASS, 1/1, 2/2 |
+| Mechanism | Selector | Recorded tool | Live result | Build separation |
+|---|---|---|---|---|
+| Miri (`nightly-2025-02-20`, `ub`/`clean`/`harmless`) | `miri` | `miri 0.1.0 (f280acf4c7 2025-02-19)` | PASS, sensitivity 1/1, specificity 2/2 | PASS |
+| AddressSanitizer (heap use-after-free, clean control) | `asan` | gcc 12.2.0 | PASS, 1/1, 1/1 | PASS |
+| LeakSanitizer (leak, clean control) | `lsan` | gcc 12.2.0 | PASS, 1/1, 1/1 | PASS |
+| ThreadSanitizer (barrier race, atomic control) | `tsan` | gcc 12.2.0 | PASS, 1/1, 1/1 | PASS |
+| loom (race model, atomic control) | `loom` | cargo 1.85.0; loom 0.7.2 | PASS, 1/1, 1/1 | PASS |
+| Kani 0.60.0 (`known_bad`, `proof_control`) | `kani` | kani 0.60.0 with bundled CBMC | PASS, 1/1, 1/1 | PASS |
+| OpenSSL SHA-256 KAT + signature pair | `crypto` | OpenSSL 3.0.22 | PASS, 1/1, 2/2 | PASS |
+
+All seven mechanisms also reported `authenticity: PASS`. Availability is a
+runtime installation observation from `capabilities --json`; it is not a
+sensitivity claim. A mechanism that cannot be installed or run is `NOT_RUN`
+with its exact reason and is never counted as PASS.
 
 Every run captures real stdout/stderr with per-stream SHA-256, exit status,
 signal, duration, tool version, executable digest, explicit argv, environment
@@ -567,7 +584,9 @@ The `crypto` selector uses the custom `openssl-sha256-kat` kind because a
 known-answer/signature control is not a constant-time leakage measurement. See
 [`docs/phase5-live-detectors.md`](docs/phase5-live-detectors.md) for exact
 install/invocation commands, versions, flags, build separation, live results,
-claim ceiling, and citations.
+claim ceiling, and citations. Each PASS is one mechanism-and-case-specific
+observation over checked-in fixtures; it does not establish universal detector
+sensitivity or specificity, and it is not a memory-safety result.
 
 ## Exit statuses
 
@@ -610,9 +629,19 @@ root because the reduced capability set prevents its `_apt` sandbox user from
 switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests.
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
-OOM and resource caps belong in the gate invocation, not in an image. Across
-both gates, 250 base tests and 17 live native-gate tests execute, with none
-ignored or filtered out.
+OOM and resource caps belong in the gate invocation, not in an image. The
+default gate executes 261 base tests (including the 11 detector-live tests on
+their typed `NOT_RUN` path) and the native gate executes 17 live native tests;
+none is ignored or filtered out.
+
+`./ci/detector-gate.sh` is a separate live gate for Phase 5.2. It uses the same
+hardened Docker flags, installs only `gcc`, `libc6-dev`, `openssl`, `curl`, and
+`ca-certificates`, installs the pinned `nightly-2025-02-20` miri/rust-src
+components, and makes a bounded Kani 0.60.0 install attempt. It then runs each
+of the seven built-in mechanisms and the 11 live seal tests. On this release all
+seven mechanisms reported PASS and all 11 tests passed, 0 failed, 0 ignored. A
+mechanism that is unavailable is reported as `NOT_RUN` with its reason, not as
+a pass.
 
 `./ci/mir-gate.sh` is a separate optional gate. It uses the same hardened
 flags plus a `frf-rustup` volume, attempts to install the pinned minimal

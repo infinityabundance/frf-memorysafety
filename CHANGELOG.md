@@ -9,10 +9,10 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
-## [Unreleased] - Phase 5.1 and 5.2
+## [0.6.0] - 2026-10-18
 
-Typed detector evidence and calibration refusal rules, plus opt-in live
-detector adapters over a closed checked-in fixture registry. No version bump.
+Phase 5: typed detector evidence and calibration refusal rules, plus opt-in
+live detector adapters over a closed checked-in fixture registry.
 
 ### Added
 
@@ -61,6 +61,20 @@ detector adapters over a closed checked-in fixture registry. No version bump.
 - `docs/phase5-live-detectors.md`: exact install/invocation, versions, flags,
   live results, availability table, build separation, claim ceiling, remaining
   limits, and citations.
+
+### Verification
+
+- `cargo fmt --all -- --check`: clean
+- `cargo clippy --all-targets --all-features -- -D warnings`: clean
+- `cargo test --locked --all-targets --features native-harness`: 261 passed,
+  0 failed, 0 ignored
+- `cargo test --locked --release --features native-harness`: 261 passed,
+  0 failed, 0 ignored
+- `ci/detector-gate.sh`: Miri, ASan, LSan, TSan, loom, Kani 0.60.0, and the
+  OpenSSL SHA-256/signature control all PASS with build separation PASS and
+  authenticity PASS; 11 live seal tests passed, 0 failed, 0 ignored
+- `cargo publish --dry-run --locked`: packaged without `research/`, `target/`,
+  `.git/`, or credentials
 
 ## [0.5.0] - 2026-10-18
 

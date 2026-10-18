@@ -1,6 +1,6 @@
 # Phase 5.1: detector evidence and calibration refusal rules
 
-Snapshot: branch `staging`, crate `frf-memorysafety 0.5.0` (no version bump).
+Snapshot: branch `staging`, crate `frf-memorysafety 0.6.0`.
 This document describes `src/detector/mod.rs`, the typed detector-evidence
 receipt, the calibration adjudicator, the refusal taxonomy, and the
 `detector calibrate FILE [--json]` command. It is the **Phase 5.1** adjudication

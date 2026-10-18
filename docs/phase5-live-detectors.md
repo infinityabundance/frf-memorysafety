@@ -1,6 +1,6 @@
 # Phase 5.2: live detectors with real capture
 
-Snapshot: branch `staging`, crate `frf-memorysafety 0.5.0` (no version bump).
+Snapshot: branch `staging`, crate `frf-memorysafety 0.6.0`.
 This document describes the opt-in live adapters in
 `src/detector/live.rs`, the checked-in fixtures under
 `tests/detector/fixtures/`, the CLI
