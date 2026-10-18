@@ -17,13 +17,20 @@
 //! A stage that cannot execute returns a typed [`BridgeNotRun`]. A stage that
 //! refuses modeled, modified, substitute, stale, or substituted-DSO evidence
 //! returns a typed [`BridgeRefusal`]. Malformed or tampered evidence returns a
-//! typed [`BridgeIntegrity`]. Provenance is a declaration carried by the
-//! bundle; digest checks bind bytes, not origin.
+//! typed [`BridgeIntegrity`].
+//!
+//! Phase 7.2 adds [`capture_bundle`]: it executes the explicitly configured
+//! provider executables, records exact bytes, executable and loader-map
+//! hashes, and two independent runs, and derives identities from those bytes.
+//! The record is still not authentication; digest checks bind bytes and
+//! observed files, not a trusted origin.
 
 #![allow(clippy::module_name_repetitions)]
 
+use std::collections::BTreeSet;
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -42,11 +49,11 @@ pub const MAX_EXTERNAL_OBJECT_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_OBSERVATIONS: usize = 16;
 /// Maximum accepted bundle size.
 pub const MAX_BUNDLE_BYTES: usize = crate::identity::MAX_BYTES;
-/// Largest executable hashed for availability reporting.
-const MAX_EXECUTABLE_BYTES: u64 = 64 * 1024 * 1024;
+/// Largest executable hashed for availability or live capture.
+const MAX_EXECUTABLE_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Honest ceiling for every result this module can produce.
-pub const BRIDGE_CLAIM_CEILING: &str = "digest-bound retention and custody bookkeeping only; provenance is declared and self-consistent, not authenticated; no OpenReceipt, finding, GCE object, or GID is produced; no live FRF/FRF-Fuzz/Gemel execution is established by this crate";
+pub const BRIDGE_CLAIM_CEILING: &str = "live capture executes configured provider executables and records exact bytes, executable digests, loader-map closures, and independent re-execution hashes; provenance remains an execution record, not a signature or trusted build root; no OpenReceipt, finding, GCE object, or GID is produced by this crate";
 
 /// A native provider whose identity namespaces are kept separate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -153,7 +160,8 @@ pub fn native_provider_contracts() -> [ProviderContract; 3] {
             schema: ExternalProvider::Frf.expected_schema(),
             identity_form: "receipt-{run}-{64 lowercase hex}",
             build: ProviderBuild::Built {
-                executable_sha256: "0728aac10c4198717e04097201db55c2fbe3801e3917bc36160fc97da2a28f8b",
+                executable_sha256:
+                    "0728aac10c4198717e04097201db55c2fbe3801e3917bc36160fc97da2a28f8b",
             },
             executable_env: ExternalProvider::Frf.executable_env(),
         },
@@ -166,8 +174,9 @@ pub fn native_provider_contracts() -> [ProviderContract; 3] {
             accessible: true,
             schema: ExternalProvider::FrfFuzz.expected_schema(),
             identity_form: "64 lowercase hex (BLAKE3-256)",
-            build: ProviderBuild::Blocked {
-                reason: "crate requires rustc 1.98 and pinned nightly-2026-07-24; the mandated rust:1.85.0-slim image refuses the build",
+            build: ProviderBuild::Built {
+                executable_sha256:
+                    "fa45c704d804146f069190e7d74b8f08e3e067a64c6253ae42c260fa2e700512",
             },
             executable_env: ExternalProvider::FrfFuzz.executable_env(),
         },
@@ -181,7 +190,8 @@ pub fn native_provider_contracts() -> [ProviderContract; 3] {
             schema: ExternalProvider::Gemel.expected_schema(),
             identity_form: "{family}.{64 lowercase hex}",
             build: ProviderBuild::Built {
-                executable_sha256: "01b7f4cc2281a33dee3ecfe9a747845cef3a8b3c3a4c71078c3ecf8a29bf7696",
+                executable_sha256:
+                    "01b7f4cc2281a33dee3ecfe9a747845cef3a8b3c3a4c71078c3ecf8a29bf7696",
             },
             executable_env: ExternalProvider::Gemel.executable_env(),
         },
@@ -358,6 +368,8 @@ pub struct GemelGceId {
     text: String,
     family: String,
     kind: String,
+    subject: Option<String>,
+    outcome: Option<String>,
 }
 
 impl GemelGceId {
@@ -377,6 +389,18 @@ impl GemelGceId {
     #[must_use]
     pub fn kind(&self) -> &str {
         &self.kind
+    }
+
+    /// The evidence subject decoded from the GCE body (field 0x03).
+    #[must_use]
+    pub fn subject(&self) -> Option<&str> {
+        self.subject.as_deref()
+    }
+
+    /// The evidence result outcome decoded from the GCE body (field 0x0D).
+    #[must_use]
+    pub fn outcome(&self) -> Option<&str> {
+        self.outcome.as_deref()
     }
 
     fn admit_shape(text: &str) -> Result<(String, String), String> {
@@ -503,6 +527,61 @@ pub struct ExternalObservation {
     pub dso_binding: DsoBinding,
     /// Independent re-execution outcome.
     pub reexecution: Reexecution,
+    /// Live-capture record. Required for `authentic_native`; absent on
+    /// modeled, modified, or substitute evidence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capture: Option<ObservationCapture>,
+}
+
+/// One file-backed object observed in a process's loader map.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DsoObject {
+    /// Absolute path from `/proc/<pid>/maps`.
+    pub path: String,
+    /// SHA-256 recomputed from the file at capture time.
+    pub sha256: String,
+}
+
+/// One captured execution's stable outcome.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RunRecord {
+    /// Process exit status, or `128 + signal` when terminated by a signal.
+    pub exit: i32,
+    /// SHA-256 of stdout.
+    pub stdout_sha256: String,
+    /// SHA-256 of stderr.
+    pub stderr_sha256: String,
+}
+
+/// Two or more independent executions of the same executable input.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReexecutionRecord {
+    /// SHA-256 of the exact input bytes or argument identity.
+    pub input_sha256: String,
+    /// The captured runs, in execution order.
+    pub runs: Vec<RunRecord>,
+    /// True only when every run has identical exit, stdout, and stderr.
+    pub byte_identical: bool,
+}
+
+/// Live-capture evidence for one observation: the executable file that was
+/// hashed, the actual loader-map closure with recomputed hashes, and the
+/// independent re-execution record.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObservationCapture {
+    /// Absolute path of the provider executable that was hashed.
+    pub executable_path: String,
+    /// File-backed objects from the provider's actual loader map, sorted by
+    /// path. Capture-probe objects are excluded.
+    pub dso_closure: Vec<DsoObject>,
+    /// SHA-256 over the sorted `path\0sha256\n` closure lines.
+    pub closure_sha256: String,
+    /// Independent re-execution record.
+    pub reexecution: ReexecutionRecord,
 }
 
 /// A bridge evidence bundle.
@@ -695,6 +774,25 @@ pub enum BridgeIntegrity {
         /// Exact disagreement.
         detail: String,
     },
+    /// An `authentic_native` observation carries no live-capture record.
+    MissingLiveCapture {
+        /// Provider.
+        provider: ExternalProvider,
+    },
+    /// The recorded loader closure does not rederive from the files or its
+    /// digest, or the declared binding disagrees with the observed closure.
+    DsoClosureMismatch {
+        /// Provider.
+        provider: ExternalProvider,
+        /// Exact mismatch.
+        detail: String,
+    },
+    /// The FRF-Fuzz finding input is not the FRF receipt's fixture, or the
+    /// Gemel evidence does not bind the retained receipt.
+    ChainMismatch {
+        /// Exact mismatch.
+        detail: String,
+    },
     /// A candidate digest is not a SHA-256 value.
     InvalidCandidateDigest {
         /// Observed value.
@@ -821,7 +919,8 @@ pub struct BridgeReport {
     pub observations: Vec<ObservationSummary>,
     /// Number of identities produced by this crate (always zero).
     pub generated_identities: usize,
-    /// Number of retained identities declared authentic native.
+    /// Number of retained identities declared authentic native. Zero unless
+    /// the chain completed.
     pub authentic_native_identities: usize,
     /// Claim ceiling.
     pub claim_ceiling: &'static str,
@@ -844,6 +943,11 @@ impl BridgeReport {
     }
 
     fn finish(mut self, stage: CustodyStage, outcome: BridgeOutcome) -> Self {
+        // A failed chain issues no authentic identity: the count is diagnostic
+        // only on a complete custody path.
+        if !matches!(&outcome, BridgeOutcome::Complete) {
+            self.authentic_native_identities = 0;
+        }
         self.stage = stage;
         self.outcome = outcome;
         self
@@ -1114,6 +1218,13 @@ fn verify_bundle(bundle: &EvidenceBundle, expected_candidate: Option<&str>) -> B
                 },
             );
         }
+        if let Err(reason) = verify_live_capture(observation.observation, executable_sha256) {
+            let outcome = match reason {
+                ReconstructionError::Refused(reason) => BridgeOutcome::Refused { reason },
+                ReconstructionError::Integrity(reason) => BridgeOutcome::Integrity { reason },
+            };
+            return report.finish(CustodyStage::NativeConfirm, outcome);
+        }
         if observation.observation.reexecution == Reexecution::Matched
             && observation.observation.provider != ExternalProvider::Gemel
         {
@@ -1146,6 +1257,82 @@ fn verify_bundle(bundle: &EvidenceBundle, expected_candidate: Option<&str>) -> B
     };
     let frf_text = frf_receipt.identity.text().to_owned();
 
+    // The FRF receipt must bind the exact FRF-Fuzz finding input as its
+    // fixture. Without this, a receipt and a finding from different runs could
+    // be stitched into one "chain" even though each is individually valid.
+    let finding = admitted
+        .iter()
+        .find(|observation| observation.observation.provider == ExternalProvider::FrfFuzz)
+        .expect("a finding was required at discover");
+    let finding_bytes = decode_hex(&finding.observation.canonical_bytes_hex).map_err(|detail| {
+        BridgeIntegrity::InvalidCanonicalBytes {
+            provider: ExternalProvider::FrfFuzz,
+            detail,
+        }
+    });
+    let finding_bytes = match finding_bytes {
+        Ok(bytes) => bytes,
+        Err(reason) => {
+            return report.finish(
+                CustodyStage::FrfReceipt,
+                BridgeOutcome::Integrity { reason },
+            );
+        }
+    };
+    let Some(input) = frf_fuzz_input(&finding_bytes) else {
+        return report.finish(
+            CustodyStage::FrfReceipt,
+            BridgeOutcome::Integrity {
+                reason: BridgeIntegrity::TamperedObject {
+                    provider: ExternalProvider::FrfFuzz,
+                    detail: "framed finding carries no decodable input".to_owned(),
+                },
+            },
+        );
+    };
+    let input_sha256 = sha256_hex(input);
+    let frf_bytes = match decode_hex(&frf_receipt.observation.canonical_bytes_hex) {
+        Ok(bytes) => bytes,
+        Err(detail) => {
+            return report.finish(
+                CustodyStage::FrfReceipt,
+                BridgeOutcome::Integrity {
+                    reason: BridgeIntegrity::InvalidCanonicalBytes {
+                        provider: ExternalProvider::Frf,
+                        detail,
+                    },
+                },
+            );
+        }
+    };
+    let frf_value = match crate::identity::parse_strict(&frf_bytes) {
+        Ok(value) => value,
+        Err(error) => {
+            return report.finish(
+                CustodyStage::FrfReceipt,
+                BridgeOutcome::Integrity {
+                    reason: BridgeIntegrity::TamperedObject {
+                        provider: ExternalProvider::Frf,
+                        detail: error.to_string(),
+                    },
+                },
+            );
+        }
+    };
+    let fixture_hashes = frf_fixture_hashes(&frf_value);
+    if !fixture_hashes.iter().any(|hash| hash == &input_sha256) {
+        return report.finish(
+            CustodyStage::FrfReceipt,
+            BridgeOutcome::Integrity {
+                reason: BridgeIntegrity::ChainMismatch {
+                    detail: format!(
+                        "FRF-Fuzz finding input SHA-256 {input_sha256} is not an FRF receipt fixture hash ({fixture_hashes:?})"
+                    ),
+                },
+            },
+        );
+    }
+
     // gemel_custody --------------------------------------------------------
     let Some(gemel) = admitted
         .iter()
@@ -1170,6 +1357,44 @@ fn verify_bundle(bundle: &EvidenceBundle, expected_candidate: Option<&str>) -> B
                         "Gemel custody must be evidence/court_receipt, got {}/{}",
                         gemel_id.family(),
                         gemel_id.kind()
+                    ),
+                },
+            },
+        );
+    }
+    match gemel_id.subject() {
+        Some(subject) if subject == frf_text => {}
+        Some(subject) => {
+            return report.finish(
+                CustodyStage::GemelCustody,
+                BridgeOutcome::Refused {
+                    reason: BridgeRefusal::UnboundCustody {
+                        detail: format!(
+                            "Gemel GCE subject {subject:?} is not the retained FRF receipt {frf_text:?}"
+                        ),
+                    },
+                },
+            );
+        }
+        None => {
+            return report.finish(
+                CustodyStage::GemelCustody,
+                BridgeOutcome::Refused {
+                    reason: BridgeRefusal::UnboundCustody {
+                        detail: "Gemel GCE omits its evidence subject (field 0x03)".to_owned(),
+                    },
+                },
+            );
+        }
+    }
+    if gemel_id.outcome() != Some("pass") {
+        return report.finish(
+            CustodyStage::GemelCustody,
+            BridgeOutcome::Refused {
+                reason: BridgeRefusal::UnboundCustody {
+                    detail: format!(
+                        "Gemel evidence outcome is {:?}, expected \"pass\"",
+                        gemel_id.outcome()
                     ),
                 },
             },
@@ -1614,6 +1839,8 @@ fn admit_gemel_evidence(
     let mut previous_tag = 0u64;
     let mut producer: Option<&[u8]> = None;
     let mut kind: Option<String> = None;
+    let mut subject: Option<String> = None;
+    let mut outcome: Option<String> = None;
     while position < body_end {
         let tag = read_uint(bytes, &mut position)
             .ok_or_else(|| tampered("GCE field tag is not canonical LEB128".to_owned()))?;
@@ -1641,23 +1868,14 @@ fn admit_gemel_evidence(
         match tag {
             0x01 => producer = Some(value),
             0x02 => {
-                let mut cursor = 0usize;
-                let string_len = read_uint(value, &mut cursor)
-                    .ok_or_else(|| tampered("GCE evidence kind length is invalid".to_owned()))?;
-                let string_len = usize::try_from(string_len)
-                    .map_err(|_| tampered("GCE evidence kind length overflows".to_owned()))?;
-                if cursor + string_len != value.len() {
-                    return Err(tampered(
-                        "GCE evidence kind length does not match its field".to_owned(),
-                    ));
-                }
-                let text = std::str::from_utf8(&value[cursor..])
-                    .map_err(|_| tampered("GCE evidence kind is not UTF-8".to_owned()))?;
+                let text = parse_gce_string(value, "evidence kind")?;
                 if text.is_empty() {
                     return Err(tampered("GCE evidence kind is empty".to_owned()));
                 }
-                kind = Some(text.to_owned());
+                kind = Some(text);
             }
+            0x03 => subject = Some(parse_gce_string(value, "evidence subject")?),
+            0x0D => outcome = Some(parse_gce_result_outcome(value)?),
             tag if tag >= 0x80 => {}
             tag if (0x03..=0x11).contains(&tag) => {}
             tag => {
@@ -1668,12 +1886,18 @@ fn admit_gemel_evidence(
         }
     }
     let producer = producer.ok_or_else(|| tampered("GCE evidence omits producer".to_owned()))?;
-    if producer.len() != 33 {
+    let mut producer_cursor = 0usize;
+    let producer_len = read_uint(producer, &mut producer_cursor)
+        .ok_or_else(|| tampered("GCE producer reference length is invalid".to_owned()))?;
+    let producer_len = usize::try_from(producer_len)
+        .map_err(|_| tampered("GCE producer reference length overflows".to_owned()))?;
+    if producer_len != 33 || producer.len() != producer_cursor + producer_len {
         return Err(tampered(format!(
-            "GCE producer reference is {} bytes, expected 33",
-            producer.len()
+            "GCE producer reference is {} bytes (declared {producer_len}), expected 33",
+            producer.len().saturating_sub(producer_cursor)
         )));
     }
+    let producer = &producer[producer_cursor..];
     if producer[0] != GEMEL_FAMILY_PRODUCER {
         return Err(tampered(format!(
             "GCE producer reference family is 0x{:02x}, not Producer (0x0E)",
@@ -1690,7 +1914,624 @@ fn admit_gemel_evidence(
         text: observation.identity.clone(),
         family,
         kind,
+        subject,
+        outcome,
     }))
+}
+
+/// Decode a canonical GCE STRING value (`len` u64 + UTF-8 bytes).
+fn parse_gce_string(value: &[u8], what: &str) -> Result<String, ReconstructionError> {
+    let tampered = |detail: String| {
+        ReconstructionError::Integrity(BridgeIntegrity::TamperedObject {
+            provider: ExternalProvider::Gemel,
+            detail,
+        })
+    };
+    let mut cursor = 0usize;
+    let len = read_uint(value, &mut cursor)
+        .ok_or_else(|| tampered(format!("GCE {what} length is invalid")))?;
+    let len = usize::try_from(len).map_err(|_| tampered(format!("GCE {what} length overflows")))?;
+    if cursor + len != value.len() {
+        return Err(tampered(format!(
+            "GCE {what} length does not match its field"
+        )));
+    }
+    std::str::from_utf8(&value[cursor..])
+        .map(str::to_owned)
+        .map_err(|_| tampered(format!("GCE {what} is not UTF-8")))
+}
+
+/// Decode the first field (outcome) of a GCE `evidence_result` record.
+fn parse_gce_result_outcome(value: &[u8]) -> Result<String, ReconstructionError> {
+    let tampered = |detail: String| {
+        ReconstructionError::Integrity(BridgeIntegrity::TamperedObject {
+            provider: ExternalProvider::Gemel,
+            detail,
+        })
+    };
+    let mut cursor = 0usize;
+    // Records are self-delimiting through a leading body length.
+    let body_len = read_uint(value, &mut cursor)
+        .ok_or_else(|| tampered("GCE evidence result body length is invalid".to_owned()))?;
+    let body_len = usize::try_from(body_len)
+        .map_err(|_| tampered("GCE evidence result body length overflows".to_owned()))?;
+    let body_end = cursor
+        .checked_add(body_len)
+        .ok_or_else(|| tampered("GCE evidence result body length overflows".to_owned()))?;
+    if body_end != value.len() {
+        return Err(tampered(
+            "GCE evidence result body length does not match its field".to_owned(),
+        ));
+    }
+    let tag = read_uint(value, &mut cursor)
+        .ok_or_else(|| tampered("GCE evidence result tag is invalid".to_owned()))?;
+    let len = read_uint(value, &mut cursor)
+        .ok_or_else(|| tampered("GCE evidence result length is invalid".to_owned()))?;
+    let len = usize::try_from(len)
+        .map_err(|_| tampered("GCE evidence result length overflows".to_owned()))?;
+    let end = cursor
+        .checked_add(len)
+        .ok_or_else(|| tampered("GCE evidence result length overflows".to_owned()))?;
+    if end > body_end {
+        return Err(tampered(
+            "GCE evidence result extends past its body".to_owned(),
+        ));
+    }
+    if tag != 0x01 {
+        return Err(tampered(format!(
+            "GCE evidence result first field tag is {tag}, expected outcome (0x01)"
+        )));
+    }
+    parse_gce_string(&value[cursor..end], "evidence result outcome")
+}
+
+// ---------------------------------------------------------------------------
+// Live capture
+// ---------------------------------------------------------------------------
+
+/// Explicit inputs for a live capture. Every path is a real, already-produced
+/// artifact; the capture never invents provider identities.
+pub struct CaptureRequest {
+    /// Candidate artifact (the subject of the chain).
+    pub candidate: PathBuf,
+    /// Raw FRF-Fuzz finding object (`FRFZ` family 0x02).
+    pub finding: PathBuf,
+    /// Canonical FRF `OpenReceipt` JSON.
+    pub receipt: PathBuf,
+    /// Raw Gemel GCE evidence envelope.
+    pub gemel_gce: PathBuf,
+    /// The `gemel.evidence.v1` document that was ingested.
+    pub gemel_evidence: PathBuf,
+    /// The Gemel repository that owns `gemel_gce`.
+    pub gemel_repo: PathBuf,
+    /// FRF store root used for exact replay.
+    pub frf_root: PathBuf,
+    /// The exact FRF run id to replay.
+    pub frf_run: String,
+    /// Pinned provider executables.
+    pub frf_bin: PathBuf,
+    /// Pinned FRF-Fuzz executable.
+    pub frf_fuzz_bin: PathBuf,
+    /// Pinned Gemel executable.
+    pub gemel_bin: PathBuf,
+    /// Loader maps captured from the providers (`/proc/<pid>/maps`).
+    pub frf_map: PathBuf,
+    /// FRF-Fuzz loader map.
+    pub frf_fuzz_map: PathBuf,
+    /// Gemel loader map.
+    pub gemel_map: PathBuf,
+    /// Capture-probe DSO excluded from the recorded closure.
+    pub probe: PathBuf,
+}
+
+/// Build a bridge bundle from live provider artifacts, executable files,
+/// loader maps, and independently repeated executions. The function derives
+/// every identity from the exact bytes it is given; it does not construct an
+/// `OpenReceipt`, finding, GCE object, or GID.
+///
+/// # Errors
+///
+/// Returns a human-readable error when an input is unreadable, a provider
+/// executable does not match its recorded pin, an external schema or
+/// candidate/fixture binding fails, or a loader map cannot be hashed. The
+/// function does not write the bundle; the caller decides where it goes.
+#[allow(clippy::too_many_lines)]
+pub fn capture_bundle(request: &CaptureRequest) -> Result<Vec<u8>, String> {
+    let candidate_sha256 = sha256_file(&request.candidate)
+        .ok_or_else(|| format!("cannot hash candidate {}", request.candidate.display()))?;
+    let finding_bytes = read_object(&request.finding)?;
+    let input = frf_fuzz_input(&finding_bytes)
+        .ok_or_else(|| "finding is not a valid FRFZ finding frame".to_owned())?
+        .to_vec();
+    let finding_identity = blake3::hash(&finding_bytes).to_hex().to_string();
+
+    let receipt_bytes = read_object(&request.receipt)?;
+    let receipt_value = crate::identity::parse_strict(&receipt_bytes)
+        .map_err(|error| format!("FRF receipt is not strict JSON: {error}"))?;
+    let schema = receipt_value
+        .get("schema_version")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "FRF receipt has no schema_version".to_owned())?;
+    if schema != ExternalProvider::Frf.expected_schema() {
+        return Err(format!(
+            "FRF receipt schema {schema:?} is not {}",
+            ExternalProvider::Frf.expected_schema()
+        ));
+    }
+    let run = receipt_value
+        .get("run")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "FRF receipt has no run".to_owned())?;
+    if run != request.frf_run {
+        return Err(format!(
+            "FRF receipt run {run:?} is not the requested replay run {:?}",
+            request.frf_run
+        ));
+    }
+    let receipt_candidate = receipt_value
+        .get("candidate")
+        .and_then(|candidate| candidate.get("identity_hash"))
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "FRF receipt has no candidate.identity_hash".to_owned())?;
+    if receipt_candidate != candidate_sha256 {
+        return Err(format!(
+            "FRF receipt candidate {receipt_candidate} is not the captured candidate {candidate_sha256}"
+        ));
+    }
+    let input_sha256 = sha256_hex(&input);
+    if !frf_fixture_hashes(&receipt_value)
+        .iter()
+        .any(|hash| hash == &input_sha256)
+    {
+        return Err(format!(
+            "FRF receipt does not bind the finding input SHA-256 {input_sha256}"
+        ));
+    }
+    let receipt_identity = format!("receipt-{run}-{}", sha256_hex(&receipt_bytes));
+
+    let gemel_bytes = read_object(&request.gemel_gce)?;
+    let gemel_identity = format!("evidence.{}", blake3::hash(&gemel_bytes).to_hex());
+
+    let frf_executable = require_pinned(ExternalProvider::Frf, &request.frf_bin)?;
+    let fuzz_executable = require_pinned(ExternalProvider::FrfFuzz, &request.frf_fuzz_bin)?;
+    let gemel_executable = require_pinned(ExternalProvider::Gemel, &request.gemel_bin)?;
+
+    // Independent candidate execution on the exact finding input.
+    let fixture = std::env::temp_dir().join(format!(
+        "frf-bridge-fixture-{}-{}",
+        std::process::id(),
+        input_sha256
+    ));
+    std::fs::write(&fixture, &input)
+        .map_err(|error| format!("cannot stage candidate fixture: {error}"))?;
+    let fixture_arg = fixture.to_string_lossy().into_owned();
+    let (candidate_reexecution, candidate_record) = repeated_runs(
+        &input,
+        &request.candidate,
+        &["--frf-fuzz-fixture", &fixture_arg],
+        Some(std::env::temp_dir().as_path()),
+    );
+    let _ = std::fs::remove_file(&fixture);
+
+    // Independent exact replays of the FRF run.
+    let root_arg = request.frf_root.to_string_lossy().into_owned();
+    let (frf_reexecution, frf_record) = repeated_runs(
+        request.frf_run.as_bytes(),
+        &request.frf_bin,
+        &[
+            "--root",
+            &root_arg,
+            "replay",
+            &request.frf_run,
+            "--policy",
+            "exact",
+        ],
+        Some(request.frf_root.as_path()),
+    );
+
+    // Independent Gemel ingests of the same evidence document.
+    let repo_arg = request.gemel_repo.to_string_lossy().into_owned();
+    let evidence_arg = request.gemel_evidence.to_string_lossy().into_owned();
+    let gemel_input = std::fs::read(&request.gemel_evidence)
+        .map_err(|error| format!("cannot read Gemel evidence: {error}"))?;
+    let (gemel_reexecution, gemel_record) = repeated_runs(
+        &gemel_input,
+        &request.gemel_bin,
+        &[
+            "--repo",
+            &repo_arg,
+            "evidence",
+            "ingest",
+            &evidence_arg,
+            "--json",
+        ],
+        None,
+    );
+
+    let frf_closure = read_dso_map(&request.frf_map, &request.probe, &request.frf_bin)?;
+    let fuzz_closure = read_dso_map(&request.frf_fuzz_map, &request.probe, &request.frf_fuzz_bin)?;
+    let gemel_closure = read_dso_map(&request.gemel_map, &request.probe, &request.gemel_bin)?;
+
+    let observations = vec![
+        ExternalObservation {
+            provider: ExternalProvider::FrfFuzz,
+            provenance: EvidenceProvenance::AuthenticNative,
+            repository: contract_for(ExternalProvider::FrfFuzz)
+                .repository
+                .to_owned(),
+            commit: contract_for(ExternalProvider::FrfFuzz).commit.to_owned(),
+            schema: ExternalProvider::FrfFuzz.expected_schema().to_owned(),
+            identity: finding_identity,
+            subject_identity: None,
+            canonical_bytes_hex: hex_encode(&finding_bytes),
+            candidate_sha256: candidate_sha256.clone(),
+            executable_sha256: fuzz_executable,
+            dso_binding: derive_dso_binding(&fuzz_closure, &request.frf_fuzz_bin),
+            reexecution: candidate_reexecution,
+            capture: Some(ObservationCapture {
+                executable_path: request.frf_fuzz_bin.to_string_lossy().into_owned(),
+                closure_sha256: closure_digest(&fuzz_closure),
+                dso_closure: fuzz_closure,
+                reexecution: candidate_record,
+            }),
+        },
+        ExternalObservation {
+            provider: ExternalProvider::Frf,
+            provenance: EvidenceProvenance::AuthenticNative,
+            repository: contract_for(ExternalProvider::Frf).repository.to_owned(),
+            commit: contract_for(ExternalProvider::Frf).commit.to_owned(),
+            schema: ExternalProvider::Frf.expected_schema().to_owned(),
+            identity: receipt_identity.clone(),
+            subject_identity: None,
+            canonical_bytes_hex: hex_encode(&receipt_bytes),
+            candidate_sha256: candidate_sha256.clone(),
+            executable_sha256: frf_executable,
+            dso_binding: derive_dso_binding(&frf_closure, &request.frf_bin),
+            reexecution: frf_reexecution,
+            capture: Some(ObservationCapture {
+                executable_path: request.frf_bin.to_string_lossy().into_owned(),
+                closure_sha256: closure_digest(&frf_closure),
+                dso_closure: frf_closure,
+                reexecution: frf_record,
+            }),
+        },
+        ExternalObservation {
+            provider: ExternalProvider::Gemel,
+            provenance: EvidenceProvenance::AuthenticNative,
+            repository: contract_for(ExternalProvider::Gemel).repository.to_owned(),
+            commit: contract_for(ExternalProvider::Gemel).commit.to_owned(),
+            schema: ExternalProvider::Gemel.expected_schema().to_owned(),
+            identity: gemel_identity,
+            subject_identity: Some(receipt_identity),
+            canonical_bytes_hex: hex_encode(&gemel_bytes),
+            candidate_sha256,
+            executable_sha256: gemel_executable,
+            dso_binding: derive_dso_binding(&gemel_closure, &request.gemel_bin),
+            reexecution: gemel_reexecution,
+            capture: Some(ObservationCapture {
+                executable_path: request.gemel_bin.to_string_lossy().into_owned(),
+                closure_sha256: closure_digest(&gemel_closure),
+                dso_closure: gemel_closure,
+                reexecution: gemel_record,
+            }),
+        },
+    ];
+
+    let bundle = EvidenceBundle {
+        schema: BRIDGE_BUNDLE_SCHEMA.to_owned(),
+        spec: BRIDGE_SPEC.to_owned(),
+        expected_candidate_sha256: sha256_file(&request.candidate)
+            .ok_or_else(|| "cannot re-hash candidate".to_owned())?,
+        observations,
+    };
+    serde_json::to_vec(&bundle).map_err(|error| format!("cannot encode bundle: {error}"))
+}
+
+fn require_pinned(provider: ExternalProvider, path: &Path) -> Result<String, String> {
+    let actual = sha256_file(path)
+        .ok_or_else(|| format!("cannot hash {} executable {}", provider, path.display()))?;
+    let ProviderBuild::Built { executable_sha256 } = contract_for(provider).build else {
+        return Err(format!("provider {provider} has no pinned build"));
+    };
+    if actual != executable_sha256 {
+        return Err(format!(
+            "{provider} executable hashes to {actual}, pinned {executable_sha256}"
+        ));
+    }
+    Ok(actual)
+}
+
+fn read_object(path: &Path) -> Result<Vec<u8>, String> {
+    let bytes =
+        std::fs::read(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    if bytes.len() > MAX_EXTERNAL_OBJECT_BYTES {
+        return Err(format!(
+            "{} is {} bytes; limit is {MAX_EXTERNAL_OBJECT_BYTES}",
+            path.display(),
+            bytes.len()
+        ));
+    }
+    Ok(bytes)
+}
+
+fn repeated_runs(
+    input: &[u8],
+    program: &Path,
+    args: &[&str],
+    cwd: Option<&Path>,
+) -> (Reexecution, ReexecutionRecord) {
+    let runs: Vec<RunRecord> = (0..2)
+        .map(|_| run_command(program, args, cwd))
+        .collect::<Result<_, _>>()
+        .unwrap_or_default();
+    let byte_identical = runs.len() >= 2 && runs.windows(2).all(|pair| pair[0] == pair[1]);
+    let status = if byte_identical {
+        Reexecution::Matched
+    } else {
+        Reexecution::Mismatch {
+            detail: format!(
+                "{} repeated run(s) of {} were not byte-identical",
+                runs.len(),
+                program.display()
+            ),
+        }
+    };
+    (
+        status,
+        ReexecutionRecord {
+            input_sha256: sha256_hex(input),
+            runs,
+            byte_identical,
+        },
+    )
+}
+
+fn run_command(program: &Path, args: &[&str], cwd: Option<&Path>) -> Result<RunRecord, String> {
+    // `ulimit -c 0` keeps an aborting fixture from writing a core file; `exec`
+    // preserves the target's exit status and streams.
+    let mut command = Command::new("/bin/sh");
+    command
+        .arg("-c")
+        .arg("ulimit -c 0 2>/dev/null; exec \"$0\" \"$@\"")
+        .arg(program)
+        .args(args)
+        .env_clear()
+        .env(
+            "PATH",
+            "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        )
+        .env("LC_ALL", "C")
+        .env("TZ", "UTC")
+        .env("HOME", "/tmp");
+    if let Some(cwd) = cwd {
+        command.current_dir(cwd);
+    }
+    let output = command
+        .output()
+        .map_err(|error| format!("cannot execute {}: {error}", program.display()))?;
+    Ok(RunRecord {
+        exit: exit_code(output.status),
+        stdout_sha256: sha256_hex(&output.stdout),
+        stderr_sha256: sha256_hex(&output.stderr),
+    })
+}
+
+fn exit_code(status: std::process::ExitStatus) -> i32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        if let Some(signal) = status.signal() {
+            return 128 + signal;
+        }
+    }
+    status.code().unwrap_or(-1)
+}
+
+fn read_dso_map(path: &Path, probe: &Path, executable: &Path) -> Result<Vec<DsoObject>, String> {
+    let text = std::fs::read_to_string(path)
+        .map_err(|error| format!("cannot read loader map {}: {error}", path.display()))?;
+    let probe_text = probe.to_string_lossy();
+    let executable_text = executable.to_string_lossy();
+    let mut paths = BTreeSet::new();
+    for line in text.lines() {
+        let Some(index) = line.find(" /") else {
+            continue;
+        };
+        let mapped = &line[index + 1..];
+        let mapped = mapped.trim_end();
+        if mapped.is_empty()
+            || mapped.ends_with(" (deleted)")
+            || mapped == probe_text
+            || mapped == executable_text
+        {
+            continue;
+        }
+        paths.insert(mapped.to_owned());
+    }
+    let mut closure = Vec::with_capacity(paths.len());
+    for path in paths {
+        let digest = sha256_file(Path::new(&path))
+            .ok_or_else(|| format!("loader object {path} is not readable"))?;
+        closure.push(DsoObject {
+            path,
+            sha256: digest,
+        });
+    }
+    Ok(closure)
+}
+
+// ---------------------------------------------------------------------------
+// Live-capture verification
+// ---------------------------------------------------------------------------
+
+#[allow(clippy::too_many_lines)]
+fn verify_live_capture(
+    observation: &ExternalObservation,
+    pinned_executable: &str,
+) -> Result<(), ReconstructionError> {
+    let provider = observation.provider;
+    let integrity = |reason| ReconstructionError::Integrity(reason);
+    let Some(capture) = &observation.capture else {
+        return Err(integrity(BridgeIntegrity::MissingLiveCapture { provider }));
+    };
+    let Some(recomputed) = sha256_file(Path::new(&capture.executable_path)) else {
+        return Err(integrity(BridgeIntegrity::UnpinnedExecutable {
+            provider,
+            expected: pinned_executable.to_owned(),
+            actual: format!("unreadable executable {}", capture.executable_path),
+        }));
+    };
+    if recomputed != observation.executable_sha256 || recomputed != pinned_executable {
+        return Err(integrity(BridgeIntegrity::UnpinnedExecutable {
+            provider,
+            expected: pinned_executable.to_owned(),
+            actual: recomputed,
+        }));
+    }
+    if capture.dso_closure.is_empty() {
+        return Err(integrity(BridgeIntegrity::DsoClosureMismatch {
+            provider,
+            detail: "capture records an empty loader closure".to_owned(),
+        }));
+    }
+    if !capture
+        .dso_closure
+        .windows(2)
+        .all(|pair| pair[0].path < pair[1].path)
+    {
+        return Err(integrity(BridgeIntegrity::DsoClosureMismatch {
+            provider,
+            detail: "loader closure is not sorted by path".to_owned(),
+        }));
+    }
+    for object in &capture.dso_closure {
+        if !object.path.starts_with('/') || !is_sha256(&object.sha256) {
+            return Err(integrity(BridgeIntegrity::DsoClosureMismatch {
+                provider,
+                detail: format!("invalid loader object entry {object:?}"),
+            }));
+        }
+        let Some(actual) = sha256_file(Path::new(&object.path)) else {
+            return Err(integrity(BridgeIntegrity::DsoClosureMismatch {
+                provider,
+                detail: format!("loader object {} is not readable", object.path),
+            }));
+        };
+        if actual != object.sha256 {
+            return Err(integrity(BridgeIntegrity::DsoClosureMismatch {
+                provider,
+                detail: format!(
+                    "loader object {} hashes to {actual}, recorded {}",
+                    object.path, object.sha256
+                ),
+            }));
+        }
+    }
+    if closure_digest(&capture.dso_closure) != capture.closure_sha256 {
+        return Err(integrity(BridgeIntegrity::DsoClosureMismatch {
+            provider,
+            detail: "closure digest does not rederive from its sorted entries".to_owned(),
+        }));
+    }
+    let derived = derive_dso_binding(&capture.dso_closure, Path::new(&capture.executable_path));
+    if derived == DsoBinding::Substituted {
+        return Err(ReconstructionError::Refused(
+            BridgeRefusal::SubstitutedDso { provider },
+        ));
+    }
+    if observation.dso_binding != derived {
+        return Err(integrity(BridgeIntegrity::DsoClosureMismatch {
+            provider,
+            detail: format!(
+                "declared DSO binding {:?} disagrees with the observed closure ({derived:?})",
+                observation.dso_binding
+            ),
+        }));
+    }
+    let reexecution = &capture.reexecution;
+    if reexecution.runs.len() < 2
+        || !reexecution.byte_identical
+        || !reexecution.runs.windows(2).all(|pair| pair[0] == pair[1])
+    {
+        return Err(integrity(BridgeIntegrity::ReexecutionMismatch {
+            provider,
+            detail: format!(
+                "capture records {} run(s), byte_identical={}",
+                reexecution.runs.len(),
+                reexecution.byte_identical
+            ),
+        }));
+    }
+    if observation.reexecution != Reexecution::Matched {
+        return Err(integrity(BridgeIntegrity::ReexecutionMismatch {
+            provider,
+            detail: "capture is matched but the observation does not report matched re-execution"
+                .to_owned(),
+        }));
+    }
+    Ok(())
+}
+
+fn closure_digest(closure: &[DsoObject]) -> String {
+    let mut lines = Vec::with_capacity(closure.len());
+    for object in closure {
+        lines.push(format!("{}\0{}\n", object.path, object.sha256));
+    }
+    lines.sort();
+    sha256_hex(lines.concat().as_bytes())
+}
+
+fn derive_dso_binding(closure: &[DsoObject], executable: &Path) -> DsoBinding {
+    if closure.is_empty() {
+        return DsoBinding::Unknown;
+    }
+    let executable_dir = executable.parent();
+    for object in closure {
+        let path = Path::new(&object.path);
+        let system = path.starts_with("/lib")
+            || path.starts_with("/usr/lib")
+            || path.starts_with("/usr/local/lib");
+        let beside_executable = executable_dir.is_some_and(|dir| path.starts_with(dir));
+        if !system && !beside_executable {
+            return DsoBinding::Substituted;
+        }
+    }
+    DsoBinding::Native
+}
+
+/// Decode the exact input bytes from a validated FRFZ finding frame.
+fn frf_fuzz_input(bytes: &[u8]) -> Option<&[u8]> {
+    if bytes.len() < 15 + 1 + 1 + 8 + FRF_FUZZ_COORDINATE_LEN + 1 + 4 {
+        return None;
+    }
+    let payload = &bytes[15..];
+    let fixed = 1 + 1 + 8 + FRF_FUZZ_COORDINATE_LEN + 1 + 4;
+    let replay_offset = 1 + 1 + 8 + FRF_FUZZ_COORDINATE_LEN;
+    let input_len = u32::from_le_bytes(
+        payload[replay_offset + 1..replay_offset + 5]
+            .try_into()
+            .ok()?,
+    ) as usize;
+    if payload.len() != fixed + input_len {
+        return None;
+    }
+    Some(&payload[fixed..])
+}
+
+/// The fixture hashes declared by an FRF `OpenReceipt`.
+fn frf_fixture_hashes(receipt: &serde_json::Value) -> Vec<String> {
+    receipt
+        .get("fixtures")
+        .and_then(serde_json::Value::as_array)
+        .map(|fixtures| {
+            fixtures
+                .iter()
+                .filter_map(|fixture| fixture.get("hash"))
+                .filter_map(serde_json::Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 // ---------------------------------------------------------------------------
@@ -1716,6 +2557,16 @@ fn valid_family(family: &str) -> bool {
     first.is_ascii_lowercase()
         && family.len() <= 32
         && bytes.all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+}
+
+fn hex_encode(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        out.push(char::from(HEX[usize::from(byte >> 4)]));
+        out.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    out
 }
 
 fn decode_hex(value: &str) -> Result<Vec<u8>, String> {
@@ -1758,8 +2609,27 @@ fn sha256_file(path: &Path) -> Option<String> {
     if !metadata.is_file() || metadata.len() > MAX_EXECUTABLE_BYTES {
         return None;
     }
-    let bytes = std::fs::read(path).ok()?;
-    Some(sha256_hex(&bytes))
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let count = std::io::Read::read(&mut file, &mut buffer).ok()?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    Some(sha256_digest_hex(hasher.finalize()))
+}
+
+fn sha256_digest_hex(digest: impl AsRef<[u8]>) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(64);
+    for byte in digest.as_ref() {
+        out.push(char::from(HEX[usize::from(byte >> 4)]));
+        out.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    out
 }
 
 /// Read a canonical unsigned LEB128 value. Rejects non-minimal encodings.

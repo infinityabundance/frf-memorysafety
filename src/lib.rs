@@ -69,14 +69,15 @@ pub mod source;
 pub mod support;
 
 pub use bridge::{
-    native_provider_contracts, provider_availability, verify_bundle_bytes, BridgeIntegrity,
-    BridgeNotRun, BridgeOutcome, BridgeRefusal, BridgeReport, BridgeStatus, CustodyStage,
-    DsoBinding, EvidenceBundle, EvidenceProvenance, ExternalObservation, ExternalProvider,
-    FrfFuzzFindingId as BridgeFrfFuzzFindingId, FrfReceiptId as BridgeFrfReceiptId,
-    GemelGceId as BridgeGemelGceId, ObservationSummary, ProviderAvailability, ProviderBuild,
-    ProviderContract, Reexecution, BRIDGE_BUNDLE_SCHEMA, BRIDGE_CLAIM_CEILING,
-    BRIDGE_REPORT_SCHEMA, BRIDGE_SPEC, BRIDGE_STATUS_SCHEMA, MAX_BUNDLE_BYTES,
-    MAX_EXTERNAL_OBJECT_BYTES, MAX_OBSERVATIONS,
+    capture_bundle, native_provider_contracts, provider_availability, verify_bundle_bytes,
+    BridgeIntegrity, BridgeNotRun, BridgeOutcome, BridgeRefusal, BridgeReport, BridgeStatus,
+    CaptureRequest, CustodyStage, DsoBinding, DsoObject, EvidenceBundle, EvidenceProvenance,
+    ExternalObservation, ExternalProvider, FrfFuzzFindingId as BridgeFrfFuzzFindingId,
+    FrfReceiptId as BridgeFrfReceiptId, GemelGceId as BridgeGemelGceId, ObservationCapture,
+    ObservationSummary, ProviderAvailability, ProviderBuild, ProviderContract, Reexecution,
+    ReexecutionRecord, RunRecord, BRIDGE_BUNDLE_SCHEMA, BRIDGE_CLAIM_CEILING, BRIDGE_REPORT_SCHEMA,
+    BRIDGE_SPEC, BRIDGE_STATUS_SCHEMA, MAX_BUNDLE_BYTES, MAX_EXTERNAL_OBJECT_BYTES,
+    MAX_OBSERVATIONS,
 };
 pub use closure::{compare_inventory, CoverageOutcome, EdgeKey};
 pub use court::{

@@ -1,8 +1,9 @@
 //! Manual command-line interface.
 //!
 //! The parser is deliberately hand-written and does not invoke a shell. It
-//! reads only files under the paths supplied by the caller and never executes
-//! an external program.
+//! reads only files under the paths supplied by the caller. The explicit
+//! `bridge capture` command is the sole exception: it executes the pinned
+//! provider executables named on its command line to record live evidence.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -12,7 +13,9 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use crate::bridge::{verify_bundle_bytes, BridgeStatus, BRIDGE_BUNDLE_SCHEMA};
+use crate::bridge::{
+    capture_bundle, verify_bundle_bytes, BridgeStatus, CaptureRequest, BRIDGE_BUNDLE_SCHEMA,
+};
 use crate::court::{
     verify_transcript_json, CourtError, CourtErrorCategory, COURT_REPORT_SCHEMA,
     NATIVE_EVENT_TRANSCRIPT_SCHEMA,
@@ -77,6 +80,10 @@ Commands:
   court verify FILE [--json]
   proof verify MANIFEST [--live] [--json]
   bridge verify FILE [--json] [--candidate SHA256]
+  bridge capture OUT --candidate P --finding P --receipt P --gemel P
+      --gemel-evidence P --gemel-repo DIR --frf-root DIR --frf-run ID
+      --frf-bin P --frf-fuzz-bin P --gemel-bin P --frf-map P
+      --frf-fuzz-map P --gemel-map P --probe P [--json]
   bridge status [--json]
   detector calibrate FILE [--json]
   detector calibrate --live --detector KIND [--json]
@@ -1156,9 +1163,10 @@ fn command_bridge(rest: &[String]) -> i32 {
     match rest.first().map(String::as_str) {
         Some("status") => command_bridge_status(&rest[1..]),
         Some("verify") => command_bridge_verify(&rest[1..]),
+        Some("capture") => command_bridge_capture(&rest[1..]),
         _ => {
             eprintln!(
-                "usage: bridge verify FILE [--json] [--candidate SHA256] | bridge status [--json]"
+                "usage: bridge verify FILE [--json] [--candidate SHA256] | bridge capture OUT ... | bridge status [--json]"
             );
             EXIT_USAGE
         }
@@ -1286,6 +1294,165 @@ fn command_bridge_verify(rest: &[String]) -> i32 {
         ));
         if let Err(error) = std::io::stdout().write_all(output.as_bytes()) {
             eprintln!("cannot write bridge report: {error}");
+            return EXIT_HARNESS;
+        }
+    }
+    report.exit_code()
+}
+
+const BRIDGE_CAPTURE_FLAGS: &[&str] = &[
+    "--candidate",
+    "--finding",
+    "--receipt",
+    "--gemel",
+    "--gemel-evidence",
+    "--gemel-repo",
+    "--frf-root",
+    "--frf-run",
+    "--frf-bin",
+    "--frf-fuzz-bin",
+    "--gemel-bin",
+    "--frf-map",
+    "--frf-fuzz-map",
+    "--gemel-map",
+    "--probe",
+];
+
+#[allow(clippy::too_many_lines)]
+fn command_bridge_capture(rest: &[String]) -> i32 {
+    const USAGE: &str = "usage: bridge capture OUT --candidate P --finding P --receipt P --gemel P --gemel-evidence P --gemel-repo DIR --frf-root DIR --frf-run ID --frf-bin P --frf-fuzz-bin P --gemel-bin P --frf-map P --frf-fuzz-map P --gemel-map P --probe P [--json]";
+    let mut output = None;
+    let mut json = false;
+    let mut values: Vec<(&str, String)> = Vec::new();
+    let mut arguments = rest.iter();
+    while let Some(argument) = arguments.next() {
+        if argument == "--json" {
+            json = true;
+            continue;
+        }
+        let Some(flag) = BRIDGE_CAPTURE_FLAGS
+            .iter()
+            .find(|flag| **flag == argument.as_str())
+        else {
+            if argument.starts_with("--") || output.is_some() {
+                eprintln!("{USAGE}");
+                return EXIT_USAGE;
+            }
+            output = Some(argument.clone());
+            continue;
+        };
+        let Some(value) = arguments.next() else {
+            eprintln!("{USAGE}");
+            return EXIT_USAGE;
+        };
+        values.push((*flag, value.clone()));
+    }
+    let Some(output) = output else {
+        eprintln!("{USAGE}");
+        return EXIT_USAGE;
+    };
+    let get = |name: &str| {
+        values
+            .iter()
+            .find(|(flag, _)| *flag == name)
+            .map(|(_, value)| value.clone())
+    };
+    let required = |name: &'static str| match get(name) {
+        Some(value) => Ok(PathBuf::from(value)),
+        None => Err(name),
+    };
+    let paths = [
+        "--candidate",
+        "--finding",
+        "--receipt",
+        "--gemel",
+        "--gemel-evidence",
+        "--gemel-repo",
+        "--frf-root",
+        "--frf-bin",
+        "--frf-fuzz-bin",
+        "--gemel-bin",
+        "--frf-map",
+        "--frf-fuzz-map",
+        "--gemel-map",
+        "--probe",
+    ];
+    let mut resolved = std::collections::BTreeMap::new();
+    for name in paths {
+        match required(name) {
+            Ok(path) => {
+                resolved.insert(name, path);
+            }
+            Err(missing) => {
+                eprintln!("bridge capture: missing {missing}\n{USAGE}");
+                return EXIT_USAGE;
+            }
+        }
+    }
+    let Some(frf_run) = get("--frf-run") else {
+        eprintln!("bridge capture: missing --frf-run\n{USAGE}");
+        return EXIT_USAGE;
+    };
+    let request = CaptureRequest {
+        candidate: resolved["--candidate"].clone(),
+        finding: resolved["--finding"].clone(),
+        receipt: resolved["--receipt"].clone(),
+        gemel_gce: resolved["--gemel"].clone(),
+        gemel_evidence: resolved["--gemel-evidence"].clone(),
+        gemel_repo: resolved["--gemel-repo"].clone(),
+        frf_root: resolved["--frf-root"].clone(),
+        frf_run,
+        frf_bin: resolved["--frf-bin"].clone(),
+        frf_fuzz_bin: resolved["--frf-fuzz-bin"].clone(),
+        gemel_bin: resolved["--gemel-bin"].clone(),
+        frf_map: resolved["--frf-map"].clone(),
+        frf_fuzz_map: resolved["--frf-fuzz-map"].clone(),
+        gemel_map: resolved["--gemel-map"].clone(),
+        probe: resolved["--probe"].clone(),
+    };
+    let bytes = match capture_bundle(&request) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("bridge capture: {error}");
+            return EXIT_NOT_RUN;
+        }
+    };
+    if let Err(error) = fs::write(&output, &bytes) {
+        eprintln!("cannot write bridge bundle {output}: {error}");
+        return EXIT_HARNESS;
+    }
+    let report = verify_bundle_bytes(&bytes, None);
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        let detail =
+            serde_json::to_string(&report.outcome).unwrap_or_else(|_| "<unavailable>".to_owned());
+        let mut text = format!(
+            "bridge capture: wrote {output}\nbridge: {}\nstage: {}\nobservations:\n",
+            report.outcome.as_str(),
+            report.stage.as_str(),
+        );
+        for observation in &report.observations {
+            text.push_str(&format!(
+                "  {} provenance={} identity={} digest_verified={} authentic_native={}\n",
+                observation.provider,
+                observation.provenance.as_str(),
+                observation.identity,
+                observation.digest_verified,
+                observation.authentic_native,
+            ));
+        }
+        text.push_str(&format!(
+            "authentic native identities retained: {}\nidentities generated by this crate: {}\noutcome: {detail}\nclaim ceiling: {}\n",
+            report.authentic_native_identities,
+            report.generated_identities,
+            report.claim_ceiling,
+        ));
+        if let Err(error) = std::io::stdout().write_all(text.as_bytes()) {
+            eprintln!("cannot write bridge capture report: {error}");
             return EXIT_HARNESS;
         }
     }

@@ -110,6 +110,7 @@ fn gemel_object(kind: &str) -> (String, String) {
 
     let mut body = Vec::new();
     push_uint(&mut body, 0x01);
+    push_uint(&mut body, 34);
     push_uint(&mut body, 33);
     body.extend_from_slice(&producer);
     push_uint(&mut body, 0x02);
@@ -195,6 +196,7 @@ fn observation(
         executable_sha256: EXECUTABLE.to_owned(),
         dso_binding: dso,
         reexecution,
+        capture: None,
     }
 }
 
