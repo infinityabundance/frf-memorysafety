@@ -39,5 +39,5 @@ run() {
 
 run fmt cargo fmt --all -- --check
 run clippy cargo clippy --all-targets --all-features -- -D warnings
-run test cargo test --locked --all-targets
-run test-release cargo test --locked --release
+run test cargo test --locked --all-targets --features native-harness
+run test-release cargo test --locked --release --features native-harness

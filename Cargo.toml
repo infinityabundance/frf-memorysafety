@@ -19,6 +19,12 @@ path = "src/lib.rs"
 name = "frf-memorysafety"
 path = "src/main.rs"
 
+[features]
+# Test-only Phase 4.2 native fixture harness. The gates enable it; default
+# builds do not compile native execution code.
+default = []
+native-harness = []
+
 [dependencies]
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 quote = "1.0.47"

@@ -23,10 +23,12 @@
 //! proof-checker run is performed. The optional MIR adapter observes unresolved
 //! textual edges from an unstable compiler format; it does not resolve symbols,
 //! aliases, types, provenance, or whole-program closure. The court verifier
-//! consumes a caller-supplied transcript and does not record or execute native
-//! C/Rust programs; native recording and replay remain Phase 4.2 work. Universal
-//! Rust soundness and `SAFE_COMPATIBLE` are outside the finite profile and are
-//! always withheld.
+//! consumes a caller-supplied transcript. A test-only harness can compile and
+//! execute a closed registry of checked-in C and Rust fixtures with bounded
+//! isolation, record their scripted events, and require identical replay; the CLI
+//! still cannot run arbitrary native input (`court run` remains `NOT_RUN`).
+//! Universal Rust soundness and `SAFE_COMPATIBLE` are outside the finite profile
+//! and are always withheld.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -38,6 +40,8 @@ pub mod court;
 pub mod identity;
 pub mod mir;
 pub mod model;
+#[cfg(all(unix, feature = "native-harness"))]
+pub mod native;
 pub mod path_effect;
 pub mod profile;
 pub mod source;
@@ -152,6 +156,8 @@ pub fn capabilities() -> Capabilities {
             "atomic-access modeling and atomic-versus-non-atomic conflict rules",
             "native event-transcript verifier with seeded skipped-event and fictitious-completeness rejection",
             "court verify CLI with typed outcomes and SPEC.md §14 exit statuses",
+            "test-only isolated native harness over a closed registry of checked-in C and Rust fixtures",
+            "native event capture with cleared environment, process group, rlimits, bounded output, digests, and identical-replay requirement",
             "detector calibration receipt adjudication types",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
@@ -160,7 +166,8 @@ pub fn capabilities() -> Capabilities {
         not_run: vec![
             "live Miri/ASan/LSan/TSan execution",
             "live Kani/Loom execution",
-            "native C/Rust event recording and replay (Phase 4.2)",
+            "arbitrary native C/Rust event recording and `court run` over caller-supplied programs",
+            "real-scheduler concurrency observation and native callback tracing beyond the checked-in fixtures",
             "live FRF court and OpenReceipt verification",
             "live FRF-Fuzz coordinator",
             "live Gemel publication",
