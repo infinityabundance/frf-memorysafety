@@ -24,6 +24,8 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
@@ -40,6 +42,15 @@ pub const CONVERSION_CLAIM_CEILING: &str = "Records conversion-boundary bookkeep
 
 /// Maximum length of an opaque external identity retained by this module.
 pub const MAX_OPAQUE_ID_BYTES: usize = 256;
+
+/// Environment variable naming a live conversion capture directory.
+pub const CONVERSION_CAPTURE_ENV: &str = "FRF_CONVERSION_CAPTURE";
+
+/// Environment variable that makes an unset live capture a test failure.
+pub const CONVERSION_REQUIRE_LIVE_ENV: &str = "FRF_CONVERSION_REQUIRE_LIVE";
+
+/// File name of the live capture specification inside its capture directory.
+pub const CONVERSION_CAPTURE_SPEC_FILE: &str = "capture.json";
 
 /// A validated 40-character lowercase Git commit identity.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -855,6 +866,16 @@ pub struct EvidenceRequest {
     pub candidate: CandidateIdentity,
     /// Current boundary scope.
     pub boundary: BoundaryScope,
+    /// Current witness provenance.
+    pub origin: WitnessOrigin,
+    /// Current discovery claim.
+    pub discovery: DiscoveryClaim,
+    /// SHA-256 of the current witness command line.
+    pub witness_command_sha256: Sha256Digest,
+    /// SHA-256 of the current witness output.
+    pub witness_output_sha256: Sha256Digest,
+    /// Current independently confirmed mechanism.
+    pub mechanism: MechanismEvidence,
     /// Current tool identity.
     pub tool: ToolIdentity,
     /// Current loader closure.
@@ -873,6 +894,11 @@ impl EvidenceRequest {
             property: evidence.property,
             candidate: evidence.candidate.clone(),
             boundary: evidence.boundary.clone(),
+            origin: evidence.witness.origin,
+            discovery: evidence.witness.discovery,
+            witness_command_sha256: evidence.witness.command_sha256.clone(),
+            witness_output_sha256: evidence.witness.output_sha256.clone(),
+            mechanism: evidence.witness.mechanism.clone(),
             tool: evidence.witness.tool.clone(),
             loader: evidence.witness.loader.clone(),
             revisions: evidence.revisions.clone(),
@@ -888,6 +914,7 @@ impl EvidenceRequest {
     /// loader closure, revision pair, or dependency closure.
     pub fn validate(&self) -> Result<(), ConversionError> {
         self.boundary.validate()?;
+        self.mechanism.validate()?;
         self.tool.validate()?;
         self.loader.validate()?;
         self.revisions.validate()?;
@@ -932,6 +959,10 @@ pub enum RevocationReason {
     LoaderClosureChanged,
     /// The fault/repaired revision identity changed.
     RevisionChanged,
+    /// The witness provenance or discovery claim changed.
+    ProvenanceChanged,
+    /// The witness command, output, or mechanism changed.
+    WitnessChanged,
 }
 
 impl RevocationReason {
@@ -951,6 +982,8 @@ impl RevocationReason {
             Self::ToolChanged => "tool_changed",
             Self::LoaderClosureChanged => "loader_closure_changed",
             Self::RevisionChanged => "revision_changed",
+            Self::ProvenanceChanged => "provenance_changed",
+            Self::WitnessChanged => "witness_changed",
         }
     }
 }
@@ -1017,6 +1050,15 @@ pub fn reuse_evidence(prior: &ConversionEvidence, current: &EvidenceRequest) -> 
     if prior.boundary != current.boundary {
         reasons.push(RevocationReason::BoundaryChanged);
     }
+    if prior.witness.origin != current.origin || prior.witness.discovery != current.discovery {
+        reasons.push(RevocationReason::ProvenanceChanged);
+    }
+    if prior.witness.command_sha256 != current.witness_command_sha256
+        || prior.witness.output_sha256 != current.witness_output_sha256
+        || prior.witness.mechanism != current.mechanism
+    {
+        reasons.push(RevocationReason::WitnessChanged);
+    }
     if prior.dependencies != current.dependencies {
         reasons.push(RevocationReason::DependencyVersionChanged);
     }
@@ -1034,6 +1076,331 @@ pub fn reuse_evidence(prior: &ConversionEvidence, current: &EvidenceRequest) -> 
         ReuseDecision::Reusable
     } else {
         ReuseDecision::Revoked { reasons }
+    }
+}
+
+/// A typed `NOT_RUN` for live conversion capture.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConversionNotRun {
+    /// Why no live capture was produced.
+    pub reason: String,
+}
+
+impl ConversionNotRun {
+    /// A `NOT_RUN` is never a pass or a refutation.
+    #[must_use]
+    pub const fn is_not_run(&self) -> bool {
+        true
+    }
+}
+
+/// Outcome of a live conversion capture.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConversionCaptureOutcome {
+    /// Evidence captured from the named files.
+    Captured(ConversionEvidence),
+    /// The capture environment was not available.
+    NotRun(ConversionNotRun),
+}
+
+/// One DSO captured from a candidate prefix.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CaptureDso {
+    /// External SONAME identity.
+    pub soname: String,
+    /// File holding the exact DSO bytes.
+    pub path: PathBuf,
+    /// Path the loader actually used. It must be under the candidate prefix.
+    pub loaded_path: PathBuf,
+    /// Declared ELF symbol version nodes.
+    pub symbol_versions: Vec<String>,
+    /// Declared `DT_NEEDED` entries.
+    pub dt_needed: Vec<String>,
+}
+
+/// One dependency artifact captured for the dependency closure.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CaptureDependency {
+    /// Dependency name.
+    pub name: String,
+    /// Dependency version or opaque revision.
+    pub version: String,
+    /// File holding the exact dependency artifact bytes.
+    pub path: PathBuf,
+}
+
+const fn default_capture_origin() -> WitnessOrigin {
+    WitnessOrigin::AuthenticNative
+}
+
+const fn default_capture_discovery() -> DiscoveryClaim {
+    DiscoveryClaim::NoDiscoveryClaim
+}
+
+/// A live conversion capture specification, read from `capture.json`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CaptureSpec {
+    /// Property claimed by the captured evidence.
+    pub property: ConversionProperty,
+    /// Candidate Git revision.
+    pub candidate_revision: GitCommit,
+    /// File holding the canonical candidate source manifest.
+    pub candidate_source_manifest: PathBuf,
+    /// Opaque boundary identity.
+    pub boundary_id: BoundaryId,
+    /// Boundary kind.
+    pub boundary_kind: BoundaryKind,
+    /// C behaviour the boundary admits.
+    pub allowed: BTreeSet<AllowedCBehavior>,
+    /// Witness provenance. Live capture requires `authentic_native`.
+    #[serde(default = "default_capture_origin")]
+    pub origin: WitnessOrigin,
+    /// Discovery claim.
+    #[serde(default = "default_capture_discovery")]
+    pub discovery: DiscoveryClaim,
+    /// Witness tool name.
+    pub tool_name: String,
+    /// Witness tool version.
+    pub tool_version: String,
+    /// File holding the witness tool executable bytes.
+    pub tool_executable: PathBuf,
+    /// File holding the exact witness command line.
+    pub command: PathBuf,
+    /// File holding the captured witness output.
+    pub output: PathBuf,
+    /// Opaque mechanism identity.
+    pub mechanism_id: MechanismId,
+    /// Whether a separate process confirmed the mechanism.
+    pub mechanism_confirmed: bool,
+    /// File holding the independent mechanism confirmation.
+    pub mechanism_confirmation: PathBuf,
+    /// Loader tool name.
+    pub loader_tool_name: String,
+    /// Loader tool version.
+    pub loader_tool_version: String,
+    /// File holding the loader tool executable bytes.
+    pub loader_executable: PathBuf,
+    /// File holding the raw loader trace or map.
+    pub loader_trace: PathBuf,
+    /// Candidate install prefix every loaded DSO must resolve under.
+    pub candidate_prefix: PathBuf,
+    /// Symbols resolved at declared versions.
+    pub resolved_symbols: u64,
+    /// Unresolved symbols.
+    pub unresolved_symbols: u64,
+    /// Loaded DSO closure.
+    pub dsos: Vec<CaptureDso>,
+    /// Fault revision.
+    pub fault: GitCommit,
+    /// Repaired revision.
+    pub repaired: GitCommit,
+    /// Paths changed by the repair.
+    pub changed_paths: BTreeSet<String>,
+    /// Rust toolchain dependency.
+    pub toolchain: CaptureDependency,
+    /// Dynamic loader dependency.
+    pub dynamic_loader: CaptureDependency,
+    /// External authority dependency.
+    pub authority: CaptureDependency,
+    /// Additional libraries in the dependency closure.
+    pub libraries: Vec<CaptureDependency>,
+}
+
+fn capture_path(root: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    }
+}
+
+fn read_capture(root: &Path, path: &Path, field: &'static str) -> Result<Vec<u8>, ConversionError> {
+    let resolved = capture_path(root, path);
+    fs::read(&resolved).map_err(|error| {
+        ConversionError::CaptureIo(format!("{field} {}: {error}", resolved.display()))
+    })
+}
+
+fn artifact_digest(parts: &[(String, Sha256Digest)]) -> Result<Sha256Digest, ConversionError> {
+    let mut sorted = parts.to_vec();
+    sorted.sort();
+    let value =
+        serde_json::to_value(&sorted).map_err(|error| ConversionError::Json(error.to_string()))?;
+    let bytes = canonical_bytes(&value)?;
+    let mut hasher = Sha256::new();
+    hasher.update(b"frf-memorysafety/candidate-artifact/v1");
+    hasher.update([0u8]);
+    hasher.update(&bytes);
+    Ok(Sha256Digest(hex_lower(&hasher.finalize())))
+}
+
+fn capture_dependency(
+    root: &Path,
+    dependency: &CaptureDependency,
+) -> Result<DependencyVersion, ConversionError> {
+    let bytes = read_capture(root, &dependency.path, "dependency")?;
+    Ok(DependencyVersion {
+        name: dependency.name.clone(),
+        version: dependency.version.clone(),
+        sha256: Sha256Digest::of_bytes(&bytes),
+    })
+}
+
+impl CaptureSpec {
+    /// Capture evidence from the exact files named by this specification.
+    ///
+    /// Digests are computed from the file bytes; no digest is accepted from the
+    /// specification. The resulting record is validated before it is returned,
+    /// so an open loader closure, an unconfirmed mechanism, a mismatched
+    /// property, or an empty allowed-behaviour set fails closed.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed [`ConversionError`] if a named file cannot be read, the
+    /// candidate artifact closure is empty, or the assembled record is invalid.
+    pub fn capture(&self, root: &Path) -> Result<ConversionEvidence, ConversionError> {
+        let source = read_capture(root, &self.candidate_source_manifest, "candidate_source")?;
+        let tool = read_capture(root, &self.tool_executable, "tool_executable")?;
+        let command = read_capture(root, &self.command, "command")?;
+        let output = read_capture(root, &self.output, "output")?;
+        let confirmation =
+            read_capture(root, &self.mechanism_confirmation, "mechanism_confirmation")?;
+        let loader_tool = read_capture(root, &self.loader_executable, "loader_executable")?;
+        let trace = read_capture(root, &self.loader_trace, "loader_trace")?;
+
+        let mut loaded = Vec::new();
+        let mut artifact_parts = Vec::new();
+        let mut all_under_candidate_prefix = true;
+        for dso in &self.dsos {
+            let bytes = read_capture(root, &dso.path, "dso")?;
+            let digest = Sha256Digest::of_bytes(&bytes);
+            let resolved = capture_path(root, &dso.loaded_path);
+            all_under_candidate_prefix &= resolved.starts_with(&self.candidate_prefix);
+            artifact_parts.push((dso.soname.clone(), digest.clone()));
+            loaded.push(DsoIdentity {
+                soname: dso.soname.clone(),
+                sha256: digest,
+                symbol_versions: dso.symbol_versions.clone(),
+                dt_needed: dso.dt_needed.clone(),
+            });
+        }
+        if loaded.is_empty() {
+            return Err(ConversionError::CaptureIo(
+                "capture names no loaded DSO".to_owned(),
+            ));
+        }
+        let artifact_sha256 = artifact_digest(&artifact_parts)?;
+
+        let libraries = self
+            .libraries
+            .iter()
+            .map(|dependency| capture_dependency(root, dependency))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let evidence = ConversionEvidence {
+            property: self.property,
+            candidate: CandidateIdentity {
+                revision: self.candidate_revision.clone(),
+                source_sha256: Sha256Digest::of_bytes(&source),
+                artifact_sha256,
+            },
+            boundary: BoundaryScope {
+                boundary_id: self.boundary_id.clone(),
+                kind: self.boundary_kind,
+                allowed: self.allowed.clone(),
+            },
+            witness: NativeWitness {
+                origin: self.origin,
+                discovery: self.discovery,
+                tool: ToolIdentity {
+                    name: self.tool_name.clone(),
+                    version: self.tool_version.clone(),
+                    executable_sha256: Sha256Digest::of_bytes(&tool),
+                },
+                command_sha256: Sha256Digest::of_bytes(&command),
+                output_sha256: Sha256Digest::of_bytes(&output),
+                mechanism: MechanismEvidence {
+                    mechanism_id: self.mechanism_id.clone(),
+                    independently_confirmed: self.mechanism_confirmed,
+                    confirmation_sha256: Sha256Digest::of_bytes(&confirmation),
+                },
+                loader: LoaderClosureEvidence {
+                    loader: ToolIdentity {
+                        name: self.loader_tool_name.clone(),
+                        version: self.loader_tool_version.clone(),
+                        executable_sha256: Sha256Digest::of_bytes(&loader_tool),
+                    },
+                    loaded,
+                    all_under_candidate_prefix,
+                    resolved_symbols: self.resolved_symbols,
+                    unresolved_symbols: self.unresolved_symbols,
+                    trace_sha256: Sha256Digest::of_bytes(&trace),
+                },
+            },
+            revisions: FaultRepairRevision {
+                fault: self.fault.clone(),
+                repaired: self.repaired.clone(),
+                changed_paths: self.changed_paths.clone(),
+            },
+            dependencies: DependencyClosure {
+                toolchain: capture_dependency(root, &self.toolchain)?,
+                loader: capture_dependency(root, &self.dynamic_loader)?,
+                authority: capture_dependency(root, &self.authority)?,
+                libraries,
+            },
+        };
+        evidence.validate()?;
+        Ok(evidence)
+    }
+}
+
+/// Capture live conversion evidence from a directory holding `capture.json`.
+///
+/// A missing specification is the typed [`ConversionCaptureOutcome::NotRun`]
+/// path. A specification whose witness is not authentic native is refused: the
+/// live path never relabels a synthetic or substitute witness.
+///
+/// # Errors
+///
+/// Returns a typed [`ConversionError`] if the specification is malformed, a
+/// named file cannot be read, or the assembled record is invalid.
+pub fn capture_live(root: &Path) -> Result<ConversionCaptureOutcome, ConversionError> {
+    let spec_path = root.join(CONVERSION_CAPTURE_SPEC_FILE);
+    if !spec_path.is_file() {
+        return Ok(ConversionCaptureOutcome::NotRun(ConversionNotRun {
+            reason: format!("{} is absent", spec_path.display()),
+        }));
+    }
+    let bytes = fs::read(&spec_path)
+        .map_err(|error| ConversionError::CaptureIo(format!("{}: {error}", spec_path.display())))?;
+    let spec: CaptureSpec =
+        serde_json::from_slice(&bytes).map_err(|error| ConversionError::Json(error.to_string()))?;
+    if spec.origin != WitnessOrigin::AuthenticNative {
+        return Err(ConversionError::CaptureRequiresAuthenticOrigin);
+    }
+    Ok(ConversionCaptureOutcome::Captured(spec.capture(root)?))
+}
+
+/// Capture live conversion evidence from [`CONVERSION_CAPTURE_ENV`].
+///
+/// # Errors
+///
+/// Returns a typed [`ConversionError`] when the configured directory or one of
+/// its named files cannot be read, or when the assembled record is invalid.
+pub fn capture_live_from_env() -> Result<ConversionCaptureOutcome, ConversionError> {
+    match std::env::var_os(CONVERSION_CAPTURE_ENV) {
+        Some(value) => {
+            let root = PathBuf::from(value);
+            capture_live(&root)
+        }
+        None => Ok(ConversionCaptureOutcome::NotRun(ConversionNotRun {
+            reason: format!("{CONVERSION_CAPTURE_ENV} is not set"),
+        })),
     }
 }
 
@@ -1099,6 +1466,12 @@ pub enum ConversionError {
     /// The revision pair named no changed path.
     #[error("a fault/repaired revision pair must name a changed path")]
     EmptyRevisionChange,
+    /// A captured file could not be read.
+    #[error("live capture failed: {0}")]
+    CaptureIo(String),
+    /// A live capture claimed a non-authentic origin.
+    #[error("live capture requires an authentic native witness origin")]
+    CaptureRequiresAuthenticOrigin,
     /// Canonical encoding failed.
     #[error("canonical encoding failed: {0}")]
     Canonical(#[from] IdentityError),
