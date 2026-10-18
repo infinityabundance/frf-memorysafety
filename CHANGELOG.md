@@ -11,10 +11,13 @@ universal memory-safety soundness, and no release below makes such a claim.
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.4.0] - 2026-10-18
+
 Phase 3.1: conservative, syntax-only Rust source inventory. Phase 3.2: finite
 explicit-input path effects and qualified outcomes. Phase 3.3: optional pinned
-MIR text observations with honest `NOT_RUN`. No version bump and no external
-publication.
+MIR text observations with honest `NOT_RUN`.
 
 ### Added
 

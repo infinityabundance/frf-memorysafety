@@ -5,17 +5,17 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**This build makes no memory-safety soundness claim.** It is phase-2
-bookkeeping infrastructure, a phase-3.1 syntax-only source inventory, a
-phase-3.2 explicit-input path-effect model, and a phase-3.3 optional pinned MIR
-text adapter: strict encoding, typed evidence, founded support with policy
+**This build makes no memory-safety soundness claim.** Version 0.4.0 adds a
+phase-3.1 syntax-only source inventory, a phase-3.2 explicit-input path-effect
+model, and a phase-3.3 optional pinned MIR text adapter to the phase-2
+bookkeeping core: strict encoding, typed evidence, founded support with policy
 custody, a finite three-rule profile, bounded `syn`-based source discovery,
 typed alias/footprint/reference-interval qualification, conservative MIR edge
 observations when the pinned toolchain is present, and an honest CLI.
 Universal safe-interior soundness and `SAFE_COMPATIBLE` are outside the finite
 profile and are always reported as `WITHHELD_NOT_RUN`.
 
-## Status (0.3.0, phase 2 + phases 3.1–3.3)
+## Status (0.4.0, phase 3)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -28,11 +28,22 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `cargo test --locked --release` | 168 passed, 0 failed, 0 ignored |
 | `ci/mir-gate.sh` | PASS (LIVE observations with pinned nightly) |
 
-Version 0.3.0 is the Phase 2 release. The Phase 3.1 inventory, Phase 3.2
-path-effect work, and Phase 3.3 optional MIR adapter are unreleased additions;
-no version bump or publication is implied. Release notes for Phase 1 (0.2.0)
-and Phase 2 (0.3.0) plus the unreleased Phase 3 entries are in
+Version 0.4.0 is the Phase 3 release, covering the Phase 3.1 source inventory,
+Phase 3.2 path effects, and Phase 3.3 optional MIR adapter. Release notes for
+Phase 1 (0.2.0), Phase 2 (0.3.0), and Phase 3 (0.4.0) are in
 [`CHANGELOG.md`](CHANGELOG.md).
+
+### Capability matrix
+
+| Capability | 0.4.0 availability |
+|---|---|
+| Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
+| `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
+| `path analyze` aliases, footprints, reference intervals, C callbacks | Implemented; explicit-input and finite only |
+| `mir scan` MIR text observations | Available only with pinned `nightly-2025-02-20`; otherwise `NOT_RUN`, exit 6 |
+| MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
+| Live Miri/sanitizers/Kani/Loom, FRF, FRF-Fuzz, Gemel, native proof checkers | `NOT_RUN`, exit 6 |
+| Universal safe-interior soundness and `SAFE_COMPATIBLE` | Withheld; `WITHHELD_NOT_RUN` |
 
 The conformance tests **execute**; they are not ignored. The shipping engine is
 compared against a separately coded oracle in `tests/support_oracle/` over the
@@ -131,7 +142,8 @@ original counts and makes this scoping difference explicit.
 ### Claim ceiling
 
 Every positive result in this README is limited to the named finite domain and
-the checks that were actually executed. The conformance campaign is a
+the checks that were actually executed. The claim ceiling is syntactic, finite,
+and explicit-input only: no result here is whole-program or universally sound. The conformance campaign is a
 differential consistency result between the shipping engine and a separately
 coded oracle over the 12-pattern, three-node universe; it is not a proof of
 `SPEC.md`, because both implementations can share a specification error. Policy
