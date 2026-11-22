@@ -135,7 +135,7 @@
       },
       {
         "path": "src/cli.rs",
-        "sha256": "438d270c8589cc896a751bd0f906ffaadbaf15e4a8f72b4f903387e569d35187"
+        "sha256": "78af77377f7a277d224af474d9bc182700cda5d42eb8035e841b66e9489bc11c"
       },
       {
         "path": "src/court.rs",
@@ -162,12 +162,20 @@
         "sha256": "9c73f700b92f35beaa696d09c49f818aeb2ab4567497d1d9be4cdd82cc23a975"
       },
       {
+        "path": "src/etp_transparency.rs",
+        "sha256": "6a2b0a65dd92e95c261f92969a12bc3f855072db4facef567531d89ec0a92fa2"
+      },
+      {
+        "path": "src/etp_witness.rs",
+        "sha256": "630eda4ac8576f089e9cb10cdf2fa7867adc6b5b233394268aede1e7fe20e0da"
+      },
+      {
         "path": "src/identity.rs",
         "sha256": "24009a1f2415244d660b5be52fb868bd18b6d186fbfbc8fcb513faa242e4e6bd"
       },
       {
         "path": "src/lib.rs",
-        "sha256": "ec17b4d9536cacaffc0d0d6eb118bc250716e6cb8234d955fb673551b4914d08"
+        "sha256": "a0e8b98b49234027316e586ad7a0b7b0de98141fe74b7c1b6006a4b67e260422"
       },
       {
         "path": "src/main.rs",
@@ -190,7 +198,7 @@
       "prlimit",
       "ld"
     ],
-    "tree_sha256": "74517c942798087e77335ffc28c4078ed85161a58c388b77d649cfac245cb338",
+    "tree_sha256": "7b17845a3b452874f89ee4c4a07fd391d2a7e67a9d5486dfa3a5f2fb8e847a84",
     "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1"
   },
   "mutation_controls": [

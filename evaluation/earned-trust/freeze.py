@@ -46,15 +46,20 @@ CANDIDATE_PATHS = [
 INSTRUMENT_PATHS = [
     "Cargo.toml",
     "rust-toolchain.toml",
+    "src/cli.rs",
     "src/court.rs",
-    "src/native.rs",
-    "src/identity.rs",
+    "src/etp_archive.rs",
     "src/etp_auth.rs",
     "src/etp_campaign.rs",
-    "src/sarif.rs",
-    "src/cli.rs",
+    "src/etp_revocation.rs",
+    "src/etp_time.rs",
+    "src/etp_transparency.rs",
+    "src/etp_witness.rs",
+    "src/identity.rs",
     "src/lib.rs",
     "src/main.rs",
+    "src/native.rs",
+    "src/sarif.rs",
 ]
 
 

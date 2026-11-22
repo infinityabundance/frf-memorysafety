@@ -2,9 +2,9 @@
 
 **Campaign:** `frf-etp-native-fixtures-2026-11-22`
 **Opening SHA-256:**
-`fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec`
+`df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff`
 **Closure SHA-256:**
-`607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912`
+`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`
 
 **Phase 10.3 amendment.** The Phase 10.2 opening digest was
 `2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and its
@@ -15,6 +15,16 @@ closure digest was
 population. The case population, expected outcomes, acceptance policy, receipt
 contents, accepted cases, retained findings, resource envelope, and claim
 ceiling are unchanged. The original bytes remain at commit `f17111d`.
+
+**Phase 10.4b amendment.** Phase 10.4b added `src/etp_transparency.rs` and
+`src/etp_witness.rs`, and changed `src/cli.rs` and `src/lib.rs`, all declared
+instrument files. It re-froze the opening manifest and re-executed the same
+13-case population. The case population, expected outcomes, acceptance policy,
+receipt contents, accepted cases, retained findings, resource envelope, and
+claim ceiling are unchanged. The Phase 10.4a opening digest
+`08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` and closure
+digest `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`
+remain available at commit `eeb5c80`.
 
 This ledger states what the campaign does not establish. It is part of the
 evidence, not a caveat added after the result.
@@ -67,11 +77,13 @@ evidence, not a caveat added after the result.
 - An actor who can rewrite the opening manifest, every receipt, the raw evidence,
   the SARIF projection, and the verifier can produce a self-consistent
   alternative set. The committed digests do not prevent that.
-- No Sigstore signature, Rekor/C2SP inclusion or consistency proof, RFC 3161
+- No Sigstore signature, public Rekor/C2SP inclusion, RFC 3161 external trusted
   timestamp, or TUF metadata exists. Phase 10.3 adds a separate test-only
-  DSSE/in-toto attestation of the closure; it uses a discarded ephemeral key,
-  confers no independent review, and does not authenticate the campaign's
-  receipts or raw evidence. These remain `NOT_RUN` or specified-not-deployed.
+  DSSE/in-toto attestation of the closure; Phase 10.4a adds a local test RFC
+  3161 token; Phase 10.4b adds a local test tlog-tiles proof. None confers
+  independent review, public transparency, completeness, external witnessing,
+  or authentication of the campaign's receipts or raw evidence. These remain
+  `NOT_RUN` or specified-not-deployed.
 - The SARIF projection is a report. A GitHub code-scanning view or any external
   SARIF consumer is not authoritative.
 

@@ -308,6 +308,7 @@ def main() -> int:
         "verify_attestations.py",
         "verify_time.py",
         "verify_revocation.py",
+        "verify_transparency.py",
     ]:
         copy(
             base / name,
@@ -316,6 +317,60 @@ def main() -> int:
             "python-source",
             True,
             "independent offline verifier",
+        )
+
+    transparency_dir = base / "transparency"
+    for name, category, schema, applicability in [
+        (
+            "proof.json",
+            "transparency_proof",
+            "frf-etp.transparency-proof.v1",
+            "local inclusion and consistency proof",
+        ),
+        (
+            "checkpoint-size-1.txt",
+            "transparency_checkpoint",
+            "tlog-checkpoint-v1",
+            "signed size-1 known horizon",
+        ),
+        (
+            "checkpoint-size-3.txt",
+            "transparency_checkpoint",
+            "tlog-checkpoint-v1",
+            "signed size-3 checkpoint",
+        ),
+        (
+            "attestation-entry.bin",
+            "transparency_entry",
+            "frf-etp.dsse-envelope.v1",
+            "exact leaf-0 entry bytes",
+        ),
+        (
+            "policy.json",
+            "transparency_policy",
+            "frf-etp.transparency-policy.v1",
+            "pinned local log identity and horizon",
+        ),
+        (
+            "log-key.pub",
+            "transparency_log_key",
+            "opaque-bytes",
+            "pinned local log public vkey",
+        ),
+        (
+            "witness-state.json",
+            "witness_state",
+            "frf-etp.witness-state.v1",
+            "committed not-observed witness state",
+        ),
+    ]:
+        copy(
+            transparency_dir / name,
+            f"{EDGE}/transparency/{name}",
+            category,
+            schema,
+            True,
+            applicability,
         )
 
     imprint = sha256_bytes((base / "MANIFEST.json").read_bytes())
@@ -365,8 +420,15 @@ python3 evaluation/earned-trust/verify_revocation.py \\
 ./ci/etp-time-gate.sh
 ```
 
+6. Local transparency proof and witness-model verification:
+
+```sh
+python3 evaluation/earned-trust/verify_transparency.py \\
+  --dir evaluation/earned-trust/transparency --controls
+```
+
 Knowledge horizon: Unix `{observed}`. This archive is not an external anchor,
-not a transparency log, and not proof that the evidence is true.
+not a public transparency log, and not proof that the evidence is true.
 """
     reconstruction_path = out / EDGE / "RECONSTRUCTION.md"
     reconstruction_path.parent.mkdir(parents=True, exist_ok=True)
@@ -458,6 +520,24 @@ not a transparency log, and not proof that the evidence is true.
                 f"{EDGE}/verify_revocation.py",
             ],
         },
+        {
+            "purpose": "verify the local transparency proof and run its controls",
+            "working_directory": ".",
+            "argv": [
+                "python3",
+                f"{EDGE}/verify_transparency.py",
+                "--dir",
+                f"{EDGE}/transparency",
+                "--controls",
+            ],
+            "requires": [
+                f"{EDGE}/transparency/proof.json",
+                f"{EDGE}/transparency/checkpoint-size-3.txt",
+                f"{EDGE}/transparency/policy.json",
+                f"{EDGE}/transparency/witness-state.json",
+                f"{EDGE}/verify_transparency.py",
+            ],
+        },
     ]
     required_categories = [
         "opening_manifest",
@@ -474,13 +554,17 @@ not a transparency log, and not proof that the evidence is true.
         "revocation_registry",
         "support_model",
         "historical_verdict",
+        "transparency_proof",
+        "transparency_checkpoint",
+        "transparency_policy",
+        "witness_state",
         "reconstruction",
         "verifier",
     ]
     manifest = {
         "schema": MANIFEST_SCHEMA,
         "spec": SPEC,
-        "archive_id": "frf-etp-phase10.4a-archive",
+        "archive_id": "frf-etp-phase10.4b-archive",
         "created_at_unix": observed,
         "knowledge_horizon_unix": observed,
         "objects": sorted(objects, key=lambda item: item["path"]),
@@ -497,11 +581,13 @@ not a transparency log, and not proof that the evidence is true.
             ),
         },
         "unsupported_features": [
-            "transparency_inclusion",
-            "witness_observation",
+            "public_transparency",
+            "external_witness_observation",
             "external_trusted_time",
             "public_revocation_feed",
             "global_non_equivocation",
+            "semantic_validity_of_a_logged_entry",
+            "completeness_of_the_log",
         ],
         "claim_ceiling": (
             "A verified archive establishes only that the declared objects are "
@@ -511,7 +597,8 @@ not a transparency log, and not proof that the evidence is true.
             "anchoring, or reproduction without the declared images and tools."
         ),
         "non_claims": [
-            "No transparency-log inclusion or witness observation is established.",
+            "Local transparency inclusion is not public transparency and not completeness.",
+            "No external witness observation is established.",
             "The timestamp is anchored in a local test TSA, not external trusted time.",
             "The revocation registry is not a public feed and is not complete.",
             "A verified archive is not a certification or a deployment authorization.",
