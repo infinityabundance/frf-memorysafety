@@ -9,6 +9,61 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - Phase 10.3 authenticated evidence
+
+This is an additive evidence, validation, and verification change. It does not
+change any 1.0.0 schema meaning, receipt, measured observation, corpus, test, or
+claim ceiling. The crate version remains 1.0.0.
+
+### Added
+
+- [`docs/ETP-AUTHENTICATED-EVIDENCE.md`](docs/ETP-AUTHENTICATED-EVIDENCE.md):
+  the DSSE v1/in-toto v1 profile, exact PAE, the seven versioned predicate
+  types, the trust policy and roles, key custody and expiry, the seven
+  verification dimensions, the independent verifier, the executed controls, and
+  the non-claims.
+- `src/etp_auth.rs`: DSSE v1 parsing and PAE, Ed25519-only signature
+  verification, in-toto Statement v1, ETP predicates, the versioned trust
+  policy, and semantic/authorization verification with no scalar score.
+- `tests/etp_auth.rs`: 21 executing tests covering wrong key, tampered payload,
+  malformed PAE, substituted subject, replay, duplicate JSON keys, oversized
+  payload, excessive nesting, signature-count abuse, unsupported algorithm,
+  unauthorized role, expired key, duplicate credentials, correctly signed
+  incomplete closure, and correctly signed false conclusion.
+- `etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]` with
+  `SPEC.md` section 14 exit statuses. Signing remains a test/gate helper only.
+- `schemas/etp/`: eleven versioned schemas for the DSSE envelope, in-toto
+  statement, seven predicates, trust policy, and verification report.
+- `evaluation/earned-trust/trust-policy.json` and
+  `evaluation/earned-trust/attestations/`: the test-only trust policy, signed
+  envelope, statement, and public key. The private key was discarded.
+- `evaluation/earned-trust/make_attestation.py` and
+  `evaluation/earned-trust/verify_attestations.py`: the test-only signer and the
+  independent OpenSSL-based verifier with 13 negative controls.
+- `ci/etp-auth-gate.sh`: focused Rust tests, committed and ephemeral
+  verification, independent controls, and private-key-discard check under
+  hardened memory, pid, cpu, nofile, OOM, capability, and no-new-privileges
+  limits.
+
+### Changed
+
+- The Phase 10.2 opening manifest was re-frozen as an explicitly separated
+  instrument change (the attestation dependency and new source), and the same
+  13-case campaign was re-executed. The population, expected outcomes, receipts,
+  accepted cases, retained findings, resource envelope, and claim ceiling are
+  unchanged.
+- `capabilities` now reports the finite DSSE/in-toto verification, trust policy,
+  independent verifier, and semantic refusal checks, and keeps transparency,
+  timestamps, Sigstore, TUF, revocation, and independent review as `NOT_RUN`.
+- `tests/etp.rs` registers the eleven new schemas (19 total).
+
+### Not changed
+
+- No 1.0.0 receipt, claim, provider object, or schema meaning.
+- No universal or population-level claim.
+- No crate version bump, publish, transparency log, timestamp, or independent
+  reviewer deployment.
+
 ## [Unreleased] - Phase 10.2 ETP campaign and SARIF projection
 
 This is an additive evidence, validation, and reporting change. It does not
@@ -61,6 +116,10 @@ test, or claim ceiling. The crate version remains 1.0.0.
   `fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`;
   SARIF
   `7920605d09808dae8b9fd8c6fce63ddd5b8656b09012e0242c6427d49f7382e1`.
+- These are the Phase 10.2 record values. Phase 10.3 re-froze the opening
+  manifest as an explicitly separated instrument change and re-executed the same
+  population; the current values are in the Phase 10.3 section above. The
+  original bytes remain at commit `f17111d`.
 - The Python reconstructor recomputes the same counts, decisions, digests, and
   SARIF mappings from the raw receipts without importing the crate.
 
@@ -71,8 +130,9 @@ produced its pre-registered typed observations and that the bookkeeping is
 complete. It does not establish memory safety, functional correctness, detector
 sensitivity, proof soundness, population-level recall, reviewer independence,
 authentication, transparency completeness, or deployment security. `NOT_RUN` is
-never a pass. DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161 timestamps, TUF,
-and independent adjudication remain `NOT_RUN` or specified-not-deployed. A
+never a pass. Phase 10.3 implements a finite DSSE/in-toto profile and a test-only
+trust policy; Rekor/C2SP, RFC 3161 timestamps, Sigstore, TUF, and independent
+adjudication remain `NOT_RUN` or specified-not-deployed. A
 GitHub code-scanning view is not authoritative.
 
 ## [Unreleased] - Phase 10.1 ETP foundation

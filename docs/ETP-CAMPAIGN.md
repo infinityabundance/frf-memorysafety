@@ -42,14 +42,27 @@ instrument.
 | Field | Value |
 |---|---|
 | Opening manifest | `evaluation/earned-trust/protocol.json` |
-| Opening SHA-256 | `2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` |
+| Opening SHA-256 | `fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec` |
 | Frozen sidecar | `evaluation/earned-trust/opening.sha256` |
-| Candidate identity (tree) | `951a51ee72d1b0eaf69927ca17b6a2def73d5879e070cbd705b983321a3d6546` |
-| Instrument identity (tree) | `a907e09ef3bf426a1e178eb86984f6aa5df09635c88d6252506df0b8dd53b67c` |
+| Candidate identity (tree) | `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746` |
+| Instrument identity (tree) | `e0264527e0dfb79e0d30967a8605784b383c0e12c8cdd94f8764457d9370d3ec` |
 | Closure manifest | `evaluation/earned-trust/MANIFEST.json` |
-| Closure SHA-256 | `fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee` |
+| Closure SHA-256 | `607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912` |
 | SARIF projection | `evaluation/earned-trust/campaign.sarif` |
-| SARIF SHA-256 | `7920605d09808dae8b9fd8c6fce63ddd5b8656b09012e0242c6427d49f7382e1` |
+| SARIF SHA-256 | `336edb23e8ee3c4c9a31c2a83ec645a0993421bfd0cf775a17990ca40e9b8f8b` |
+
+**Phase 10.3 instrument change.** Adding the attestation dependency changed
+`Cargo.toml`, and adding `src/etp_auth.rs` and changing `src/cli.rs` and
+`src/lib.rs` changed the declared instrument. The opening manifest was
+re-frozen and the same finite campaign was re-executed under the Phase 10.3
+instrument. The population, expected outcomes, receipts, accepted cases,
+retained findings, resource envelope, and claim ceiling are unchanged. The
+original Phase 10.2 opening digest was
+`2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and its
+closure digest was
+`fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`; both remain
+available at commit `f17111d`. See
+[`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md).
 
 The tree digest is `sha256-sorted-path-nul-digest-lf-v1`: SHA-256 over the
 concatenation of `path`, NUL, the lowercase file SHA-256, and LF, with files
@@ -256,12 +269,16 @@ complete. It does **not** establish:
 * that a GitHub code-scanning view is authoritative;
 * that a passing gate is a certification or an authorization to deploy.
 
-DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161 timestamps, TUF, independent
-adjudication, revocation registries, and public challenge services are not
-implemented in this subphase. They remain `NOT_RUN` or specified-not-deployed.
-The SHA-256 freeze detects accidental or silent change only; an actor who can
-rewrite the opening manifest, every receipt, the projection, and the verifier can
-produce a self-consistent alternative set.
+DSSE, in-toto, and an Ed25519-only trust policy are implemented for a finite
+profile in Phase 10.3; they authenticate the exact signed bytes and bind this
+closure, but they do not establish truth or independent review. Rekor/C2SP
+transparency inclusion and consistency, RFC 3161 trusted timestamps, Sigstore
+keyless identity, TUF update metadata, independent adjudication, revocation
+registries, and public challenge services are not implemented in this
+subphase. They remain `NOT_RUN` or specified-not-deployed. The SHA-256 freeze
+detects accidental or silent change only; an actor who can rewrite the opening
+manifest, every receipt, the projection, and the verifier can produce a
+self-consistent alternative set.
 
 ## 9. Citations
 
@@ -280,4 +297,5 @@ produce a self-consistent alternative set.
 8. The Update Framework, *Specification* v1.0.31.
    <https://theupdateframework.github.io/specification/v1.0.31/>
 9. This repository: `docs/ETP-CLAIM-INTEGRITY.md`, `docs/ETP-SARIF.md`,
-   `docs/EARNED-TRUST.md`, `SPEC.md`, `AGENTS.md`.
+   `docs/ETP-AUTHENTICATED-EVIDENCE.md`, `docs/EARNED-TRUST.md`, `SPEC.md`,
+   `AGENTS.md`.

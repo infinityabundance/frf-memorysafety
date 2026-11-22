@@ -6,7 +6,13 @@
 **Implementation:** `src/sarif.rs`, `etp sarif verify`, `etp sarif export`.
 **Committed projection:**
 `evaluation/earned-trust/campaign.sarif` (SHA-256
-`7920605d09808dae8b9fd8c6fce63ddd5b8656b09012e0242c6427d49f7382e1`).
+`336edb23e8ee3c4c9a31c2a83ec645a0993421bfd0cf775a17990ca40e9b8f8b`).
+
+Phase 10.3 re-projected the SARIF document after the explicitly recorded
+instrument change and campaign re-execution described in
+[`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md). The 18 results,
+11 rules, and 0 suppressions are unchanged; the candidate and instrument
+identities are the Phase 10.3 values.
 
 A SARIF document is a report format. It is not a correctness, memory-safety,
 compatibility, or security proof. A GitHub code-scanning view is not

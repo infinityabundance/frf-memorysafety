@@ -245,6 +245,60 @@ Phase 10.2 does not migrate:
 The four new schemas are registered in `schemas/etp/registry.json`. The 1.0.0
 freeze is unchanged.
 
+## 9.2 What Phase 10.3 adds and does not migrate
+
+Phase 10.3 adds, without changing any 1.0.0 meaning:
+
+- `frf-etp.dsse-envelope.v1`;
+- `frf-etp.in-toto-statement.v1`;
+- seven separately versioned predicate schemas:
+  `frf-etp.predicate.campaign-closure.v1`,
+  `frf-etp.predicate.instrument-qualification.v1`,
+  `frf-etp.predicate.reproduction.v1`,
+  `frf-etp.predicate.proof-admission.v1`,
+  `frf-etp.predicate.consumer-closure.v1`,
+  `frf-etp.predicate.security-findings.v1`,
+  `frf-etp.predicate.release-adjudication.v1`;
+- `frf-etp.trust-policy.v1`;
+- `frf-etp.attestation-verification.v1`;
+- `src/etp_auth.rs`, `tests/etp_auth.rs`, and the `etp attest verify` CLI;
+- `evaluation/earned-trust/trust-policy.json` and
+  `evaluation/earned-trust/attestations/`;
+- `evaluation/earned-trust/make_attestation.py`,
+  `evaluation/earned-trust/verify_attestations.py`, and
+  `ci/etp-auth-gate.sh`;
+- `docs/ETP-AUTHENTICATED-EVIDENCE.md`.
+
+Phase 10.3 records one explicitly separated instrument change. Adding the
+attestation dependency changed `Cargo.toml`, which is a declared candidate and
+instrument file, and adding `src/etp_auth.rs` and changing `src/cli.rs` and
+`src/lib.rs` changed the declared instrument. The Phase 10.2 opening manifest
+was re-frozen and the same finite campaign was re-executed under the Phase 10.3
+instrument. The case population, expected terminal outcomes, receipt contents,
+accepted cases, retained findings, resource envelope, and claim ceiling are
+unchanged. The original Phase 10.2 opening digest
+`2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and closure
+digest `fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`
+remain available at commit `f17111d`. See
+[`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md) for the current
+values.
+
+Phase 10.3 does not migrate:
+
+- any 1.0.0 receipt, claim, or provider object into an attestation;
+- any digest into authentication;
+- any signature into truth, independent review, or certification;
+- any campaign result into a population or deployment claim;
+- any `research/` bytes;
+- the crate version.
+
+Phase 10.3 does not implement a transparency log (Rekor/C2SP), RFC 3161
+timestamps, Sigstore keyless identity, TUF metadata, a revocation registry, or a
+public challenge service. Those remain Phase 10.4 work.
+
+The eleven new schemas are registered in `schemas/etp/registry.json`. The 1.0.0
+freeze is unchanged.
+
 ## 10. Rollback
 
 A manifest, vector, registry, or freeze change can be rolled back by reverting

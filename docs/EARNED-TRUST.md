@@ -92,7 +92,7 @@ Each layer has its own evidence, authority, and claim ceiling.
 | 3 | Interoperability | Implemented for one recorded OpenSSL-Rust boundary and one consumer workflow | One boundary witness, one repair, one curl TLS 1.3 workflow, one loader closure |
 | 4 | Reproducibility | Implemented for a pre-registered finite evaluation and an artifact-level reconstructor | Deterministic receipt reproduction and independent artifact reconstruction |
 | 5 | ETP claim integrity, campaign closure, adjudication, revocation | Phase 10.1 starts claim integrity | Claim algebra, obligation inventory, separate dimensions, freeze, migration policy |
-| 6 | Authenticated evidence | Specified, not implemented | Nothing yet; digests are not authentication |
+| 6 | Authenticated evidence | Partially implemented: DSSE/in-toto verification, trust policy, independent verifier | Who signed exact bytes, under which declared role and scope; not truth, review, time, or transparency |
 | 7 | Public accountability | Specified, not implemented | Nothing yet; no challenge service, transparency log, or adjudication body is deployed |
 
 ### 4.1 Existing foundation
@@ -162,7 +162,14 @@ own scope; that is not a general ETP revocation registry.
 ### 4.7 Authenticated evidence
 
 Layer 6 is where signatures, transparency logs, trusted timestamps, trusted
-build roots, and update-framework metadata would live. None is implemented.
+build roots, and update-framework metadata live. Phase 10.3 implements a finite
+slice: versioned DSSE v1 envelopes, Ed25519-only verification over the exact
+pre-authentication encoding, in-toto Statement v1 with separately versioned ETP
+predicates, a versioned trust policy, and an independent OpenSSL-based verifier.
+That slice establishes who signed the exact bytes and whether the signed
+predicate agrees with the referenced finite campaign closure. It does not
+implement a transparency log, trusted timestamp, Sigstore identity, TUF metadata,
+revocation registry, or independent reviewer. Those remain Phase 10.4 work.
 ETP distinguishes:
 
 - a digest from authentication;
@@ -178,7 +185,8 @@ envelope, in-toto attestation, SLSA provenance statement, Sigstore signature,
 Rekor entry, RFC 3161 timestamp, or TUF metadata may establish a fact about
 who signed or logged bytes. It does not establish that the bytes describe a true
 property, that the measurement was correct, that the reviewer was independent,
-or that the deployed system is secure.
+or that the deployed system is secure. See
+[`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md).
 
 ### 4.8 Public accountability
 
@@ -271,22 +279,29 @@ done by editing a manifest.
 ## 8. Status of this subphase
 
 Phase 10.1 establishes the constitution and inventory only. Phase 10.2 adds the
-first executable campaign slice without changing the 1.0.0 evidence or claim
-ceilings. In particular:
+first executable campaign slice. Phase 10.3 adds a finite authenticated-evidence
+slice: DSSE/in-toto verification, a trust policy, seven separate verification
+dimensions, an independent verifier, and executable refusal controls. In
+particular:
 
 - no new memory-safety, compatibility, timing, or deployment claim is made;
 - the 13-case native campaign is a finite execution and bookkeeping record, not
   a population study or a certification;
-- no external evidence is authenticated;
-- no transparency log or timestamp is integrated;
-- no independent reviewer or adjudicator is deployed;
-- no general campaign-closure, adjudication, or revocation service is deployed;
+- the Phase 10.3 instrument change re-froze the campaign opening manifest and
+  re-executed the same population; the claim ceiling is unchanged;
+- a valid signature is not truth and is not acceptance without semantic support;
+- the committed attestation uses a discarded test-only key and confers no
+  independent review;
+- no transparency log, timestamp, revocation registry, or public challenge
+  service is integrated;
 - no existing test is deleted or weakened;
 - no crate version is bumped and no package is published.
 
 The trust-gap inventory is in [`ETP-TRUST-GAP.md`](ETP-TRUST-GAP.md). The
 migration and versioning policy is in [`ETP-MIGRATION.md`](ETP-MIGRATION.md).
 The claim algebra is in [`ETP-CLAIM-INTEGRITY.md`](ETP-CLAIM-INTEGRITY.md). The
+authenticated-evidence profile is in
+[`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md). The
 standards actually consulted are in
 [`ETP-STANDARDS-REGISTRY.md`](ETP-STANDARDS-REGISTRY.md).
 

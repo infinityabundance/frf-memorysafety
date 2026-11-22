@@ -5,6 +5,15 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
+Phases 10.1-10.3 add the FRF Earned Trust Protocol without changing the 1.0.0
+evidence or claim ceilings: a claim algebra with twenty coordinates and ten
+separate status dimensions, a finite 13-case campaign closure, and a finite
+authenticated-evidence profile built on DSSE v1, in-toto Statement v1, a
+versioned Ed25519 trust policy, and an independent verifier. The authenticated
+profile records who signed exact bytes and whether the signed predicate agrees
+with the finite closure. It does not establish truth, independent review,
+transparency inclusion, trusted time, or deployment security.
+
 **This build makes no memory-safety soundness claim.** Version 1.0.0 is the
 Phase 9 release. It retains the Phase 8 OpenSSL-Rust conversion evidence, the
 Phase 7 live FRF-Fuzz -> FRF -> Gemel chain,
@@ -101,13 +110,18 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/conversion-gate.sh` | pin built; 22 boundary tests passed; fault/repair 4/4; curl positive/negative PASS; ABI-LOAD 6499/0; 27 live crate tests passed |
 | `./ci/eval-gate.sh` | 60/60 receipts pass; 20 held-out / 11 development; 11/11 claims supported; fresh and committed receipts deterministic-identical |
 | `./ci/reconstruction-gate.sh` | independent standard-library reconstruction passes: 60/60 receipts, 20/11 split, 11/11 protocol claims, 18/18 paper claims mapped |
+| `./ci/etp-gate.sh` (Phase 10.2) | 13-case campaign run and verify PASS; 25 raw-evidence files; SARIF export/verify PASS; independent reconstruction PASS |
+| `./ci/etp-auth-gate.sh` (Phase 10.3) | 21 focused attestation tests passed; 13 independent verifier controls passed; committed and ephemeral attestations accepted by Rust and OpenSSL verifiers; private key discarded |
 
-The default gate executes all 373 tests, including the 22 Phase 10.1 ETP tests
-(14 unit and 8 integration), the six proof-live tests on
-their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
-unit tests, the 1 live/`NOT_RUN` chain test, the 30 Phase 8 conversion-court
-tests (27 integration, including 7 live-capture/reuse tests, and 3 unit), the
-9 Phase 9.1 evaluation tests, and the Phase 9.2 paper claim-table test.
+The default gate executes all 426 tests, including the 21 Phase 10.3
+attestation tests (DSSE/in-toto, trust policy, semantic refusal, replay,
+duplicate credentials, expired keys, and independent review), the 22 Phase 10.1
+ETP tests (14 unit and 8 integration), the Phase 10.2 campaign/SARIF tests, the
+six proof-live tests on their typed `checker_unavailable` path, the 17 bridge
+seal tests, the 3 bridge unit tests, the 1 live/`NOT_RUN` chain test, the 30
+Phase 8 conversion-court tests (27 integration, including 7 live-capture/reuse
+tests, and 3 unit), the 9 Phase 9.1 evaluation tests, and the Phase 9.2 paper
+claim-table test.
 `./ci/proof-gate.sh` re-runs those same six tests against live Coq; the live
 count is a subset of the base total, not additional to it.
 `./ci/bridge-gate.sh` builds and runs the three pinned providers and executes
@@ -122,6 +136,25 @@ same container image is used by the native and detector gates after installing
 only their declared packages; the live tests are the same tests that assert
 typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or `FRF_DETECTOR_LIVE` is unset in the
 default gate.
+
+### Authenticated evidence (Phase 10.3)
+
+Phase 10.3 adds a finite authenticated-evidence profile without changing any
+1.0.0 evidence or claim ceiling. It implements a versioned DSSE v1 envelope
+with exact PAE over the received payload bytes, Ed25519-only verification,
+in-toto Statement v1 with seven separately versioned ETP predicate types, a
+versioned trust policy with roles, scope, actors, validity windows, and
+distinct-actor thresholds, and an independent OpenSSL-based verifier. A
+correctly signed statement with a missing case, a false conclusion, a
+substituted subject, or a replay against another campaign is refused. A valid
+signature is never sufficient for acceptance: the report always keeps signature
+validity, payload integrity, authorization, scope applicability, freshness,
+semantic support, and independent-review status separate. The committed
+attestation uses a discarded test-only ephemeral key and reports
+`independent_review: not_established`. Rekor/C2SP transparency, RFC 3161
+timestamps, Sigstore identity, TUF metadata, and revocation/challenge services
+remain Phase 10.4 work. See
+[`docs/ETP-AUTHENTICATED-EVIDENCE.md`](docs/ETP-AUTHENTICATED-EVIDENCE.md).
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
@@ -176,6 +209,9 @@ toolchains, commands, closure hashes, and the claim ceiling.
 | Live OpenSSL-Rust Safe-33 witness/repair/consumer/loader | Implemented in `./ci/conversion-gate.sh` under a 4g cap: `up_ref` overflow fault `28c9e34` vs repair `1d9c335`, 22 boundary tests, curl 8.22.0 TLS 1.3 positive/negative, 6499/0 loader closure, and recomputed DSO digests. One boundary and one workflow only; no `SAFE_COMPATIBLE` |
 | Live FRF/FRF-Fuzz/Gemel custody chain | Implemented in `./ci/bridge-gate.sh`: real finding `4cd2cf1e05db...` from a 122,500-execution campaign, receipt `receipt-run-frf-fuzz-ed22c7...-be3cafd7...`, GID `evidence.3d5cfe2a9c...`, candidate `b594c294f4d3...`; 6 of 6 seals PASS |
 | Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
+| ETP campaign closure and SARIF 2.1.0 projection | Implemented; `etp campaign verify` and `etp sarif verify` over the finite 13-case campaign; bookkeeping only |
+| `etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]` | Implemented; DSSE v1/in-toto v1, Ed25519 only, versioned trust policy, seven separate dimensions; a valid signature alone is not acceptance |
+| Rekor/C2SP transparency, RFC 3161 timestamps, Sigstore keyless identity, TUF metadata, revocation registry, public challenge | Not implemented; Phase 10.4 |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
 | MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
