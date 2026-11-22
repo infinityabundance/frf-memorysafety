@@ -1,0 +1,66 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-in-toto-statement.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "An in-toto Statement v1 with ETP predicate types. It is not SLSA build provenance.",
+  "properties": {
+    "_type": {
+      "const": "https://in-toto.io/Statement/v1"
+    },
+    "predicate": {
+      "type": "object"
+    },
+    "predicateType": {
+      "enum": [
+        "https://frf.dev/etp/campaign-closure/v1",
+        "https://frf.dev/etp/instrument-qualification/v1",
+        "https://frf.dev/etp/reproduction/v1",
+        "https://frf.dev/etp/proof-admission/v1",
+        "https://frf.dev/etp/consumer-closure/v1",
+        "https://frf.dev/etp/security-findings/v1",
+        "https://frf.dev/etp/release-adjudication/v1"
+      ]
+    },
+    "subject": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "additionalProperties": false,
+            "properties": {
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "_type",
+    "subject",
+    "predicateType",
+    "predicate"
+  ],
+  "title": "ETP in-toto Statement v1 profile",
+  "type": "object"
+}

@@ -1,0 +1,48 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-dsse-envelope.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The ETP v1 profile of a DSSE envelope. The envelope is signed over the exact pre-authentication encoding; keyid is a lookup hint, not authorization.",
+  "properties": {
+    "payload": {
+      "contentEncoding": "base64",
+      "maxLength": 1398104,
+      "type": "string"
+    },
+    "payloadType": {
+      "const": "application/vnd.in-toto+json"
+    },
+    "signatures": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "keyid": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sig": {
+            "contentEncoding": "base64",
+            "maxLength": 92,
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyid",
+          "sig"
+        ],
+        "type": "object"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "payloadType",
+    "payload",
+    "signatures"
+  ],
+  "title": "ETP DSSE v1 envelope profile",
+  "type": "object"
+}

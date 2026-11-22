@@ -92,6 +92,7 @@ Commands:
   etp campaign run --protocol FILE --out DIR [--json]
   etp sarif verify FILE [--json]
   etp sarif export CAMPAIGN [--out FILE]
+  etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -1170,13 +1171,158 @@ fn command_etp(rest: &[String]) -> i32 {
         Some("validate") => command_etp_validate(&rest[1..]),
         Some("campaign") => command_etp_campaign(&rest[1..]),
         Some("sarif") => command_etp_sarif(&rest[1..]),
+        Some("attest") => command_etp_attest(&rest[1..]),
         _ => {
             eprintln!(
-                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE]"
+                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE] | etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
             );
             EXIT_USAGE
         }
     }
+}
+
+fn command_etp_attest(rest: &[String]) -> i32 {
+    if let Some("verify") = rest.first().map(String::as_str) {
+        command_etp_attest_verify(&rest[1..])
+    } else {
+        eprintln!("usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]");
+        EXIT_USAGE
+    }
+}
+
+fn print_attestation_report(report: &crate::etp_auth::AttestationReport) {
+    println!("attestation: {}", report.status.as_str());
+    println!("envelope sha256: {}", report.envelope_sha256);
+    println!("payload sha256: {}", report.payload_sha256);
+    println!("predicate type: {}", report.predicate_type);
+    if let Some(campaign_id) = &report.campaign_id {
+        println!("campaign: {campaign_id}");
+    }
+    println!(
+        "dimensions: signature={}; payload={}; authorization={}; scope={}; freshness={}; semantic={}; independent_review={}",
+        report.dimensions.signature_validity.as_str(),
+        report.dimensions.payload_integrity.as_str(),
+        report.dimensions.authorization.as_str(),
+        report.dimensions.scope_applicability.as_str(),
+        report.dimensions.freshness.as_str(),
+        report.dimensions.semantic_support.as_str(),
+        report.dimensions.independent_review.as_str()
+    );
+    println!("independent reviewers: {}", report.independent_reviewers);
+    for signature in &report.signatures {
+        println!(
+            "signature {} (actor {}, roles {}): {}; {}",
+            signature.keyid,
+            signature.actor.as_deref().unwrap_or("unknown"),
+            signature.roles.join(","),
+            if signature.valid { "valid" } else { "invalid" },
+            signature.detail
+        );
+    }
+    for refusal in &report.refusals {
+        println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_attest_verify(rest: &[String]) -> i32 {
+    let mut envelope = None;
+    let mut policy_path = None;
+    let mut campaign_path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--policy" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!(
+                        "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                    );
+                    return EXIT_USAGE;
+                };
+                policy_path = Some(value.clone());
+            }
+            "--campaign" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!(
+                        "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                    );
+                    return EXIT_USAGE;
+                };
+                campaign_path = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!(
+                    "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                );
+                return EXIT_USAGE;
+            }
+            value => {
+                if envelope.is_some() {
+                    eprintln!(
+                        "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                    );
+                    return EXIT_USAGE;
+                }
+                envelope = Some(value);
+            }
+        }
+        index += 1;
+    }
+    let Some(envelope) = envelope else {
+        eprintln!("usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]");
+        return EXIT_USAGE;
+    };
+    let policy_path =
+        policy_path.unwrap_or_else(|| "evaluation/earned-trust/trust-policy.json".to_owned());
+    let policy = match crate::etp_auth::load_policy(Path::new(&policy_path)) {
+        Ok(policy) => policy,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    let expectation = match campaign_path {
+        Some(path) => match crate::etp_auth::load_campaign_expectation(Path::new(&path)) {
+            Ok(expectation) => Some(expectation),
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        },
+        None => None,
+    };
+    let report = match crate::etp_auth::verify_envelope_file(
+        Path::new(envelope),
+        &policy,
+        expectation.as_ref(),
+        crate::etp_auth::now_unix(),
+    ) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write attestation report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_attestation_report(&report);
+    }
+    report.exit_code()
 }
 
 fn print_campaign_report(report: &crate::etp_campaign::CampaignReport) {

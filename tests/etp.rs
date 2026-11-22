@@ -168,10 +168,21 @@ fn registry_digests_match_and_cover_every_schema_and_vector() {
         "frf-etp.campaign-receipt.v1",
         "frf-etp.campaign-closure.v1",
         "frf-etp.sarif-projection.v1",
+        "frf-etp.dsse-envelope.v1",
+        "frf-etp.in-toto-statement.v1",
+        "frf-etp.predicate.campaign-closure.v1",
+        "frf-etp.predicate.instrument-qualification.v1",
+        "frf-etp.predicate.reproduction.v1",
+        "frf-etp.predicate.proof-admission.v1",
+        "frf-etp.predicate.consumer-closure.v1",
+        "frf-etp.predicate.security-findings.v1",
+        "frf-etp.predicate.release-adjudication.v1",
+        "frf-etp.trust-policy.v1",
+        "frf-etp.attestation-verification.v1",
     ] {
         assert!(schema_ids.iter().any(|value| value == id), "missing {id}");
     }
-    assert_eq!(schema_ids.len(), 8);
+    assert_eq!(schema_ids.len(), 19);
 
     let freeze = registry["freeze"].as_object().expect("freeze");
     let freeze_path = root()
@@ -219,6 +230,21 @@ fn schemas_are_well_formed_and_require_all_coordinates_and_dimensions() {
         "etp-claim.v1.schema.json",
         "etp-obligation-inventory.v1.schema.json",
         "etp-status-dimensions.v1.schema.json",
+        "etp-campaign-protocol.v1.schema.json",
+        "etp-campaign-receipt.v1.schema.json",
+        "etp-campaign-closure.v1.schema.json",
+        "etp-sarif-projection.v1.schema.json",
+        "etp-dsse-envelope.v1.schema.json",
+        "etp-in-toto-statement.v1.schema.json",
+        "etp-predicate-campaign-closure.v1.schema.json",
+        "etp-predicate-instrument-qualification.v1.schema.json",
+        "etp-predicate-reproduction.v1.schema.json",
+        "etp-predicate-proof-admission.v1.schema.json",
+        "etp-predicate-consumer-closure.v1.schema.json",
+        "etp-predicate-security-findings.v1.schema.json",
+        "etp-predicate-release-adjudication.v1.schema.json",
+        "etp-trust-policy.v1.schema.json",
+        "etp-attestation-verification.v1.schema.json",
     ] {
         let path = root().join("schemas/etp").join(name);
         let schema: serde_json::Value = serde_json::from_slice(&read(&path)).expect("schema JSON");

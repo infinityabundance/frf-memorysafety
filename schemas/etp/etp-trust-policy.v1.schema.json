@@ -1,0 +1,134 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-trust-policy.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "expires_at_unix": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "issued_at_unix": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "policy_id": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "type": "string"
+    },
+    "roles": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "enum": [
+              "evidence_producer",
+              "instrument_qualifier",
+              "adjudicator",
+              "release_authority",
+              "correction_authority"
+            ]
+          },
+          "independent": {
+            "type": "boolean"
+          },
+          "keys": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "actor": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "algorithm": {
+                  "const": "ed25519"
+                },
+                "keyid": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "not_after_unix": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "not_before_unix": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "public_key_base64": {
+                  "contentEncoding": "base64",
+                  "maxLength": 44,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "keyid",
+                "algorithm",
+                "public_key_base64",
+                "actor",
+                "not_before_unix",
+                "not_after_unix"
+              ],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "scope": {
+            "items": {
+              "enum": [
+                "https://frf.dev/etp/campaign-closure/v1",
+                "https://frf.dev/etp/instrument-qualification/v1",
+                "https://frf.dev/etp/reproduction/v1",
+                "https://frf.dev/etp/proof-admission/v1",
+                "https://frf.dev/etp/consumer-closure/v1",
+                "https://frf.dev/etp/security-findings/v1",
+                "https://frf.dev/etp/release-adjudication/v1"
+              ]
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "threshold": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "threshold",
+          "independent",
+          "scope",
+          "keys"
+        ],
+        "type": "object"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema": {
+      "const": "frf-etp.trust-policy.v1"
+    },
+    "spec": {
+      "const": "frf-etp-v1"
+    },
+    "version": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "policy_id",
+    "version",
+    "issued_at_unix",
+    "expires_at_unix",
+    "roles"
+  ],
+  "title": "ETP trust policy v1",
+  "type": "object"
+}

@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "count": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "count"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://frf.dev/etp/schemas/etp-predicate-campaign-closure.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance": {
+      "enum": [
+        "accepted",
+        "withheld"
+      ]
+    },
+    "campaign_id": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "candidate_identity": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "case_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "case_ids": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "claim_ceiling": {
+      "maxLength": 16384,
+      "minLength": 1,
+      "type": "string"
+    },
+    "closure_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "closure_status": {
+      "enum": [
+        "closed",
+        "blocked"
+      ]
+    },
+    "conclusion": {
+      "enum": [
+        "accepted",
+        "withheld",
+        "blocked"
+      ]
+    },
+    "decisions": {
+      "items": {
+        "$ref": "#/$defs/count"
+      },
+      "type": "array"
+    },
+    "independent_review": {
+      "enum": [
+        "established",
+        "not_established"
+      ]
+    },
+    "outcomes": {
+      "items": {
+        "$ref": "#/$defs/count"
+      },
+      "type": "array"
+    },
+    "raw_evidence_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "raw_evidence_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "receipt_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema": {
+      "const": "frf-etp.predicate.campaign-closure.v1"
+    },
+    "spec": {
+      "const": "frf-etp-v1"
+    }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "campaign_id",
+    "closure_sha256",
+    "candidate_identity",
+    "raw_evidence_sha256",
+    "case_count",
+    "receipt_count",
+    "raw_evidence_count",
+    "case_ids",
+    "outcomes",
+    "decisions",
+    "closure_status",
+    "acceptance",
+    "conclusion",
+    "independent_review",
+    "claim_ceiling"
+  ],
+  "title": "ETP campaign-closure predicate v1",
+  "type": "object"
+}

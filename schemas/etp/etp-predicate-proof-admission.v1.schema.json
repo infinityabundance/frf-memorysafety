@@ -1,0 +1,46 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-predicate-proof-admission.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A versioned ETP predicate with a bound subject digest. Semantic evaluation is implemented only for campaign closure.",
+  "properties": {
+    "claim_ceiling": {
+      "maxLength": 16384,
+      "minLength": 1,
+      "type": "string"
+    },
+    "conclusion": {
+      "enum": [
+        "accepted",
+        "withheld",
+        "blocked"
+      ]
+    },
+    "independent_review": {
+      "enum": [
+        "established",
+        "not_established"
+      ]
+    },
+    "schema": {
+      "const": "frf-etp.predicate.proof-admission.v1"
+    },
+    "spec": {
+      "const": "frf-etp-v1"
+    },
+    "subject_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "subject_digest",
+    "conclusion",
+    "independent_review",
+    "claim_ceiling"
+  ],
+  "title": "ETP proof-admission predicate v1",
+  "type": "object"
+}

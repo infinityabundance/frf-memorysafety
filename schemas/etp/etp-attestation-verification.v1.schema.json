@@ -1,0 +1,180 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-attestation-verification.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "campaign_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "claim_ceiling": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "dimensions": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization": {
+          "enum": [
+            "valid",
+            "invalid",
+            "partial",
+            "not_checked",
+            "not_applicable"
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "valid",
+            "invalid",
+            "partial",
+            "not_checked",
+            "not_applicable"
+          ]
+        },
+        "independent_review": {
+          "enum": [
+            "established",
+            "not_established",
+            "insufficient",
+            "not_checked"
+          ]
+        },
+        "payload_integrity": {
+          "enum": [
+            "valid",
+            "invalid",
+            "partial",
+            "not_checked",
+            "not_applicable"
+          ]
+        },
+        "scope_applicability": {
+          "enum": [
+            "valid",
+            "invalid",
+            "partial",
+            "not_checked",
+            "not_applicable"
+          ]
+        },
+        "semantic_support": {
+          "enum": [
+            "valid",
+            "invalid",
+            "partial",
+            "not_checked",
+            "not_applicable"
+          ]
+        },
+        "signature_validity": {
+          "enum": [
+            "valid",
+            "invalid",
+            "partial",
+            "not_checked",
+            "not_applicable"
+          ]
+        }
+      },
+      "required": [
+        "signature_validity",
+        "payload_integrity",
+        "authorization",
+        "scope_applicability",
+        "freshness",
+        "semantic_support",
+        "independent_review"
+      ],
+      "type": "object"
+    },
+    "envelope_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "independent_reviewers": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "payload_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "predicate_type": {
+      "type": "string"
+    },
+    "refusals": {
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "schema": {
+      "const": "frf-etp.attestation-verification.v1"
+    },
+    "signatures": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "keyid": {
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "valid": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "keyid",
+          "actor",
+          "roles",
+          "valid",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "spec": {
+      "const": "frf-etp-v1"
+    },
+    "status": {
+      "enum": [
+        "accepted",
+        "refused"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "status",
+    "envelope_sha256",
+    "payload_sha256",
+    "predicate_type",
+    "campaign_id",
+    "dimensions",
+    "signatures",
+    "independent_reviewers",
+    "refusals",
+    "claim_ceiling"
+  ],
+  "title": "ETP attestation verification report v1",
+  "type": "object"
+}

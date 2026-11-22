@@ -63,6 +63,7 @@ pub mod conversion;
 pub mod court;
 pub mod detector;
 pub mod etp;
+pub mod etp_auth;
 pub mod etp_campaign;
 pub mod evaluation;
 pub mod identity;
@@ -286,6 +287,12 @@ pub fn capabilities() -> Capabilities {
             "versioned ETP claim, obligation-inventory, and status-dimension schemas with a SHA-256 conformance registry",
             "etp validate MANIFEST [--json] with contradiction retention and unknown-premise blocking",
             "typed ETP campaign closure over the closed native fixture registry: frozen opening inventory, per-case terminal outcomes, closure manifest, and lossless reconciliation",
+            "versioned DSSE v1 verification with exact PAE over the received payload bytes and an Ed25519-only v1 profile",
+            "in-toto Statement v1 with separately versioned ETP predicates for closure, instrument qualification, reproduction, proof admission, consumer closure, security findings, and release adjudication; not SLSA provenance",
+            "versioned ETP trust policy with roles, actors, key validity windows, predicate scope, and distinct-actor thresholds",
+            "etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json] with separate signature, payload, authorization, scope, freshness, semantic, and independent-review dimensions",
+            "correctly signed but semantically incomplete or false statements are refused; signatures by one actor are not independent reviewers and duplicate credentials never satisfy a threshold",
+            "independent OpenSSL-based Python attestation verifier and hardened ci/etp-auth-gate.sh",
             "versioned SARIF 2.1.0 projection with distinct rule, hazard, occurrence, candidate, and instrument-execution identities, justified locations, suppression retention, and completeness limits",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
         ],
@@ -313,7 +320,9 @@ pub fn capabilities() -> Capabilities {
             "native C callback observation and retained-pointer lifecycle recording",
             "whole-program or universal alias-compatibility claims",
             "universal safe-interior or SAFE_COMPATIBLE acceptance",
-            "authenticated ETP evidence: DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161, or TUF are NOT_RUN",
+            "authenticated ETP evidence beyond the finite DSSE/in-toto v1 profile: Rekor/C2SP transparency inclusion and consistency, RFC 3161 trusted timestamps, Sigstore keyless identity, and TUF update metadata are NOT_RUN (Phase 10.4)",
+            "independent review of a signed statement; the committed attestation uses a test-only ephemeral key whose private key was discarded, so authentication is not independent review",
+            "semantic attestation support for predicate types other than campaign closure; those predicates parse and authorize but their semantics are not evaluated",
             "live ETP campaign execution is NOT_RUN unless FRF_NATIVE_HARNESS=1; ci/etp-gate.sh is the opt-in real native path",
             "independent ETP adjudication, public challenge, revocation registry, and campaign-closure services are SPECIFIED, not deployed",
             "constant-time and relational timing verification for ETP claims; no timing result is represented as verified",
