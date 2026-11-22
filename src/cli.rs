@@ -105,6 +105,9 @@ Commands:
   etp revocation record SUPPORT --out FILE [--json]
   etp revocation model --out FILE [--json]
   etp archive verify ARCHIVE [--json]
+  etp transparency verify --proof FILE --checkpoint FILE --policy FILE [--json] [--horizon-out FILE]
+  etp checkpoint verify FILE [--policy FILE] [--json]
+  etp witnesses verify FILE [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -1187,9 +1190,12 @@ fn command_etp(rest: &[String]) -> i32 {
         Some("time") => command_etp_time(&rest[1..]),
         Some("revocation") => command_etp_revocation(&rest[1..]),
         Some("archive") => command_etp_archive(&rest[1..]),
+        Some("transparency") => command_etp_transparency(&rest[1..]),
+        Some("checkpoint") => command_etp_checkpoint(&rest[1..]),
+        Some("witnesses") => command_etp_witnesses(&rest[1..]),
         _ => {
             eprintln!(
-                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE] | etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json] | etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json] | etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json] | etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json] | etp revocation record SUPPORT --out FILE [--json] | etp archive verify ARCHIVE [--json]"
+                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE] | etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json] | etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json] | etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json] | etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json] | etp revocation record SUPPORT --out FILE [--json] | etp archive verify ARCHIVE [--json] | etp transparency verify --proof FILE --checkpoint FILE --policy FILE [--json] [--horizon-out FILE] | etp checkpoint verify FILE [--policy FILE] [--json] | etp witnesses verify FILE [--json]"
             );
             EXIT_USAGE
         }
@@ -2151,6 +2157,388 @@ fn command_etp_archive_verify(rest: &[String]) -> i32 {
         );
         for refusal in &report.refusals {
             println!("refused {}: {}", refusal.code, refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_transparency(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("verify") {
+        eprintln!(
+            "usage: etp transparency verify --proof FILE --checkpoint FILE --policy FILE [--json] [--horizon-out FILE]"
+        );
+        return EXIT_USAGE;
+    }
+    let mut proof = None;
+    let mut checkpoint = None;
+    let mut policy = None;
+    let mut horizon_out = None;
+    let mut json = false;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--proof" | "--checkpoint" | "--policy" | "--horizon-out" => {
+                let flag = rest[index].clone();
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp transparency verify: {flag} requires a path");
+                    return EXIT_USAGE;
+                };
+                let path = PathBuf::from(value);
+                match flag.as_str() {
+                    "--proof" => proof = Some(path),
+                    "--checkpoint" => checkpoint = Some(path),
+                    "--policy" => policy = Some(path),
+                    _ => horizon_out = Some(path),
+                }
+            }
+            value => {
+                eprintln!("etp transparency verify: unknown argument {value}");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let (Some(proof), Some(checkpoint), Some(policy)) = (proof, checkpoint, policy) else {
+        eprintln!("etp transparency verify: --proof, --checkpoint, and --policy are required");
+        return EXIT_USAGE;
+    };
+    let proof_bytes = match read_limited(&proof) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let checkpoint_bytes = match read_limited(&checkpoint) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let policy_bytes = match read_limited(&policy) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = crate::etp_transparency::verify_transparency(
+        &proof_bytes,
+        &checkpoint_bytes,
+        &policy_bytes,
+    );
+    if json {
+        match report.canonical_bytes() {
+            Ok(bytes) => {
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write transparency report: {error}");
+                    return EXIT_HARNESS;
+                }
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    } else {
+        print_transparency_report(&report);
+    }
+    if report.status == crate::etp_transparency::TransparencyStatus::Verified {
+        if let Some(path) = horizon_out {
+            if let Err(error) = persist_horizon(&path, &report) {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    }
+    report.exit_code()
+}
+
+#[derive(Serialize)]
+struct HorizonFile {
+    schema: String,
+    spec: String,
+    policy_id: String,
+    tree_size: u64,
+    root_hash: String,
+    checkpoint_sha256: String,
+}
+
+fn persist_horizon(
+    path: &Path,
+    report: &crate::etp_transparency::TransparencyReport,
+) -> Result<(), String> {
+    let (Some(tree_size), Some(root_hash), Some(checkpoint_sha256)) = (
+        report.tree_size,
+        report.root_hash.clone(),
+        report.checkpoint_sha256.clone(),
+    ) else {
+        return Err("cannot persist a horizon without a parsed proof".to_owned());
+    };
+    let file = HorizonFile {
+        schema: "frf-etp.horizon.v1".to_owned(),
+        spec: crate::etp::ETP_SPEC.to_owned(),
+        policy_id: report.policy_id.clone(),
+        tree_size,
+        root_hash,
+        checkpoint_sha256,
+    };
+    let value = serde_json::to_value(&file).map_err(|error| error.to_string())?;
+    let bytes = crate::identity::canonical_bytes(&value).map_err(|error| error.to_string())?;
+    let temporary = path.with_extension("tmp");
+    fs::write(&temporary, &bytes)
+        .map_err(|error| format!("cannot write {}: {error}", temporary.display()))?;
+    fs::rename(&temporary, path)
+        .map_err(|error| format!("cannot persist {}: {error}", path.display()))
+}
+
+fn print_transparency_report(report: &crate::etp_transparency::TransparencyReport) {
+    println!("transparency: {}", report.status.as_str());
+    if let Some(identity) = &report.log_identity {
+        println!("log origin: {}", identity.origin);
+        println!("log id: {}", identity.log_id);
+        println!("log vkey: {}", identity.vkey);
+        println!("log public key sha256: {}", identity.public_key_sha256);
+        println!("log algorithm: {}", identity.algorithm);
+    }
+    println!(
+        "tree size: {}",
+        report
+            .tree_size
+            .map_or_else(|| "unparsed".to_owned(), |value| value.to_string())
+    );
+    println!(
+        "leaf index: {}",
+        report
+            .leaf_index
+            .map_or_else(|| "unparsed".to_owned(), |value| value.to_string())
+    );
+    println!(
+        "trust profile: {}",
+        report.trust_profile.as_deref().unwrap_or("unparsed")
+    );
+    println!("external trust: {}", report.external_trust);
+    println!("public transparency: {}", report.public_transparency);
+    println!("witness observation: {}", report.witness_observation);
+    println!(
+        "dimensions: identity={}; version={}; entry={}; leaf={}; inclusion={}; signature={}; persistence={}; consistency={}; conflict={}; rollback={}; tiles={}; cross_log={}; offline={}",
+        report.dimensions.log_identity.as_str(),
+        report.dimensions.log_version.as_str(),
+        report.dimensions.entry_binding.as_str(),
+        report.dimensions.leaf_hash.as_str(),
+        report.dimensions.inclusion.as_str(),
+        report.dimensions.checkpoint_signature.as_str(),
+        report.dimensions.checkpoint_persistence.as_str(),
+        report.dimensions.consistency.as_str(),
+        report.dimensions.conflict_detection.as_str(),
+        report.dimensions.anti_rollback.as_str(),
+        report.dimensions.tiled_reconstruction.as_str(),
+        report.dimensions.cross_log_rejection.as_str(),
+        report.dimensions.offline_verification.as_str()
+    );
+    for horizon in &report.known_horizons {
+        println!(
+            "known horizon: size={} root={} checkpoint={}",
+            horizon.tree_size, horizon.root_hash, horizon.checkpoint_sha256
+        );
+    }
+    for assumption in &report.assumptions {
+        println!("assumption: {assumption}");
+    }
+    for feature in &report.unsupported_features {
+        println!("unsupported: {feature}");
+    }
+    for refusal in &report.refusals {
+        println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_checkpoint(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("verify") {
+        eprintln!("usage: etp checkpoint verify FILE [--policy FILE] [--json]");
+        return EXIT_USAGE;
+    }
+    let mut file = None;
+    let mut policy = None;
+    let mut json = false;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--policy" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp checkpoint verify: --policy requires a path");
+                    return EXIT_USAGE;
+                };
+                policy = Some(PathBuf::from(value));
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp checkpoint verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if file.is_some() {
+                    eprintln!("etp checkpoint verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                file = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(file) = file else {
+        eprintln!("etp checkpoint verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(&file) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let policy_bytes = match policy {
+        Some(path) => match read_limited(&path) {
+            Ok(bytes) => Some(bytes),
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_USAGE;
+            }
+        },
+        None => None,
+    };
+    let report = crate::etp_transparency::verify_checkpoint(&bytes, policy_bytes.as_deref());
+    if json {
+        match report.canonical_bytes() {
+            Ok(bytes) => {
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write checkpoint report: {error}");
+                    return EXIT_HARNESS;
+                }
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    } else {
+        println!("checkpoint: {}", report.status.as_str());
+        println!("origin: {}", report.origin);
+        println!("tree size: {}", report.tree_size);
+        println!("root hash: {}", report.root_hash);
+        println!("checkpoint sha256: {}", report.checkpoint_sha256);
+        println!("signatures: {}", report.signature_count);
+        println!("signature: {}", report.signature.as_str());
+        println!("anti-rollback: {}", report.anti_rollback.as_str());
+        println!("conflict detection: {}", report.conflict_detection.as_str());
+        for horizon in &report.known_horizons {
+            println!(
+                "known horizon: size={} root={} checkpoint={}",
+                horizon.tree_size, horizon.root_hash, horizon.checkpoint_sha256
+            );
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_witnesses(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("verify") {
+        eprintln!("usage: etp witnesses verify FILE [--json]");
+        return EXIT_USAGE;
+    }
+    let mut file = None;
+    let mut json = false;
+    for value in &rest[1..] {
+        match value.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp witnesses verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if file.is_some() {
+                    eprintln!("etp witnesses verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                file = Some(PathBuf::from(value));
+            }
+        }
+    }
+    let Some(file) = file else {
+        eprintln!("etp witnesses verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(&file) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = crate::etp_witness::verify_witness_state(&bytes);
+    if json {
+        match report.canonical_bytes() {
+            Ok(bytes) => {
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write witness report: {error}");
+                    return EXIT_HARNESS;
+                }
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    } else {
+        println!("witnesses: {}", report.status.as_str());
+        println!("policy: {}", report.policy_id);
+        println!("log origin: {}", report.log_origin);
+        println!("external witnessing: {}", report.external_witnessing);
+        println!("local test only: {}", report.local_test_only);
+        println!("witness observation: {}", report.witness_observation);
+        println!(
+            "quorum: n={} q={} f={} condition={} holds={} observed={} effective={} domains={} required_domains={} met={} basis={}",
+            report.quorum.n,
+            report.quorum.q,
+            report.quorum.f,
+            report.quorum.intersection_condition,
+            report.quorum.intersection_holds,
+            report.quorum.observed,
+            report.quorum.effective_independent,
+            report.quorum.distinct_domains,
+            report.quorum.required_domains,
+            report.quorum.met,
+            report.quorum.basis
+        );
+        for witness in &report.witnesses {
+            println!(
+                "witness {} domain={} signature={} observation={} last_size={} rollback={}",
+                witness.id,
+                witness.domain,
+                witness.signature.as_str(),
+                witness.observation,
+                witness.last_observed_tree_size,
+                witness.rollback.as_str()
+            );
+        }
+        for pair in &report.correlated_witnesses {
+            println!("correlated {} / {}: {}", pair.left, pair.right, pair.reason);
+        }
+        for conflict in &report.conflicting_checkpoints {
+            println!("conflict: {conflict}");
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
         }
         println!("claim ceiling: {}", report.claim_ceiling);
     }

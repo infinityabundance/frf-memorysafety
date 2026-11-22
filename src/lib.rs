@@ -68,6 +68,8 @@ pub mod etp_auth;
 pub mod etp_campaign;
 pub mod etp_revocation;
 pub mod etp_time;
+pub mod etp_transparency;
+pub mod etp_witness;
 pub mod evaluation;
 pub mod identity;
 pub mod mir;
