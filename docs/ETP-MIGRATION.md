@@ -221,6 +221,30 @@ Phase 10.1 does not migrate:
 - `research/` into the repository;
 - the crate version.
 
+## 9.1 What Phase 10.2 adds and does not migrate
+
+Phase 10.2 adds, without changing any 1.0.0 meaning:
+
+- `frf-etp.campaign-protocol.v1`;
+- `frf-etp.campaign-receipt.v1`;
+- `frf-etp.campaign-closure.v1`;
+- `frf-etp.sarif-projection.v1`;
+- the finite `frf-etp-native-fixtures-2026-11-22` campaign and its frozen opening
+  manifest in `evaluation/earned-trust/`;
+- `src/etp_campaign.rs`, `src/sarif.rs`, and `ci/etp-gate.sh`.
+
+Phase 10.2 does not migrate:
+
+- any 1.0.0 receipt or claim into a campaign receipt automatically;
+- any campaign result into a universal or population-level claim;
+- any digest into authentication;
+- any SARIF result into a certification or deployment authorization;
+- any `research/` bytes;
+- the crate version.
+
+The four new schemas are registered in `schemas/etp/registry.json`. The 1.0.0
+freeze is unchanged.
+
 ## 10. Rollback
 
 A manifest, vector, registry, or freeze change can be rolled back by reverting

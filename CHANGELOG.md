@@ -9,6 +9,72 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - Phase 10.2 ETP campaign and SARIF projection
+
+This is an additive evidence, validation, and reporting change. It does not
+change any 1.0.0 schema meaning, receipt, measured observation, policy, corpus,
+test, or claim ceiling. The crate version remains 1.0.0.
+
+### Added
+
+- [`docs/ETP-CAMPAIGN.md`](docs/ETP-CAMPAIGN.md): the frozen opening inventory,
+  per-case receipt schema, closure rules, lossless reconciliation, real results,
+  corrupted controls, and claim ceiling for one finite native campaign.
+- [`docs/ETP-SARIF.md`](docs/ETP-SARIF.md): the versioned SARIF 2.1.0 profile,
+  identity model, justified-location rule, suppression lifecycle, repaired
+  versus tool-change absence, sharding/completeness limits, and non-authority of
+  external code-scanning views.
+- `evaluation/earned-trust/`: `protocol.json` with `opening.sha256`, 13 per-case
+  receipts, 25 raw transcript/court/detail files, the closure `MANIFEST.json`,
+  the `campaign.sarif` projection, `freeze.py`, and the standard-library
+  `reconstruct.py`.
+- `src/etp_campaign.rs`: typed opening inventory, terminal outcomes, derived
+  adjudication, closure manifest, and lossless reconciliation.
+- `src/sarif.rs`: versioned SARIF 2.1.0 projection and structural verification.
+- CLI: `etp campaign verify FILE [--json]`, `etp campaign run --protocol FILE
+  --out DIR [--json]`, `etp sarif verify FILE [--json]`, and `etp sarif export
+  CAMPAIGN [--out FILE]` with `SPEC.md` section 14 exit statuses.
+- `ci/etp-gate.sh`: the real native campaign, generated and committed closure
+  verification, SARIF export/verification, and independent Python
+  reconstruction under hardened memory, pid, cpu, nofile, OOM, capability, and
+  no-new-privileges limits.
+- `schemas/etp/`: `frf-etp.campaign-protocol.v1`,
+  `frf-etp.campaign-receipt.v1`, `frf-etp.campaign-closure.v1`, and
+  `frf-etp.sarif-projection.v1`, registered with SHA-256.
+- Tests: 15 campaign reconciliation tests and 12 SARIF corruption-control
+  tests.
+
+### Real campaign result
+
+- Campaign `frf-etp-native-fixtures-2026-11-22`; 13 declared cases; 13 receipts;
+  25 raw evidence files.
+- Outcomes: 4 `verified_compatible_within_transcript`, 6 `observed_violation`,
+  1 `incomplete_transcript`, 2 `unresolved`; 13/13 pass decisions.
+- 9 cases retain findings; 18 SARIF results; 11 rules; 0 suppressions.
+- Opening SHA-256
+  `2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236`;
+  candidate tree
+  `951a51ee72d1b0eaf69927ca17b6a2def73d5879e070cbd705b983321a3d6546`;
+  instrument tree
+  `a907e09ef3bf426a1e178eb86984f6aa5df09635c88d6252506df0b8dd53b67c`;
+  closure
+  `fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`;
+  SARIF
+  `7920605d09808dae8b9fd8c6fce63ddd5b8656b09012e0242c6427d49f7382e1`.
+- The Python reconstructor recomputes the same counts, decisions, digests, and
+  SARIF mappings from the raw receipts without importing the crate.
+
+### Claim ceiling
+
+No claim is widened. Closure establishes only that the finite declared campaign
+produced its pre-registered typed observations and that the bookkeeping is
+complete. It does not establish memory safety, functional correctness, detector
+sensitivity, proof soundness, population-level recall, reviewer independence,
+authentication, transparency completeness, or deployment security. `NOT_RUN` is
+never a pass. DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161 timestamps, TUF,
+and independent adjudication remain `NOT_RUN` or specified-not-deployed. A
+GitHub code-scanning view is not authoritative.
+
 ## [Unreleased] - Phase 10.1 ETP foundation
 
 This is an additive documentation, schema, and validation change. It does not

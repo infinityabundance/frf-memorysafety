@@ -150,12 +150,14 @@ third-party replication exists. A reproducible wrong result is still wrong.
 
 Phase 10.1 implements claim integrity: the generalized claim algebra, the
 obligation inventory, the ten status dimensions, schema versioning, canonical
-vectors, and a frozen 1.0.0 baseline. Campaign closure, adjudication, revocation,
-and challenge workflows are specified in this constitution and in
-[`ETP-CLAIM-INTEGRITY.md`](ETP-CLAIM-INTEGRITY.md), but their services are not
-deployed. The 1.0.0 conversion module already performs property-specific
-evidence reuse and revocation for its own scope; that is not a general ETP
-revocation registry.
+vectors, and a frozen 1.0.0 baseline. Phase 10.2 adds one finite executable
+campaign closure: a frozen 13-case native fixture population, per-case typed
+receipts, a closure manifest, lossless reconciliation, and a SARIF 2.1.0
+projection. That campaign is bookkeeping over one finite execution, not a
+population inference. Campaign closure, adjudication, revocation, and challenge
+services in general remain specified but not deployed. The 1.0.0 conversion
+module already performs property-specific evidence reuse and revocation for its
+own scope; that is not a general ETP revocation registry.
 
 ### 4.7 Authenticated evidence
 
@@ -268,14 +270,17 @@ done by editing a manifest.
 
 ## 8. Status of this subphase
 
-Phase 10.1 establishes the constitution and inventory only. It does not
-implement Phase 10.2. In particular:
+Phase 10.1 establishes the constitution and inventory only. Phase 10.2 adds the
+first executable campaign slice without changing the 1.0.0 evidence or claim
+ceilings. In particular:
 
 - no new memory-safety, compatibility, timing, or deployment claim is made;
+- the 13-case native campaign is a finite execution and bookkeeping record, not
+  a population study or a certification;
 - no external evidence is authenticated;
 - no transparency log or timestamp is integrated;
 - no independent reviewer or adjudicator is deployed;
-- no campaign-closure or revocation service is deployed;
+- no general campaign-closure, adjudication, or revocation service is deployed;
 - no existing test is deleted or weakened;
 - no crate version is bumped and no package is published.
 

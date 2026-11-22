@@ -602,6 +602,45 @@ adjudication, or a general revocation registry.
 ./ci/gate.sh
 ```
 
+### Phase 10.2 ETP campaign closure and SARIF projection
+
+Phase 10.2 adds the first executable ETP vertical slice: one finite,
+pre-registered campaign over the closed checked-in native fixture registry and
+the court verifier. It is additive and does not change the crate version or any
+1.0.0 claim ceiling.
+
+- [`docs/ETP-CAMPAIGN.md`](docs/ETP-CAMPAIGN.md) documents the opening
+  inventory, per-case receipt schema, closure rules, lossless reconciliation,
+  real results, corrupted controls, and claim ceiling.
+- [`docs/ETP-SARIF.md`](docs/ETP-SARIF.md) documents the versioned SARIF 2.1.0
+  profile, identity model, justified locations, suppression rules, repaired
+  versus tool-change absence, sharding/completeness limits, and the fact that a
+  GitHub code-scanning view is not authoritative.
+- `evaluation/earned-trust/` contains the frozen `protocol.json`, its
+  `opening.sha256`, 13 per-case receipts, 25 raw evidence files, the closure
+  `MANIFEST.json`, the SARIF projection, and the standard-library independent
+  reconstructor.
+- `src/etp_campaign.rs` implements typed opening inventory, terminal outcomes,
+  closure, and reconciliation. `src/sarif.rs` implements the projection and its
+  structural verifier.
+- CLI: `etp campaign verify FILE [--json]`, `etp campaign run` (native-harness
+  build), `etp sarif verify FILE [--json]`, and `etp sarif export CAMPAIGN
+  [--out FILE]`.
+- The real run records 13/13 pass decisions with four verified case results, six
+  observed violations, one incomplete transcript, and two unresolved
+  observations. Nine cases retain findings; 18 SARIF results and 11 rules are
+  projected with zero suppressions. Reconciliation and SARIF verification both
+  pass. The campaign is accepted only for its finite pre-registered claim.
+
+```sh
+./ci/etp-gate.sh
+```
+
+DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161 timestamps, TUF metadata, and
+independent adjudication remain `NOT_RUN`. The opening manifest is frozen by
+SHA-256 only; that is not authentication. The SARIF projection is a report
+format, not a correctness or security proof.
+
 ### NOT_RUN in this build
 
 - Live detectors over arbitrary or caller-supplied input (only the closed
@@ -646,6 +685,15 @@ adjudication, or a general revocation registry.
   live gates)
 - Population-level detector sensitivity/specificity, defect recall, or
   verification-cost inference from the Phase 9.1 finite control-family corpus
+- Live ETP campaign execution unless `FRF_NATIVE_HARNESS=1` is set in a
+  native-harness build; `./ci/etp-gate.sh` is the opt-in real native path
+- DSSE envelopes, in-toto/SLSA attestations, Sigstore signatures, Rekor/C2SP
+  inclusion or consistency, RFC 3161 timestamps, and TUF metadata for the ETP
+  campaign; none is emitted or verified
+- Independent ETP adjudication, public challenge, revocation registry, and
+  campaign-closure services; these remain specified, not deployed
+- Authority of a GitHub code-scanning view or any external SARIF consumer; the
+  committed SARIF file is a report projection, not a certification
 
 FRF remains the only FRF receipt producer, FRF-Fuzz the only BLAKE3 finding
 producer, and Gemel the only GCE/GID producer. This crate does not synthesize
@@ -670,6 +718,11 @@ frf-memorysafety bridge capture OUT [--json] [capture options]
 frf-memorysafety bridge status [--json]
 frf-memorysafety detector calibrate FILE [--json]
 frf-memorysafety detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto [--json]
+frf-memorysafety etp validate MANIFEST [--json]
+frf-memorysafety etp campaign verify FILE [--json]
+frf-memorysafety etp campaign run --protocol FILE --out DIR [--json]
+frf-memorysafety etp sarif verify FILE [--json]
+frf-memorysafety etp sarif export CAMPAIGN [--out FILE]
 frf-memorysafety evidence verify --root DIR
 frf-memorysafety report --case FILE --format json|markdown
 

@@ -300,6 +300,15 @@ A campaign is closed only when:
 A closed campaign is not a population inference. A finite campaign does not
 establish recall, precision, sensitivity, specificity, or deployment safety.
 
+Phase 10.2 implements these closure rules for one finite, pre-registered native
+fixture campaign in `src/etp_campaign.rs` and
+`evaluation/earned-trust/`. The implementation refuses missing, duplicate,
+unexpected, and truncated cases; derives counts only from the complete
+population; retains failures and unresolved observations; and refuses a typed
+`NOT_RUN` as a pass. A general campaign-closure service, adjudication workflow,
+and revocation registry are still not deployed. See
+[`ETP-CAMPAIGN.md`](ETP-CAMPAIGN.md).
+
 ### 8.2 Adjudication
 
 An adjudication record must separate:

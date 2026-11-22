@@ -203,25 +203,35 @@ OpenSSL-Rust evidence is one boundary and one curl workflow.
 ## 5. What remains for the Phase 10 vertical slice
 
 The next subphase must produce a real, end-to-end ETP slice without widening the
-claim ceiling. The minimum work is:
+claim ceiling. Phase 10.2 implements items 1, 2, 6, and 7 for one finite native
+campaign; items 3, 4, and 5 remain unimplemented.
 
 1. **A concrete ETP campaign record** over an existing finite corpus, with a
    frozen population, per-case receipts or typed `NOT_RUN`, retained
-   contradictions, and independent reconstruction.
+   contradictions, and independent reconstruction. **Implemented for the 13-case
+   native fixture campaign in `evaluation/earned-trust/`.**
 2. **A campaign-closure schema and validator** that refuses a silently dropped
    case, an undeclared population, a rewritten acceptance predicate, or a
-   contradiction removed after measurement.
+   contradiction removed after measurement. **Implemented in
+   `src/etp_campaign.rs` for the declared campaign.**
 3. **A signed and logged evidence envelope** (for example DSSE plus a
    transparency-log inclusion proof) with an explicit statement that
-   authentication is not truth and inclusion is not completeness.
+   authentication is not truth and inclusion is not completeness. **Not
+   implemented.**
 4. **A revocation record and replay policy** that distinguishes historical
    validity from present authorization and binds the exact changed dependency.
+   **Not implemented as a general ETP registry.**
 5. **A challenge and adjudication record** with declared roles and an
-   independence dimension that is not inferred from multiple signatures.
+   independence dimension that is not inferred from multiple signatures. **Not
+   implemented.**
 6. **An independent reconstruction path** that re-executes the ETP validator
    and campaign closure from committed bytes, without importing the Rust crate.
+   **Implemented in `evaluation/earned-trust/reconstruct.py` for the declared
+   campaign.**
 7. **A gate** that runs the slice in a hardened container and reports exact
-   counts, with no host build and no removed memory cap.
+   counts, with no host build and no removed memory cap. **Implemented in
+   `ci/etp-gate.sh`.**
 
 Until those exist, the ETP claim is limited to the Phase 10.1 claim-integrity
-bookkeeping described in this document.
+bookkeeping and the Phase 10.2 finite campaign closure described in this
+document and `docs/ETP-CAMPAIGN.md`.
