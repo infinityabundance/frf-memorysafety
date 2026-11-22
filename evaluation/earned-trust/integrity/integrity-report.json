@@ -2,7 +2,7 @@
   "schema": "frf-integrity.report.v1",
   "spec": "frf-integrity-v1",
   "artifact": {
-    "source_tree_sha256": "02e1b271132975f1216e8d0eeb1b1fc25f52e4dcc40644dc7ceae566cd8c0a6d",
+    "source_tree_sha256": "6d6ac424f443ec44f7d267c9d18a622fcaa4cc1c6823403f0e26b6b2cda4addc",
     "lockfile_sha256": "5f63c136103d54dff0ce9cbcecf219b8a9f802b4e334f210adfa3ca6837a1bd9",
     "build_recipe_sha256": "e0e51af3dedafb47ea15c6cb2037577967ef2ff8af704100db80612f221c1f0f",
     "toolchain": {
@@ -21,7 +21,7 @@
     "scope": "frf-memorysafety release CLI binary; declared source, lockfile, toolchain, flags, and environment only; no authenticity or completeness claim"
   },
   "rebuild_artifact": {
-    "source_tree_sha256": "02e1b271132975f1216e8d0eeb1b1fc25f52e4dcc40644dc7ceae566cd8c0a6d",
+    "source_tree_sha256": "6d6ac424f443ec44f7d267c9d18a622fcaa4cc1c6823403f0e26b6b2cda4addc",
     "lockfile_sha256": "5f63c136103d54dff0ce9cbcecf219b8a9f802b4e334f210adfa3ca6837a1bd9",
     "build_recipe_sha256": "e0e51af3dedafb47ea15c6cb2037577967ef2ff8af704100db80612f221c1f0f",
     "toolchain": {

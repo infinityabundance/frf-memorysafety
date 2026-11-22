@@ -39,4 +39,13 @@ BIN=/tmp/frf-b1/release/frf-memorysafety
 "$BIN" etp reproducibility /out/integrity-receipt.json --json > /out/reproducibility-report.json
 "$BIN" etp integrity verify /out/integrity-receipt.json --json > /out/integrity-report.json
 
+python3 /src/evaluation/earned-trust/verify_reproducibility.py \
+    --receipt /out/integrity-receipt.json \
+    --root /src \
+    --build1 /tmp/frf-b1/release/frf-memorysafety \
+    --build2 /tmp/frf-b2/release/frf-memorysafety \
+    --toolchain /out/toolchain.txt \
+    --build-recipe /out/build-recipe.txt \
+    --self-test
+
 echo "integrity gate: PASS"

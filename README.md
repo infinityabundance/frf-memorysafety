@@ -119,6 +119,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/etp-auth-gate.sh` (Phase 10.3) | 21 attestation tests passed, 0 failed, 0 ignored; 13/13 independent verifier controls; committed and ephemeral attestations accepted by Rust and OpenSSL verifiers; private key discarded |
 | `./ci/etp-time-gate.sh` (Phase 10.4a) | 9 time, 13 revocation, and 8 archive tests passed, 0 failed, 0 ignored; 6/6 timestamp controls; 6/6 revocation controls; committed and fresh local TSA tokens accepted; archive 72/72 objects verified offline with no network |
 | `./ci/etp-transparency-gate.sh` (Phase 10.4b) | 25 transparency tests passed, 0 failed, 0 ignored; 20/20 independent controls; committed size-3 log verified; fresh tessera v1.0.4 261-leaf log verified by Rust and Python; cross-log proof refused; no external witness |
+| `./ci/etp-integrity-gate.sh` (Phase 11.1) | two independent clean-target-dir builds were byte-identical (`1a1b9008…`, 9,466,400 bytes); 13-case population manifest `d29246c3…`; independent Python verifier passed and refused 7/7 corrupted controls |
 
 The default gate executes all 495 tests, including the 25 Phase 10.4b
 transparency tests, the 21 Phase 10.3
@@ -257,6 +258,23 @@ external witness. A fresh 261-leaf log is built and verified by both the Rust
 and independent Python implementations in the gate. This is not public
 transparency, not Rekor v2, not external witnessing, and not a completeness
 claim. See [`docs/ETP-TRANSPARENCY.md`](docs/ETP-TRANSPARENCY.md).
+
+### Reproducibility and populations (Phase 11.1, post-1.1.0)
+
+`./ci/etp-integrity-gate.sh` builds the release CLI twice in independent clean
+target directories inside the hardened `rust:1.85.0-slim` container and records
+separate reproducibility dimensions, the artifact identity, and a frozen
+13-case population manifest derived from the committed campaign receipts. On
+2026-11-22 the two builds were byte-identical: SHA-256 `1a1b9008…`, 9,466,400
+bytes. The source-tree digest is `6d6ac424…`; the population manifest is
+`d29246c3…`. A separate Python standard-library verifier recomputes every
+digest and refuses seven corrupted controls, including a tampered binary, a
+tampered population case, a count mismatch, a manifest-digest mismatch, a
+dishonest byte-identity status, a forbidden `mtime` field, and a missing claim
+ceiling. This is same-host, same-container, same-toolchain reproduction, not two
+independent administrative trust domains, and it establishes no correctness or
+authenticity property. See
+[`docs/ETP-REPRODUCIBILITY.md`](docs/ETP-REPRODUCIBILITY.md).
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
@@ -1407,10 +1425,12 @@ src/etp_revocation.rs Phase 10.4a append-only correction/revocation registry
 src/etp_archive.rs Phase 10.4a durable offline archive verifier
 src/etp_transparency.rs Phase 10.4b tlog-tiles/RFC 6962 and checkpoint verifier
 src/etp_witness.rs Phase 10.4b witness policy and quorum model
+src/integrity.rs  Phase 11.1 reproducibility dimensions, artifact identity, and population manifest
 ci/etp-gate.sh                  Phase 10.2 campaign and reconstruction gate
 ci/etp-auth-gate.sh             Phase 10.3 authenticated-evidence gate
 ci/etp-time-gate.sh             Phase 10.4a time, revocation, and archive gate
 ci/etp-transparency-gate.sh     Phase 10.4b local transparency and witness gate
+ci/etp-integrity-gate.sh        Phase 11.1 two-build reproducibility and population gate
 docs/ETP-*.md                   Phase 10 constitution, claim, migration, trust-gap,
                                 campaign, SARIF, authenticated evidence, time,
                                 revocation, archive, transparency, and registry
