@@ -20,11 +20,19 @@ echo "ld: $(ld --version | head -1)"
 echo "valgrind: $(valgrind --version)"
 echo "callgrind_annotate: $(callgrind_annotate --version 2>&1 | head -1)"
 
-# Run the timing profile script and its self-test.
+# Run each mode explicitly so the committed evidence covers branch, ct, and length.
+for mode in branch ct length; do
+    python3 /src/evaluation/earned-trust/timing_profile.py \
+        --root /src \
+        --workdir "/tmp/etp-timing-work" \
+        --mode "$mode" \
+        --report "/out/report-$mode.json"
+done
+
+# Run the controls (the self-test also exercises all three modes internally).
 python3 /src/evaluation/earned-trust/timing_profile.py \
     --root /src \
-    --workdir /tmp/etp-timing-work \
-    --report /out/report.json \
+    --workdir /tmp/etp-timing-self-test \
     --self-test
 
 echo "timing gate inner: PASS"

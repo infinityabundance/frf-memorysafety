@@ -302,7 +302,7 @@ def write_report(report: dict, path: Path) -> None:
     path.write_text(canonical(report).decode("utf-8") + "\n", encoding="utf-8")
 
 
-def run_profile(root: Path, workdir: Path, mode: str) -> dict:
+def run_profile(root: Path, workdir: Path, mode: str, declared_function: str | None = None) -> dict:
     """Run the timing profile for one mode."""
     binary_sha256, source_sha256, gcc_version, ld_version = compile_fixture(root, workdir)
     binary_path = workdir / "timing_probe"
@@ -379,6 +379,14 @@ def run_profile(root: Path, workdir: Path, mode: str) -> dict:
             refusal_code = "unresolved"
             refusal_detail = "could not compare instruction counts"
 
+    if declared_function is not None and all_counts and declared_function not in all_counts[0]:
+        outcome = "wrong_dispatch"
+        refusal_code = "wrong_dispatch"
+        refusal_detail = (
+            f"declared function {declared_function!r} was not observed; "
+            f"observed functions were {sorted(all_counts[0])}"
+        )
+
     metadata = {
         "fixture_source": FIXTURE_SOURCE,
         "source_sha256": source_sha256,
@@ -441,9 +449,9 @@ def run_self_test(root: Path, workdir: Path) -> dict:
                   f"got {report_length['outcome']}")
 
     # 4. Declared constant_time but executed branch -> wrong_dispatch
-    # Simulated by checking that branch mode does not produce ct outcome.
-    check_control("wrong_dispatch", report_branch["outcome"] != "no_divergence_within_bounded_trace",
-                  f"branch mode produced ct outcome: {report_branch['outcome']}")
+    report_wrong = run_profile(root, workdir, "branch", declared_function="constant_time")
+    check_control("wrong_dispatch", report_wrong["outcome"] == "wrong_dispatch",
+                  f"got {report_wrong['outcome']}")
 
     # 5. Modified source without rebuild -> stale_binary
     # Simulated by checking source hash mismatch detection.

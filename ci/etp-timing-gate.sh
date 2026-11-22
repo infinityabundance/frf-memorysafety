@@ -32,42 +32,46 @@ timeout 1800 docker run --rm \
     -w /src \
     "$IMAGE" /src/ci/etp-timing-gate-inner.sh
 
-# Compare the fresh run report to the committed report.
-# Only compare stable fields (schema, spec, claim_ceiling, outcome, metadata keys).
-# The exact instruction counts and trace lines may vary between runs.
-if [ -f "$OUT/report.json" ] && [ -f "$RUN_DIR/report.json" ]; then
-    echo "Comparing committed report to fresh run..."
-    # Use python to compare stable fields.
-    python3 -c "
+# Compare the fresh run reports to the committed reports per mode.
+# Stable fields include the typed outcome and the real per-function Ir counts.
+for mode in branch ct length; do
+    committed="$OUT/report-$mode.json"
+    fresh="$RUN_DIR/report-$mode.json"
+    if [ ! -f "$committed" ] || [ ! -f "$fresh" ]; then
+        echo "MISSING report for $mode: committed=$committed fresh=$fresh"
+        exit 1
+    fi
+    python3 - "$committed" "$fresh" "$mode" <<'PY'
 import json
 import sys
 
-with open('$OUT/report.json') as f:
-    committed = json.load(f)
-with open('$RUN_DIR/report.json') as f:
-    fresh = json.load(f)
+with open(sys.argv[1], encoding="utf-8") as handle:
+    committed = json.load(handle)
+with open(sys.argv[2], encoding="utf-8") as handle:
+    fresh = json.load(handle)
+mode = sys.argv[3]
 
-stable_fields = ['schema', 'spec', 'claim_ceiling', 'outcome']
-for field in stable_fields:
+for field in ("schema", "spec", "claim_ceiling", "outcome"):
     if committed.get(field) != fresh.get(field):
-        print(f'MISMATCH: {field}: committed={committed.get(field)} fresh={fresh.get(field)}')
+        print(f"MISMATCH {mode}.{field}: committed={committed.get(field)!r} fresh={fresh.get(field)!r}")
         sys.exit(1)
 
-# Check that metadata has the same keys (values may differ)
-committed_keys = set(committed.get('metadata', {}).keys())
-fresh_keys = set(fresh.get('metadata', {}).keys())
-if committed_keys != fresh_keys:
-    print(f'MISMATCH: metadata keys: committed={sorted(committed_keys)} fresh={sorted(fresh_keys)}')
-    sys.exit(1)
+for field in ("source_sha256", "binary_sha256"):
+    left = committed.get("metadata", {}).get(field)
+    right = fresh.get("metadata", {}).get(field)
+    if left != right:
+        print(f"MISMATCH {mode}.metadata.{field}: committed={left!r} fresh={right!r}")
+        sys.exit(1)
 
-print('Stable fields match.')
-"
-    if [ $? -ne 0 ]; then
-        echo "Report comparison FAILED"
-        exit 1
-    fi
-else
-    echo "WARNING: One or both reports missing, skipping comparison"
-fi
+for field in ("results", "trace_lines"):
+    left = committed.get("metadata", {}).get(field)
+    right = fresh.get("metadata", {}).get(field)
+    if left != right:
+        print(f"MISMATCH {mode}.metadata.{field}: committed={left!r} fresh={right!r}")
+        sys.exit(1)
+
+print(f"Stable fields match for {mode}.")
+PY
+done
 
 echo "etp-timing gate: PASS"

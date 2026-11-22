@@ -115,10 +115,23 @@ The self-test validates 8 controls:
 1. **branch_divergence** — `branch` mode produces `observed_secret_dependent_divergence`
 2. **ct_no_divergence** — `ct` mode produces `no_divergence_within_bounded_trace`
 3. **length_divergence** — `length` mode produces `observed_representation_length_divergence`
-4. **wrong_dispatch** — declared `constant_time` but executed `branch` produces `wrong_dispatch` (simulated by checking branch mode does not produce ct outcome)
+4. **wrong_dispatch** — declared `constant_time` but the branch run executed `secret_branch`; the profile checks the declared function against the observed per-function Ir map and refuses with `wrong_dispatch`
 5. **stale_binary_detection** — modified source without rebuild detected via source hash mismatch
 6. **valgrind_availability** — missing valgrind/empty callgrind produces `not_run`
 7. **no_scalar_score** — any scalar confidence/assurance score in report is refused
 8. **no_ct_proof_claim** — claim that `no_divergence` proves constant-time is refused (claim ceiling explicitly states this does not establish constant-time)
 
-The committed report is written to `evaluation/earned-trust/timing/report.json` by `ci/etp-timing-gate.sh`.
+The committed per-mode reports are `evaluation/earned-trust/timing/report-branch.json`,
+`report-ct.json`, and `report-length.json`. The observed per-function Ir counts are:
+
+| Mode | Input classes | Function | Ir counts | Outcome |
+|---|---|---|---|---|
+| `branch` | secret 0 / 1 | `secret_branch` | 8 / 14 | `observed_secret_dependent_divergence` |
+| `ct` | secret 0 / 1 | `constant_time` | 24 / 24 | `no_divergence_within_bounded_trace` (not a proof) |
+| `length` | length 15 / 16 | `length_sensitive_fixed` | 222 / 236 | `observed_representation_length_divergence` |
+
+The `ct` result values differ (0 and -2725307) but the per-function instruction
+counts match; the declared observable for this bounded profile is the
+per-function Ir count, not the output value. `ci/etp-timing-gate.sh` writes
+fresh runs to `target/etp-timing-run/`, compares the typed outcome, function
+counts, and traces against the committed reports, and does not dirty the tree.
