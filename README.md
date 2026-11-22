@@ -120,6 +120,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/etp-time-gate.sh` (Phase 10.4a) | 9 time, 13 revocation, and 8 archive tests passed, 0 failed, 0 ignored; 6/6 timestamp controls; 6/6 revocation controls; committed and fresh local TSA tokens accepted; archive 72/72 objects verified offline with no network |
 | `./ci/etp-transparency-gate.sh` (Phase 10.4b) | 25 transparency tests passed, 0 failed, 0 ignored; 20/20 independent controls; committed size-3 log verified; fresh tessera v1.0.4 261-leaf log verified by Rust and Python; cross-log proof refused; no external witness |
 | `./ci/etp-integrity-gate.sh` (Phase 11.1) | two independent clean-target-dir builds were byte-identical (`1a1b9008…`, 9,466,400 bytes); 13-case population manifest `d29246c3…`; independent Python verifier passed and refused 7/7 corrupted controls |
+| `./ci/etp-witness-gate.sh` (Phase 11.2) | runs the hardened witness execution and independent verification; self-test refuses six named refusal codes (stripped binary, ambiguous symbol, source/binary mismatch, substituted executable, unexpected LD_PRELOAD DSO, preflight-vs-actual executable mismatch) |
 
 The default gate executes all 495 tests, including the 25 Phase 10.4b
 transparency tests, the 21 Phase 10.3
@@ -275,6 +276,24 @@ ceiling. This is same-host, same-container, same-toolchain reproduction, not two
 independent administrative trust domains, and it establishes no correctness or
 authenticity property. See
 [`docs/ETP-REPRODUCIBILITY.md`](docs/ETP-REPRODUCIBILITY.md).
+
+### External execution witness (Phase 11.2, post-1.1.0)
+
+`./ci/etp-witness-gate.sh` compiles the C witness probe
+(`tests/fixtures/witness/probe.c`) with `gcc -O0 -g -fno-inline` inside the
+hardened `rust:1.85.0-slim` container, runs it with a cleared environment and a
+fixed argv, captures the real `/proc/self/exe`, argv, and `/proc/self/maps`,
+hashes every loaded regular-file DSO, and writes the canonical receipt
+`frf-etp.execution-witness.v1` under `evaluation/earned-trust/witness/`. A
+separate Python standard-library verifier recomputes the receipt hashes and
+refuses tampered executable, DSO, symbol, argv, or loader-closure fields. The
+witness self-test refuses six named refusal codes: stripped binary (missing
+symbol), ambiguous symbol query, source/binary mismatch, substituted
+executable, unexpected `LD_PRELOAD` DSO, and preflight-vs-actual executable
+mismatch. This establishes an observed execution of one fixture on one host
+inside one hardened container; it does not establish authenticity, completeness,
+or deployment behaviour, and it does not prove the crate binary, all DSOs, or
+all processes. See [`docs/ETP-EXECUTION-WITNESS.md`](docs/ETP-EXECUTION-WITNESS.md).
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8

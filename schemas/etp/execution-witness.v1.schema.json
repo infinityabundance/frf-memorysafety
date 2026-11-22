@@ -1,0 +1,219 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-execution-witness.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ETP Execution Witness v1",
+  "description": "Canonical JSON receipt for an observed execution of a witness probe.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "spec",
+    "claim_ceiling",
+    "limitations",
+    "execution",
+    "instrument",
+    "correspondence",
+    "toolchain",
+    "dimensions"
+  ],
+  "properties": {
+    "schema": {
+      "const": "frf-etp.execution-witness.v1",
+      "type": "string"
+    },
+    "spec": {
+      "const": "frf-etp-execution-witness-v1",
+      "type": "string"
+    },
+    "claim_ceiling": {
+      "type": "string",
+      "minLength": 1
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "argv",
+        "argv_sha256",
+        "cleared_environment",
+        "real_exe",
+        "exe_sha256",
+        "maps_sha256",
+        "maps_line_count",
+        "loaded_dsos",
+        "loader_closure_sha256",
+        "authentic_native",
+        "exit_code"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "argv_sha256": {
+          "type": "string"
+        },
+        "cleared_environment": {
+          "type": "boolean"
+        },
+        "real_exe": {
+          "type": "string"
+        },
+        "exe_sha256": {
+          "type": "string"
+        },
+        "maps_sha256": {
+          "type": "string"
+        },
+        "maps_line_count": {
+          "type": "integer"
+        },
+        "loaded_dsos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "sha256"
+            ]
+          }
+        },
+        "loader_closure_sha256": {
+          "type": "string"
+        },
+        "authentic_native": {
+          "type": "boolean"
+        },
+        "exit_code": {
+          "type": "integer"
+        }
+      }
+    },
+    "instrument": {
+      "type": "object",
+      "required": [
+        "probe_source",
+        "probe_source_sha256",
+        "compile_command",
+        "gcc_version",
+        "ld_version",
+        "rustc_version",
+        "host",
+        "binary_sha256",
+        "binary_size",
+        "source_tree_sha256",
+        "lockfile_sha256",
+        "build_recipe_sha256",
+        "environment_whitelist_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "probe_source": {
+          "type": "string"
+        },
+        "probe_source_sha256": {
+          "type": "string"
+        },
+        "compile_command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gcc_version": {
+          "type": "string"
+        },
+        "ld_version": {
+          "type": "string"
+        },
+        "rustc_version": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "binary_sha256": {
+          "type": "string"
+        },
+        "binary_size": {
+          "type": "integer"
+        },
+        "source_tree_sha256": {
+          "type": "string"
+        },
+        "lockfile_sha256": {
+          "type": "string"
+        },
+        "build_recipe_sha256": {
+          "type": "string"
+        },
+        "environment_whitelist_sha256": {
+          "type": "string"
+        }
+      }
+    },
+    "correspondence": {
+      "type": "object",
+      "required": [
+        "symbol",
+        "exact_match",
+        "defined_symbol_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "type": "string"
+        },
+        "exact_match": {
+          "type": "boolean"
+        },
+        "defined_symbol_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "required": [
+        "rustc_version",
+        "host"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rustc_version": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        }
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "dimension",
+          "status"
+        ],
+        "additionalProperties": false
+      ]
+    }
+  }
+}
