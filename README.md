@@ -322,6 +322,7 @@ quantification (`universal_quantification_refused`). A valid source-level model
 is accepted and states that binary behavior is not established. No live timing
 measurement is made; Phase 12.2 will add the timing profile. See
 [`docs/ETP-TIMING-AND-INFORMATION-FLOW.md`](docs/ETP-TIMING-AND-INFORMATION-FLOW.md).
+No live timing measurement is made; Phase 12.2 adds a bounded live timing/execution-path profile (`ci/etp-timing-gate.sh`, `evaluation/earned-trust/timing_profile.py`, `schemas/etp/timing-profile.v1.schema.json`). The timing gate runs inside `python:3.11-slim` with hard memory/swap caps, pid/cpu/nofile limits, dropped capabilities, `no-new-privileges`, and `--network=none` (network required for apt-get to install gcc/binutils/valgrind/libc6-dev). It compiles the C fixture `tests/fixtures/timing/timing_probe.c` with gcc -O1 -fno-inline -fno-builtin -g, runs each selected function under valgrind --tool=callgrind --callgrind-out-file=..., parses per-function instruction counts via callgrind_annotate, and emits a canonical receipt `evaluation/earned-trust/timing/report.json`. Self-test asserts 8 controls including branch divergence, no divergence within bounded trace, length divergence, wrong dispatch, stale binary, missing valgrind/empty parse, scalar scores, and claim that no_divergence proves constant-time (refused). See [`docs/ETP-TIMING-PROFILE.md`](docs/ETP-TIMING-PROFILE.md).
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
