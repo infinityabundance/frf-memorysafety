@@ -72,6 +72,7 @@ pub mod etp_transparency;
 pub mod etp_witness;
 pub mod evaluation;
 pub mod identity;
+pub mod integrity;
 pub mod mir;
 pub mod model;
 #[cfg(all(unix, feature = "native-harness"))]
