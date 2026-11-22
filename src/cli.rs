@@ -87,6 +87,7 @@ Commands:
   bridge status [--json]
   detector calibrate FILE [--json]
   detector calibrate --live --detector KIND [--json]
+  etp validate MANIFEST [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -142,6 +143,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "proof" => Ok(command_proof(&args[1..])),
         "bridge" => Ok(command_bridge(&args[1..])),
         "detector" => command_detector(&args[1..]),
+        "etp" => Ok(command_etp(&args[1..])),
         "frf" => command_not_run("frf promote", args),
         "gemel" => command_not_run("gemel publish", args),
         "help" | "--help" | "-h" => {
@@ -1157,6 +1159,86 @@ fn command_proof_verify(rest: &[String]) -> i32 {
         return EXIT_HARNESS;
     }
     report.outcome.exit_code()
+}
+
+fn command_etp(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) == Some("validate") {
+        command_etp_validate(&rest[1..])
+    } else {
+        eprintln!("usage: etp validate MANIFEST [--json]");
+        EXIT_USAGE
+    }
+}
+
+fn command_etp_validate(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp validate MANIFEST [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: etp validate MANIFEST [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: etp validate MANIFEST [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::etp::validate_manifest_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write ETP report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("ETP status: {:?}", report.status);
+        println!(
+            "claims: {}; obligations: {}; coordinates/claim: {}; dimensions/claim: {}",
+            report.claims,
+            report.obligations,
+            report.coordinates_per_claim,
+            report.dimensions_per_claim
+        );
+        println!("eligible claims: {}", report.eligible_claims.len());
+        for refusal in &report.refusals {
+            println!(
+                "refused {} ({}): {}",
+                refusal.claim_id,
+                refusal.code.as_str(),
+                refusal.detail
+            );
+        }
+    }
+    report.exit_code()
 }
 
 fn command_bridge(rest: &[String]) -> i32 {

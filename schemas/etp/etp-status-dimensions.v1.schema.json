@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/etp-status-dimensions.v1.schema.json",
+  "title": "FRF ETP status dimensions v1",
+  "description": "Ten separately assessed status dimensions. No single confidence score or assurance level exists. Inclusion in a transparency log is not completeness; a review declaration is not independent verification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "spec",
+    "epistemic_status",
+    "execution_modality",
+    "quantification",
+    "verification_outcome",
+    "evidence_validity",
+    "reproduction_status",
+    "reviewer_independence",
+    "freshness",
+    "transparency_status",
+    "release_eligibility"
+  ],
+  "properties": {
+    "schema": {"const": "frf-etp.status-dimensions.v1"},
+    "spec": {"const": "frf-etp-v1"},
+    "epistemic_status": {
+      "enum": [
+        "specified",
+        "modeled",
+        "executed_model",
+        "executed_native",
+        "checked_proof",
+        "reviewed_argument",
+        "not_run",
+        "unsupported",
+        "unknown",
+        "challenged",
+        "invalid_evidence"
+      ]
+    },
+    "execution_modality": {
+      "enum": [
+        "authentic_native",
+        "native_instrumented",
+        "mock_provider",
+        "substituted_ffi",
+        "finite_event_model",
+        "unsupported",
+        "not_applicable"
+      ]
+    },
+    "quantification": {
+      "enum": [
+        "finite_observation",
+        "finite_model_exhaustion",
+        "bounded_model",
+        "universal_contextual",
+        "deployment_restricted"
+      ]
+    },
+    "verification_outcome": {
+      "enum": [
+        "not_run",
+        "inconclusive",
+        "supported_finite",
+        "proved_within_scope",
+        "refuted",
+        "challenged",
+        "invalid_evidence"
+      ]
+    },
+    "evidence_validity": {
+      "enum": ["valid", "stale", "digest_mismatch", "unverified", "invalid", "unknown"]
+    },
+    "reproduction_status": {
+      "enum": ["not_attempted", "reproduced", "not_reproduced", "unavailable", "unknown"]
+    },
+    "reviewer_independence": {
+      "enum": ["none", "author", "independent_declared", "independently_verified", "unknown"]
+    },
+    "freshness": {
+      "enum": ["current", "stale", "expired", "not_applicable", "unknown"]
+    },
+    "transparency_status": {
+      "enum": ["not_included", "included", "consistent", "inconsistent", "not_applicable", "unknown"]
+    },
+    "release_eligibility": {
+      "enum": ["eligible", "withheld", "blocked", "not_applicable"]
+    }
+  }
+}

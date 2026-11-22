@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/etp-manifest.v1.schema.json",
+  "title": "FRF ETP manifest v1",
+  "description": "Versioned manifest binding generalized claims and an obligation inventory to the frozen 1.0.0 evidence baseline. A valid manifest is bookkeeping, not certification and not semantic proof of the claims.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "spec", "baseline", "obligation_inventory", "claims"],
+  "properties": {
+    "schema": {"const": "frf-etp.manifest.v1"},
+    "spec": {"const": "frf-etp-v1"},
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release", "commit", "evidence_root_sha256"],
+      "properties": {
+        "release": {"const": "1.0.0"},
+        "commit": {
+          "const": "02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab"
+        },
+        "evidence_root_sha256": {
+          "const": "508b495b56b28cb9d674094f21dd89153b28905d61fdf9ac227ea3ff1eac6d74"
+        }
+      }
+    },
+    "obligation_inventory": {
+      "$ref": "etp-obligation-inventory.v1.schema.json"
+    },
+    "claims": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "etp-claim.v1.schema.json"}
+    }
+  }
+}

@@ -62,6 +62,7 @@ pub mod closure;
 pub mod conversion;
 pub mod court;
 pub mod detector;
+pub mod etp;
 pub mod evaluation;
 pub mod identity;
 pub mod mir;
@@ -112,6 +113,17 @@ pub use detector::{
     CALIBRATION_CLAIM_CEILING, CALIBRATION_REPORT_SCHEMA, DETECTOR_EVIDENCE_SCHEMA, DETECTOR_SPEC,
     MAX_ARGV, MAX_CALIBRATION_CASES, MAX_CAPTURE_BYTES, MAX_DURATION_MS, MAX_ENABLEMENT, MAX_FLAGS,
     MAX_IDENTITY_BYTES,
+};
+pub use etp::{
+    validate_manifest, validate_manifest_bytes, AssumptionState, BaselineReference,
+    ContradictionClass, ContradictoryEvidence, EtpAssumption, EtpClaim, EtpError, EtpManifest,
+    EtpObligation, EtpProperty, EtpRefusal, EtpRefusalCode, EtpValidationReport,
+    EtpValidationStatus, EvidenceKind, EvidenceValidity, ExecutionModality, Freshness, LegalDomain,
+    ObligationInventory, Quantification, ReleaseEligibility, ReproductionStatus, ResolutionState,
+    ReviewerIndependence, StatusDimensions, SupportingEvidence, TransparencyStatus,
+    VerificationOutcome, COORDINATE_COUNT, DIMENSION_COUNT, ETP_CLAIM_CEILING, ETP_CLAIM_SCHEMA,
+    ETP_MANIFEST_SCHEMA, ETP_OBLIGATION_SCHEMA, ETP_REPORT_SCHEMA, ETP_SPEC, ETP_STATUS_SCHEMA,
+    FROZEN_COMMIT, FROZEN_EVIDENCE_ROOT_SHA256, FROZEN_RELEASE,
 };
 pub use identity::{
     canonical_bytes, digest_bytes, digest_value, parse_strict, require_canonical, IdentityDomain,
@@ -268,6 +280,9 @@ pub fn capabilities() -> Capabilities {
             "fail-closed receipt verification: missing measurement, fabricated digest, missing receipt, and unbacked claim rejection",
             "FRF/FRF-Fuzz/Gemel format-only adapters",
             "fail-closed promotion policy types and reports",
+            "earned-trust claim integrity: twenty required coordinates and ten separate status dimensions with no scalar score",
+            "versioned ETP claim, obligation-inventory, and status-dimension schemas with a SHA-256 conformance registry",
+            "etp validate MANIFEST [--json] with contradiction retention and unknown-premise blocking",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
         ],
         not_run: vec![
@@ -294,6 +309,9 @@ pub fn capabilities() -> Capabilities {
             "native C callback observation and retained-pointer lifecycle recording",
             "whole-program or universal alias-compatibility claims",
             "universal safe-interior or SAFE_COMPATIBLE acceptance",
+            "authenticated ETP evidence: DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161, or TUF are NOT_RUN",
+            "independent ETP adjudication, public challenge, revocation registry, and campaign-closure services are SPECIFIED, not deployed",
+            "constant-time and relational timing verification for ETP claims; no timing result is represented as verified",
         ],
         #[cfg(unix)]
         detectors: detector::live::availability(),

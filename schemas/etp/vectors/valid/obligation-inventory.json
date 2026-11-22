@@ -1,0 +1,1 @@
+{"obligations":[{"blocking":true,"evidence":["EV-1"],"id":"OBL-1","state":"discharged","statement":"The declared finite case set is fully enumerated."}],"schema":"frf-etp.obligation-inventory.v1","spec":"frf-etp-v1"}

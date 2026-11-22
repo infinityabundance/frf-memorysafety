@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/etp-obligation-inventory.v1.schema.json",
+  "title": "FRF ETP obligation inventory v1",
+  "description": "Versioned obligation inventory. BLOCKED, UNKNOWN, or any state other than discharged or inapplicable-with-evidence never implies discharge and blocks a release-eligible claim that references a blocking obligation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "spec", "obligations"],
+  "properties": {
+    "schema": {"const": "frf-etp.obligation-inventory.v1"},
+    "spec": {"const": "frf-etp-v1"},
+    "obligations": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "statement", "state", "blocking", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "statement": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "state": {
+            "enum": [
+              "unknown",
+              "contracted",
+              "established",
+              "independently_checked",
+              "discharged",
+              "blocked",
+              "stale",
+              "inapplicable_with_evidence",
+              "reopened"
+            ]
+          },
+          "blocking": {"type": "boolean"},
+          "evidence": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1, "maxLength": 4096}
+          }
+        }
+      }
+    }
+  }
+}
