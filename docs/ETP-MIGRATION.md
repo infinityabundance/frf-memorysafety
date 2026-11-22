@@ -445,6 +445,53 @@ external witnessing or gossip, an external trusted timestamp authority, Sigstore
 keyless identity, TUF metadata, global non-equivocation, independent
 adjudication, or a public challenge service.
 
+## 9.5 What 1.1.0 changes and does not migrate
+
+The 1.1.0 crate-version bump changed `Cargo.toml`, which the campaign declares as
+both a candidate and an instrument file. The opening manifest was re-frozen as an
+explicitly separated instrument change and the same 13-case population was
+re-executed under the 1.1.0 instrument. The population, expected terminal
+outcomes, receipts, accepted cases, retained findings, resource envelope, and
+claim ceiling are unchanged.
+
+| Field | 1.1.0 value |
+|---|---|
+| Opening SHA-256 | `aff12c6d6bf67f40b4fd25554bf76c2721293f188d5f53befe1e905a5af1c4c6` |
+| Candidate identity | `28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df` |
+| Instrument identity | `833d184c4a3cf126e07c828bf6fcf2d153b8d5d4f64cdabe8e5575c47d57abda` |
+| Closure SHA-256 | `226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33` |
+| SARIF SHA-256 | `56c43de8569fc9fad7086b5991568a26173714e8832fa1077754bce1bb0fe7b5` |
+| Trust-policy version | `11` |
+| Attestation envelope SHA-256 | `b80888683d282e20784e7e13663cbd4a1142806fc01f2e15de195d87cf296e52` |
+| Attestation statement SHA-256 | `6125c2dc915082364a105c30ab4b241f1b691df2ded9be610343b6f2de4be43d` |
+| Timestamp token SHA-256 | `ebe10c5d202b060c895c83a6eb278ba16ac886d331efda7b4ad8dbb36f48efce` |
+| Revocation registry SHA-256 | `72e150c6e31b6ceeb47727c0cedad47cf1953e1c2e21f08970aa20a0e7bd8922` |
+| Archive manifest SHA-256 | `ff0b37c48506b6cc5df4882a03fb6ea9583ece374dc9b97c8298fe6b4c0590f9` |
+| Transparency proof SHA-256 | `5059ed70025fd757317e7a9d1f2b14743c49444ef744eb89cc951143bcd904f7` |
+| Transparency checkpoint (size 3) SHA-256 | `4d1f2fea7c87b9bdc94ab88b0a203d1301154f960ea8f129a9a35b280ca67af5` |
+
+The Phase 10.4b opening digest
+`df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff` and
+closure digest
+`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25` remain
+available at commit `c150de3`.
+
+1.1.0 does not migrate:
+
+- any 1.0.0 receipt, claim, or provider object into a crate-version identity;
+- any digest into authentication;
+- any local test timestamp, local test transparency profile, or test-only
+  revocation registry into external trust, public transparency, or a public
+  revocation feed;
+- any historical verdict into present authorization;
+- any `research/` bytes;
+- any 1.0.0 claim into a stronger 1.1.0 claim.
+
+1.1.0 does not implement an external trusted timestamp authority, public
+Rekor/C2SP transparency, Sigstore keyless identity, TUF metadata, public
+revocation, external witnessing or gossip, independent adjudication, or a public
+challenge service. `main` remains at 1.0.0; the 1.1.0 release is on `staging`.
+
 ## 10. Rollback
 
 A manifest, vector, registry, or freeze change can be rolled back by reverting

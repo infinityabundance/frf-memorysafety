@@ -2,9 +2,9 @@
 
 **Campaign:** `frf-etp-native-fixtures-2026-11-22`
 **Opening SHA-256:**
-`df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff`
+`aff12c6d6bf67f40b4fd25554bf76c2721293f188d5f53befe1e905a5af1c4c6`
 **Closure SHA-256:**
-`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`
+`226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33`
 
 **Phase 10.3 amendment.** The Phase 10.2 opening digest was
 `2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and its
@@ -25,6 +25,16 @@ claim ceiling are unchanged. The Phase 10.4a opening digest
 `08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` and closure
 digest `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`
 remain available at commit `eeb5c80`.
+
+**1.1.0 amendment.** The 1.1.0 crate-version bump changed `Cargo.toml`, a
+declared candidate and instrument file. The opening manifest was re-frozen as an
+explicitly separated instrument change and the same 13-case population was
+re-executed under the 1.1.0 instrument. The case population, expected outcomes,
+acceptance policy, receipt contents, accepted cases, retained findings, resource
+envelope, and claim ceiling are unchanged. The Phase 10.4b opening digest
+`df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff` and closure
+digest `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`
+remain available at commit `c150de3`.
 
 This ledger states what the campaign does not establish. It is part of the
 evidence, not a caveat added after the result.

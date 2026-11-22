@@ -183,7 +183,7 @@ def main() -> int:
         "scope": "One finite, pre-registered native campaign over the closed checked-in FRF-MemorySafety native fixture registry and the court verifier. The campaign is a single execution of 13 declared cases. It is not a population sample, a detector-sensitivity estimate, a memory-safety proof, or a deployment authorization.",
         "candidate": {
             "id": "frf-memorysafety-native-fixtures",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1",
             "tree_sha256": tree_digest(candidate_files),
             "files": candidate_files,
@@ -246,7 +246,7 @@ def main() -> int:
             "id": "frf-native-court-instrument-v1",
             "harness": "frf-native-fixture-harness",
             "court": "frf-memorysafety.court-verification.v1",
-            "crate_version": "1.0.0",
+            "crate_version": "1.1.0",
             "required_tools": ["cc", "rustc", "prlimit", "ld"],
             "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1",
             "tree_sha256": tree_digest(instrument_files),

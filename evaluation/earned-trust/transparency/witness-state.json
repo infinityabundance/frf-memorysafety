@@ -1,8 +1,8 @@
 {
   "schema": "frf-etp.witness-state.v1",
   "spec": "frf-etp-v1",
-  "checkpoint_base64": "ZnJmLmxvY2FsL2V0cC10cmFuc3BhcmVuY3ktMjAyNgozCkl2eG5BQWVocXNseWdSbjlqWDl5VjcwdnA0V0hIWTBFdkRaN0ZwYmkzcGs9CgrigJQgZnJmLmxvY2FsL2V0cC10cmFuc3BhcmVuY3ktMjAyNiAyVEg1QklhZHNaS1NjOWdCYWFPRStjdU9XREdXc1g2MXBjaEh3RUlvY0ZTaVZtV2lpa0VmN1hMeTRTaXZxNVNEWFZ4V0RwdFNDdmlub080Ly9LbVRZMXdwS1EwPQo=",
-  "checkpoint_sha256": "8968473359d0891b0e99c9741450d2fac24101ab598ed152467a42d1c9f6bac6",
+  "checkpoint_base64": "ZnJmLmxvY2FsL2V0cC10cmFuc3BhcmVuY3ktMjAyNgozCjFTNGRqS09JMXAyZkJJNnhGeXFoZC8reGZuYnR5a2VsT0diYW1OdzZTNFE9CgrigJQgZnJmLmxvY2FsL2V0cC10cmFuc3BhcmVuY3ktMjAyNiBiZXBKemgrQ3pNWmpTek9rTkhBRGQxaGc5ekxqdW1nSWx3SWdyT1orbUNhS1RPNWJwaUszWWxYUkhOTFFYb29OMGl3ZFEwMUlYUHRUN0FGNHpndEl5aHJmZmdnPQo=",
+  "checkpoint_sha256": "4d1f2fea7c87b9bdc94ab88b0a203d1301154f960ea8f129a9a35b280ca67af5",
   "external_witnessing": false,
   "local_test_only": false,
   "policy": {
@@ -86,7 +86,7 @@
       "status": "not_observed",
       "last_observed_tree_size": 0,
       "prior_max_tree_size": null,
-      "checkpoint_sha256": "8968473359d0891b0e99c9741450d2fac24101ab598ed152467a42d1c9f6bac6",
+      "checkpoint_sha256": "4d1f2fea7c87b9bdc94ab88b0a203d1301154f960ea8f129a9a35b280ca67af5",
       "cosignature": null,
       "observed_roots": []
     },
@@ -95,7 +95,7 @@
       "status": "not_observed",
       "last_observed_tree_size": 0,
       "prior_max_tree_size": null,
-      "checkpoint_sha256": "8968473359d0891b0e99c9741450d2fac24101ab598ed152467a42d1c9f6bac6",
+      "checkpoint_sha256": "4d1f2fea7c87b9bdc94ab88b0a203d1301154f960ea8f129a9a35b280ca67af5",
       "cosignature": null,
       "observed_roots": []
     },
@@ -104,7 +104,7 @@
       "status": "not_observed",
       "last_observed_tree_size": 0,
       "prior_max_tree_size": null,
-      "checkpoint_sha256": "8968473359d0891b0e99c9741450d2fac24101ab598ed152467a42d1c9f6bac6",
+      "checkpoint_sha256": "4d1f2fea7c87b9bdc94ab88b0a203d1301154f960ea8f129a9a35b280ca67af5",
       "cosignature": null,
       "observed_roots": []
     }

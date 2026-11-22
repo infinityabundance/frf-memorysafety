@@ -20,6 +20,21 @@ population. The population, expected terminal outcomes, requirements,
 obligations, mutation controls, resource envelope, acceptance policy, and claim
 ceiling are unchanged. The original bytes remain at commit `f17111d`.
 
+**1.1.0 amendment.** The 1.1.0 crate-version bump changed `Cargo.toml`, a
+declared candidate and instrument file. The opening manifest was re-frozen as an
+explicitly separated instrument change and the same 13-case population was
+re-executed under the 1.1.0 instrument. The current opening digest is
+`aff12c6d6bf67f40b4fd25554bf76c2721293f188d5f53befe1e905a5af1c4c6`; the
+candidate tree is
+`28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df`; the
+instrument tree is
+`833d184c4a3cf126e07c828bf6fcf2d153b8d5d4f64cdabe8e5575c47d57abda`; and the
+closure digest is
+`226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33`. The case
+population, expected outcomes, requirements, obligations, mutation controls,
+resource envelope, acceptance policy, and claim ceiling are unchanged. The
+Phase 10.4b values remain at commit `c150de3`.
+
 The machine-readable protocol is authoritative for the case population,
 requirements, obligations, expected terminal outcomes, mandatory-resolution
 flags, mutation controls, resource limits, acceptance policy, completion

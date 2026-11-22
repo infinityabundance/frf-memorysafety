@@ -56,10 +56,10 @@ Rekor v1 server. A zero-advisory result is not a security proof.
 |---|---|
 | Log origin | `frf.local/etp-transparency-2026` |
 | Local log id | `sha256:278f4d522bfa92ae9c73632f569f8946359c647db9fc891e337d06fa8b5f0580` (SHA-256 of the origin; not a provider GID) |
-| Note key id | `d931f904` |
-| Public vkey | `frf.local/etp-transparency-2026+d931f904+ASzGqxXMH1lHVM4xnWZD+LlKnwjG/Sq1G2yh7V6BRz6q` |
-| Raw public key (base64) | `LMarFcwfWUdUzjGdZkP4uUqfCMb9KrUbbKHtXoFHPqo=` |
-| Public key SHA-256 | `c7c337933746363128c195e4986e0c4c27d025daa15c151c6360e2397e9560f7` |
+| Note key id | `6dea49ce` |
+| Public vkey | `frf.local/etp-transparency-2026+6dea49ce+AchlppRYThyG2YoKurS/hzhk1Iy5QcnqzOKpGEQF4Glh` |
+| Raw public key (base64) | `yGWmlFhOHIbZigq6tL+HOGTUjLlByerM4qkYRAXgaWE=` |
+| Public key SHA-256 (raw Ed25519 key) | `d4c64169ce9f3e39e1ba7bfd3b5ce21fbe17ff824186661ad8697fb62ccac4f9` |
 | Private key | Generated inside `golang:1.24-alpine` under `target/`, removed before the gate exits; never committed |
 | Trust profile | `local-test-tlog-tiles`; `external_trust: false`; `public_transparency: false` |
 
@@ -71,22 +71,25 @@ continuity, or custody by an independent operator.
 
 | Artifact | Path | SHA-256 |
 |---|---|---|
-| Leaf 0 entry (Phase 10.3 envelope) | `evaluation/earned-trust/transparency/attestation-entry.bin` | `94a687ba9d2b1f080b2d9574b34529aa992ddf201b4c372935f0a7bbb2f5229e` |
-| Checkpoint, size 1 | `evaluation/earned-trust/transparency/checkpoint-size-1.txt` | `c0fe2878334596caafaeb537217e6fa3aff90caa258e005579dec74a210ffb5f` |
-| Checkpoint, size 3 | `evaluation/earned-trust/transparency/checkpoint-size-3.txt` | `8968473359d0891b0e99c9741450d2fac24101ab598ed152467a42d1c9f6bac6` |
-| Inclusion and consistency proof | `evaluation/earned-trust/transparency/proof.json` | `c79d3797b428ab3666ea8d24be27ac731a0017ce31b2c0c53c9b520c9449fb79` |
-| Public log key | `evaluation/earned-trust/transparency/log-key.pub` | `c1a9cb67e895fcfe0a1375fea4672530cc4f46ea8ffafaebcd57eddd1c69d566` |
-| Transparency policy | `evaluation/earned-trust/transparency/policy.json` | `3ec5381f35f19c88a427ae488d49b421b427e94126a06f8f2a0c5e9a083a989e` |
-| Witness state | `evaluation/earned-trust/transparency/witness-state.json` | `d651ce156f2e51b7a18f6d45a9de706e7890f368e242f7a0ca300e33cff9e58e` |
+| Leaf 0 entry (1.1.0 envelope) | `evaluation/earned-trust/transparency/attestation-entry.bin` | `b80888683d282e20784e7e13663cbd4a1142806fc01f2e15de195d87cf296e52` |
+| Checkpoint, size 1 | `evaluation/earned-trust/transparency/checkpoint-size-1.txt` | `62baf9ab79856b039516e0487c6e0a3c1baa329e807559777e61232b502f947c` |
+| Checkpoint, size 3 | `evaluation/earned-trust/transparency/checkpoint-size-3.txt` | `4d1f2fea7c87b9bdc94ab88b0a203d1301154f960ea8f129a9a35b280ca67af5` |
+| Inclusion and consistency proof | `evaluation/earned-trust/transparency/proof.json` | `5059ed70025fd757317e7a9d1f2b14743c49444ef744eb89cc951143bcd904f7` |
+| Public log key | `evaluation/earned-trust/transparency/log-key.pub` | `4b2f7c3f24abae23fad1d1f43af2c1e0986c58e3081cf2aa86bb5452ce4e9e9e` |
+| Transparency policy | `evaluation/earned-trust/transparency/policy.json` | `26123dbe9d7945829d16c9f0143c5e20d964c6642cf1b677ed9ed65c84e5b561` |
+| Witness state | `evaluation/earned-trust/transparency/witness-state.json` | `0f03b710a47bd9c0a2cbded6ef14da418ffa7098d10390b58cd3709ae3c6d783` |
 
-The log contains three leaves: leaf 0 is the exact Phase 10.3 DSSE envelope;
-leaves 1 and 2 are the deterministic fillers recorded in the gate. The size-3
-root is `22fc670007a1aac9728119fd8d7f7257bd2fa785871d8d04bc367b1696e2de99`.
+The log contains three leaves: leaf 0 is the exact 1.1.0 committed DSSE
+envelope; leaves 1 and 2 are deterministic local fillers. The size-3 root is
+`d52e1d8ca388d69d9f048eb1172aa177ffb17e76edca47a53866da98dc3a4b84`.
 The size-1 root is
-`5f9897a64b795ff302e6f212447e24c040c13f3e794cdcf3dbedb354b032c59c`.
-The audit path for leaf 0 is `[UNHrRQhdSLXOUKSUHXVbBtM4LWr7Ifvl0xVlyc4H1xc=,
-kELUei5C38r4QlpZ9oEWAsenzrfJR/QDQMpLHqy3LPM=]`; the consistency proof from
+`832e275b17c766f8cc7417545f45edfee4b90e7a0a0b69e1292e4205d57a2c01`.
+The audit path for leaf 0 is `[pQRya6MtPKWcGxpjscVcgArloNDMrJjWADLMLdo7JTY=,
+m4RWQ+MNN8A+nJnPBUX8e0cy/HZYxn+d9cvmRDrhndo=]`; the consistency proof from
 size 1 to size 3 is the same two nodes, as RFC 6962 requires for these sizes.
+
+The committed log was rebuilt for 1.1.0 because the attestation envelope
+changed. The Phase 10.4b log remains at commit `c150de3`.
 
 The live gate builds a second, fresh log from the same pinned implementation
 and appends the same attestation plus 260 deterministic fillers. It verified a

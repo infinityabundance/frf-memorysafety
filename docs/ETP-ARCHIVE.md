@@ -25,15 +25,16 @@ and not proof that the archived evidence is true.
 | Archive root | `evaluation/earned-trust/archive/` |
 | Manifest | `evaluation/earned-trust/archive/manifest.json` |
 | Manifest schema | `frf-etp.archive-manifest.v1` |
-| Manifest SHA-256 | `abecbb91c27e532d5e36e50bf720e963980b017af0ec41d2102536fb242ccbfe` |
-| Archive identifier | `frf-etp-phase10.4b-archive` |
+| Manifest SHA-256 | `ff0b37c48506b6cc5df4882a03fb6ea9583ece374dc9b97c8298fe6b4c0590f9` |
+| Archive identifier | `frf-etp-1.1.0-archive` |
 | Objects | `72` |
-| Knowledge horizon | `1795334947` (2026-11-22 08:09:07 GMT) |
+| Knowledge horizon | `1795336442` (2026-11-22 08:34:02 GMT) |
 | Required categories | 20 |
 
 The archive preserves the repository-relative `evaluation/earned-trust`
 layout so the committed reconstructor and verifiers run unchanged from the
-archive root.
+archive root. The 1.1.0 archive was rebuilt after the campaign re-freeze; the
+Phase 10.4b archive remains at commit `c150de3`.
 
 ## 2. Object inventory
 
@@ -50,7 +51,7 @@ required flag, and observation time. The inventory includes:
 | `raw_evidence` | 25 retained transcripts and court reports |
 | `sarif` | `campaign.sarif` |
 | `attestation` | DSSE envelope, in-toto statement, and test-only public key |
-| `policy` | `trust-policy.json` version 8 |
+| `policy` | `trust-policy.json` version 11 |
 | `time_token` | `time/token.tsr` |
 | `time_request` | `time/request.tsq` |
 | `tsa_trust_anchor` | `time/tsa-ca.pem` |
@@ -71,7 +72,7 @@ required flag, and observation time. The inventory includes:
 | `reconstruction` | `RECONSTRUCTION.md` |
 
 The archive's time token binds the closure digest
-`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`. The token
+`226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33`. The token
 is anchored in the local test TSA, not external trusted time. The revocation
 registry is signed by the test-only correction authority and is not a public
 feed. The archive also contains the local transparency proof, checkpoints,
@@ -118,7 +119,7 @@ python3 evaluation/earned-trust/verify_attestations.py \
   --campaign evaluation/earned-trust/MANIFEST.json --controls
 python3 evaluation/earned-trust/verify_time.py \
   --token evaluation/earned-trust/time/token.tsr \
-  --imprint 20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25 \
+  --imprint 226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33 \
   --tsa-cert evaluation/earned-trust/time/tsa-ca.pem \
   --policy-oid 1.3.6.1.4.1.99999.1 --controls
 python3 evaluation/earned-trust/verify_revocation.py \

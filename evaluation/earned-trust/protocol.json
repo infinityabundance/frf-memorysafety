@@ -22,7 +22,7 @@
     "files": [
       {
         "path": "Cargo.toml",
-        "sha256": "51c2c6751a6f1ba5d4001cf122072af80540792e301d82bf79d17ee1e251a160"
+        "sha256": "73ffd1b208f1a113ede5ccf5242684fa8f378af166ec0a79410e8233a4b2785e"
       },
       {
         "path": "rust-toolchain.toml",
@@ -94,9 +94,9 @@
       }
     ],
     "id": "frf-memorysafety-native-fixtures",
-    "tree_sha256": "7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746",
+    "tree_sha256": "28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df",
     "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "claim_ceiling": "Campaign closure is bookkeeping over a finite, pre-registered case population. It establishes that every declared case has one retained typed observation and that the declared counts were derived from the complete population. It does not establish memory safety, functional correctness, detector sensitivity, proof soundness, population-level recall, reviewer independence, authentication, transparency completeness, or deployment security. A typed NOT_RUN is not a pass. A digest is not authentication. A SARIF projection is not a certification and a code-scanning view is not authoritative.",
   "claims": [
@@ -123,11 +123,11 @@
   "frozen": "2026-11-22",
   "instrument": {
     "court": "frf-memorysafety.court-verification.v1",
-    "crate_version": "1.0.0",
+    "crate_version": "1.1.0",
     "files": [
       {
         "path": "Cargo.toml",
-        "sha256": "51c2c6751a6f1ba5d4001cf122072af80540792e301d82bf79d17ee1e251a160"
+        "sha256": "73ffd1b208f1a113ede5ccf5242684fa8f378af166ec0a79410e8233a4b2785e"
       },
       {
         "path": "rust-toolchain.toml",
@@ -198,7 +198,7 @@
       "prlimit",
       "ld"
     ],
-    "tree_sha256": "7b17845a3b452874f89ee4c4a07fd391d2a7e67a9d5486dfa3a5f2fb8e847a84",
+    "tree_sha256": "833d184c4a3cf126e07c828bf6fcf2d153b8d5d4f64cdabe8e5575c47d57abda",
     "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1"
   },
   "mutation_controls": [

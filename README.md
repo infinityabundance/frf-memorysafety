@@ -5,21 +5,23 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-Phases 10.1-10.4b add the FRF Earned Trust Protocol without changing the 1.0.0
-evidence or claim ceilings: a claim algebra with twenty coordinates and ten
-separate status dimensions, a finite 13-case campaign closure, a finite
-authenticated-evidence profile built on DSSE v1, in-toto Statement v1, a
-versioned Ed25519 trust policy, and an independent verifier, plus a local test
-RFC 3161 token, an append-only test correction/revocation registry, a durable
-offline archive, and a pinned local tlog-tiles transparency profile with real
-inclusion and consistency proofs. The authenticated profile records who signed
-exact bytes and whether the signed predicate agrees with the finite closure. It
-does not establish truth, independent review, public transparency, external
-trusted time, external witnessing, or deployment security.
+Version 1.1.0 releases the FRF Earned Trust Protocol (ETP, Phases 10.1-10.4b)
+without changing the 1.0.0 evidence or claim ceilings: a claim algebra with
+twenty coordinates and ten separate status dimensions, a frozen finite 13-case
+campaign closure and SARIF 2.1.0 projection, a finite authenticated-evidence
+profile built on DSSE v1, in-toto Statement v1, a versioned Ed25519 trust policy
+with role authorization, and an independent verifier, plus an RFC 3161 token
+from a local test-only TSA, an append-only test correction/revocation registry,
+a durable offline archive, and a pinned local tlog-tiles transparency profile
+with real inclusion and consistency proofs. The authenticated profile records
+who signed exact bytes and whether the signed predicate agrees with the finite
+closure. It does not establish truth, independent review, external trusted time,
+public transparency, external witnessing or gossip, Sigstore keyless identity,
+TUF metadata, public revocation, or deployment security.
 
-**This build makes no memory-safety soundness claim.** Version 1.0.0 is the
-Phase 9 release. It retains the Phase 8 OpenSSL-Rust conversion evidence, the
-Phase 7 live FRF-Fuzz -> FRF -> Gemel chain,
+**This build makes no memory-safety soundness claim.** Version 1.1.0 is the
+Phase 10 ETP release; 1.0.0 was the Phase 9 release. It retains the Phase 8
+OpenSSL-Rust conversion evidence, the Phase 7 live FRF-Fuzz -> FRF -> Gemel chain,
 pinned provider contracts, provider-typed opaque identities, and fail-closed
 custody pipeline, the Phase 6 proof manifest with a declared
 theorem/assumption closure, admission taxonomy, separate Rust/FFI
@@ -97,7 +99,7 @@ The 60 committed canonical receipts were measured at crate version 0.9.0 and
 remain the evidence of record; the 1.0.0 evaluation gate verifies them and
 compares a fresh 1.0.0 run on observation, digest, and experiment fields.
 
-## Status (1.0.0 / phases 7, 8, and 9 complete; Phase 9.2 paper published)
+## Status (1.1.0 / phases 7-10 complete)
 
 Verified in the pinned `rust:1.85.0-slim` container with the commands in
 [Verification](#verification):
@@ -113,10 +115,10 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/conversion-gate.sh` | pin built; 22 boundary tests passed; fault/repair 4/4; curl positive/negative PASS; ABI-LOAD 6499/0; 27 live crate tests passed |
 | `./ci/eval-gate.sh` | 60/60 receipts pass; 20 held-out / 11 development; 11/11 claims supported; fresh and committed receipts deterministic-identical |
 | `./ci/reconstruction-gate.sh` | independent standard-library reconstruction passes: 60/60 receipts, 20/11 split, 11/11 protocol claims, 18/18 paper claims mapped |
-| `./ci/etp-gate.sh` (Phase 10.2) | 13-case campaign run and verify PASS; 25 raw-evidence files; SARIF export/verify PASS; independent reconstruction PASS |
-| `./ci/etp-auth-gate.sh` (Phase 10.3) | 21 focused attestation tests passed; 13 independent verifier controls passed; committed and ephemeral attestations accepted by Rust and OpenSSL verifiers; private key discarded |
-| `./ci/etp-time-gate.sh` (Phase 10.4a) | 9 time, 13 revocation, and 8 archive focused tests passed; 6/6 independent timestamp controls; 6/6 independent revocation controls; committed and fresh local TSA tokens accepted; archive 72/72 objects verified offline with no network |
-| `./ci/etp-transparency-gate.sh` (Phase 10.4b) | 25 focused transparency tests passed; 20/20 independent controls; committed size-3 log verified; fresh tessera v1.0.4 log with 261 leaves verified by Rust and Python; cross-log proof refused; no external witness |
+| `./ci/etp-gate.sh` (Phase 10.2) | 13/13 pass decisions; 4 verified, 6 observed violations, 1 incomplete, 2 unresolved; 13 receipts, 25 raw-evidence files; SARIF 18 results / 11 rules / 0 suppressions; independent reconstruction PASS |
+| `./ci/etp-auth-gate.sh` (Phase 10.3) | 21 attestation tests passed, 0 failed, 0 ignored; 13/13 independent verifier controls; committed and ephemeral attestations accepted by Rust and OpenSSL verifiers; private key discarded |
+| `./ci/etp-time-gate.sh` (Phase 10.4a) | 9 time, 13 revocation, and 8 archive tests passed, 0 failed, 0 ignored; 6/6 timestamp controls; 6/6 revocation controls; committed and fresh local TSA tokens accepted; archive 72/72 objects verified offline with no network |
+| `./ci/etp-transparency-gate.sh` (Phase 10.4b) | 25 transparency tests passed, 0 failed, 0 ignored; 20/20 independent controls; committed size-3 log verified; fresh tessera v1.0.4 261-leaf log verified by Rust and Python; cross-log proof refused; no external witness |
 
 The default gate executes all 495 tests, including the 25 Phase 10.4b
 transparency tests, the 21 Phase 10.3
@@ -136,12 +138,55 @@ the same chain test with `FRF_BRIDGE_LIVE_BUNDLE` set.
 its fault/repair witness, curl, and the live capture; without
 `FRF_CONVERSION_CAPTURE`, the same tests execute and assert typed `NOT_RUN`.
 
-`./ci/mir-gate.sh` was rerun for 1.0.0 and reported live MIR observations. All
-gates above were run in the pinned containers with the declared hard caps. The
+`./ci/mir-gate.sh` was rerun for 1.0.0 and reported live MIR observations; it
+was not rerun for 1.1.0. For 1.1.0, `./ci/gate.sh`, `./ci/etp-gate.sh`,
+`./ci/etp-auth-gate.sh`, `./ci/etp-time-gate.sh`, and
+`./ci/etp-transparency-gate.sh` were rerun in the pinned containers with the
+declared hard caps. The `native-gate`, `mir-gate`, `detector-gate`,
+`proof-gate`, `bridge-gate`, `conversion-gate`, `eval-gate`, and
+`reconstruction-gate` rows above record the 1.0.0 runs and were not rerun in
+this release. The
 same container image is used by the native and detector gates after installing
 only their declared packages; the live tests are the same tests that assert
 typed `NOT_RUN` when `FRF_NATIVE_HARNESS` or `FRF_DETECTOR_LIVE` is unset in the
 default gate.
+
+### ETP layer (1.1.0)
+
+Version 1.1.0 adds the ETP layer as bookkeeping and verification over the
+existing finite evidence. It is documented by:
+
+- [`docs/EARNED-TRUST.md`](docs/EARNED-TRUST.md): constitution, layers,
+  provider-authority boundaries, and permanent distinctions.
+- [`docs/ETP-CLAIM-INTEGRITY.md`](docs/ETP-CLAIM-INTEGRITY.md): claim algebra,
+  twenty coordinates, and ten separate status dimensions.
+- [`docs/ETP-TRUST-GAP.md`](docs/ETP-TRUST-GAP.md): 76-row classified inventory.
+- [`docs/ETP-MIGRATION.md`](docs/ETP-MIGRATION.md): versioning and
+  no-retroactive-strengthening rules.
+- [`docs/ETP-STANDARDS-REGISTRY.md`](docs/ETP-STANDARDS-REGISTRY.md): consulted
+  standards and exact adoption status.
+- [`docs/ETP-CAMPAIGN.md`](docs/ETP-CAMPAIGN.md) and
+  [`docs/ETP-SARIF.md`](docs/ETP-SARIF.md): frozen 13-case campaign and the
+  SARIF 2.1.0 profile.
+- [`docs/ETP-AUTHENTICATED-EVIDENCE.md`](docs/ETP-AUTHENTICATED-EVIDENCE.md):
+  DSSE v1/in-toto v1, the Ed25519 trust policy, role authorization, and the
+  independent verifier.
+- [`docs/ETP-TRUSTED-TIME.md`](docs/ETP-TRUSTED-TIME.md): RFC 3161 local test
+  TSA and the nine temporal facts.
+- [`docs/ETP-REVOCATION.md`](docs/ETP-REVOCATION.md): authenticated
+  correction/revocation and historical replay.
+- [`docs/ETP-ARCHIVE.md`](docs/ETP-ARCHIVE.md): durable offline archive.
+- [`docs/ETP-TRANSPARENCY.md`](docs/ETP-TRANSPARENCY.md): pinned local
+  tlog-tiles profile and witness policy.
+
+The frozen 1.0.0 evidence and claim ceilings remain unchanged. The ETP layer
+does not convert any local test mechanism into external trust. The 1.1.0
+crate-version bump changed `Cargo.toml`, a declared campaign candidate and
+instrument file, so the campaign opening manifest was re-frozen as a separately
+recorded instrument change and the same 13-case population was re-executed. The
+population, outcomes, and claim ceiling are unchanged; the Phase 10.4b values
+remain at commit `c150de3`. See
+[`docs/ETP-MIGRATION.md`](docs/ETP-MIGRATION.md) for the 1.1.0 digest record.
 
 ### Authenticated evidence (Phase 10.3)
 
@@ -246,7 +291,7 @@ toolchains, commands, closure hashes, and the claim ceiling.
 
 ### Capability matrix
 
-| Capability | 1.0.0 availability |
+| Capability | 1.1.0 availability |
 |---|---|
 | Strict canonical encoding, typed evidence, founded support, policy custody | Implemented; finite model |
 | `source scan` AST inventory | Implemented; syntactic, bounded, explicit unknowns |
@@ -272,6 +317,7 @@ toolchains, commands, closure hashes, and the claim ceiling.
 | `etp time stamp --imprint HEX --tsa-config FILE --out TOKEN` | Gate/test helper only; shell-free bounded OpenSSL adapter, private 0700 work directory, private keys under `target/` only |
 | `etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json]` | Implemented; append-only DSSE registry, correction-authority role, historical replay, present authorization, alternative-support survival, retained dissent |
 | `etp archive verify ARCHIVE [--json]` | Implemented; complete object inventory, digests, sizes, knowledge horizon, required categories, reconstruction inputs; offline and no network |
+| `etp transparency verify`, `etp checkpoint verify`, `etp witnesses verify` | Implemented; pinned local `transparency-dev/tessera` v1.0.4 tlog-tiles profile, RFC 6962 inclusion and consistency, signed checkpoints, anti-rollback, cross-log rejection, tiled reconstruction, and a witness quorum model with `not_observed` external witnessing; no public transparency or gossip |
 | Rekor/C2SP public transparency, external trusted RFC 3161 time, Sigstore keyless identity, TUF metadata, public revocation feed, external witnessing, public challenge | Not implemented; local test transparency profile only |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
@@ -500,7 +546,7 @@ conflicts and no adjudicated observation; this matches the original
 `research/paper/research/worked_bundle.py` results. The replay test checks the
 original counts and makes this scoping difference explicit.
 
-### Claim ceiling (finite and transcript-scoped through phase 8)
+### Claim ceiling (finite and transcript-scoped through Phase 10)
 
 Every positive result in this README is limited to the named finite domain and
 the checks that were actually executed. The claim ceiling is syntactic, finite,
@@ -574,6 +620,20 @@ all 33 Safe-33 consumers, or behaviour outside the recorded candidate,
 toolchain, authority, and loader closure. The target's own ledger remains
 **0/33** `SAFE_COMPATIBLE`; the conversion model remains fail-closed
 bookkeeping, not a memory-safety or compatibility claim.
+
+For 1.1.0, the ETP layer does not widen this ceiling. The RFC 3161 token is
+produced by a local test-only TSA and is not external trusted time; it
+establishes only that the test TSA signed the declared imprint under the pinned
+test CA. The committed and fresh transparency logs use a local test-only
+tessera v1.0.4 profile; they are not deployed Rekor v2, not public transparency,
+and make no completeness, global non-equivocation, external-witness, or gossip
+claim. The revocation registry is test-only and not a public feed. DSSE/Ed25519
+establishes signature validity over exact received bytes, not truth, independent
+review, or authorization outside the declared policy. No ETP result establishes
+memory safety, Rust borrow validity, C object-lifetime legality, compatibility,
+`SAFE_COMPATIBLE`, universal safe-interior soundness, deployment security, or
+population-level detector performance. The detailed ledgers remain in
+[`PAPER.md`](PAPER.md) and [`evaluation/LIMITATIONS.md`](evaluation/LIMITATIONS.md).
 
 ### Phase 9.1 evaluation surface
 
@@ -1191,11 +1251,14 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-default gate executes 373 tests (including the 22 ETP tests, the 11 detector-live tests,
-the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, the
-17 bridge seal tests, the 3 bridge unit tests, the 1 live/`NOT_RUN` chain test,
-and the 9 Phase 9.1 evaluation tests) and the native gate executes 17 live native
-tests; none is ignored or filtered out.
+The default gate executes 495 tests (including the 25 Phase 10.4b transparency
+tests, the 21 Phase 10.3 attestation tests, the 30 Phase 10.4a
+time/revocation/archive tests, the 22 Phase 10.1 ETP tests, the Phase 10.2
+campaign/SARIF tests, the 11 detector-live tests, the 6 proof-live tests on
+their typed `NOT_RUN`/`checker_unavailable` paths, the 17 bridge seal tests, the
+3 bridge unit tests, the 1 live/`NOT_RUN` chain test, and the 9 Phase 9.1
+evaluation tests) and the native gate executes 17 live native tests; none is
+ignored or filtered out.
 
 `./ci/detector-gate.sh` is a separate live gate for Phase 5.2. It uses the same
 hardened Docker flags, installs only `gcc`, `libc6-dev`, `openssl`, `curl`, and
@@ -1266,6 +1329,35 @@ negative findings, and both the protocol and paper claim-to-receipt mappings. It
 fails on missing, extra, non-canonical, tampered, unsupported, or unmapped
 artifacts. It does not import or execute the Rust crate.
 
+`./ci/etp-gate.sh` is the Phase 10.2 ETP campaign and reconstruction gate. It
+builds the native-harness binary, runs the 13-case campaign, verifies the
+generated and committed closure manifests, exports and verifies SARIF 2.1.0,
+and runs the independent standard-library reconstructor in `python:3.11-slim`
+with no network. Every container keeps the declared memory/swap, pid, cpu,
+nofile, OOM, capability, and no-new-privileges limits.
+
+`./ci/etp-auth-gate.sh` is the Phase 10.3 authenticated-evidence gate. It runs
+the 21 focused attestation tests, verifies the committed DSSE/in-toto
+attestation with the Rust CLI, runs the independent OpenSSL verifier and its 13
+negative controls, then generates an ephemeral test key inside the gate, signs
+the committed closure, verifies the envelope with both implementations, and
+discards the private key.
+
+`./ci/etp-time-gate.sh` is the Phase 10.4a trusted-time, revocation, and archive
+gate. It runs 9 time, 13 revocation, and 8 archive focused tests; verifies
+committed and fresh local test-TSA RFC 3161 tokens; runs 6/6 independent
+timestamp and 6/6 independent revocation controls; builds a fresh archive; and
+verifies the committed and fresh archives offline in `--network=none`
+containers.
+
+`./ci/etp-transparency-gate.sh` is the Phase 10.4b local transparency gate. It
+runs the 25 focused transparency tests, verifies the committed size-3 log, runs
+20/20 independent Python controls, builds a fresh 261-leaf tessera v1.0.4 log
+and verifies it with both Rust and Python, and refuses a cross-log proof. When
+the pinned Go module graph is unavailable, live local inclusion is a typed
+`NOT_RUN`; committed artifacts are still verified. No external witness is
+claimed.
+
 Every container is hardened as follows:
 
 - `--memory=2g --memory-swap=2g` caps memory and swap together, so the
@@ -1306,6 +1398,26 @@ src/bridge.rs     Phase 7.1/7.2 provider pins, opaque identities, custody,
 src/conversion.rs Phase 8.1/8.2 typed conversion-court evidence, live capture, and reuse/revocation
 src/evaluation.rs Phase 9.1 protocol, isolated ablation harness, receipts, and claim verification
 src/bin/frf-eval.rs Phase 9.1 harness CLI
+src/etp.rs        Phase 10.1 claim algebra, manifest validation, frozen baseline
+src/etp_campaign.rs Phase 10.2 finite campaign opening, closure, and reconciliation
+src/sarif.rs      Phase 10.2 SARIF 2.1.0 projection and structural verifier
+src/etp_auth.rs   Phase 10.3 DSSE/in-toto, trust policy, and role authorization
+src/etp_time.rs   Phase 10.4a RFC 3161 local test-TSA verification and stamp helper
+src/etp_revocation.rs Phase 10.4a append-only correction/revocation registry
+src/etp_archive.rs Phase 10.4a durable offline archive verifier
+src/etp_transparency.rs Phase 10.4b tlog-tiles/RFC 6962 and checkpoint verifier
+src/etp_witness.rs Phase 10.4b witness policy and quorum model
+ci/etp-gate.sh                  Phase 10.2 campaign and reconstruction gate
+ci/etp-auth-gate.sh             Phase 10.3 authenticated-evidence gate
+ci/etp-time-gate.sh             Phase 10.4a time, revocation, and archive gate
+ci/etp-transparency-gate.sh     Phase 10.4b local transparency and witness gate
+docs/ETP-*.md                   Phase 10 constitution, claim, migration, trust-gap,
+                                campaign, SARIF, authenticated evidence, time,
+                                revocation, archive, transparency, and registry
+schemas/etp/                    Phase 10 versioned claim, campaign, attestation,
+                                time, revocation, archive, and transparency schemas
+evaluation/earned-trust/        Phase 10 campaign, attestations, time, revocations,
+                                archive, transparency, policies, and reconstructors
 ci/eval-gate.sh                  Phase 9.1 receipt, measurement, and claim gate
 ci/reconstruction-gate.sh        Phase 9.2 independent standard-library reconstruction gate
 PAPER.md                         Phase 9.2 pre-registered evaluation paper
@@ -1377,3 +1489,11 @@ is authenticated, and a capture record is not a signature or trusted build
 root. See `SPEC.md` §1,
 [`docs/phase7-bridge-discovery.md`](docs/phase7-bridge-discovery.md), and
 [`docs/phase7-live-chain.md`](docs/phase7-live-chain.md).
+
+A local test TSA is not external trusted time. A local tessera log is not public
+transparency, Rekor v2, or non-equivocation. An Ed25519/DSSE signature is not
+independent review, truth, or authorization outside its declared policy. A
+witness quorum model is not an observed external witness or gossip. A
+revocation registry is not a public feed. An archive inventory is not
+authenticity or completeness of history. No ETP result establishes memory
+safety, compatibility, or `SAFE_COMPATIBLE`.

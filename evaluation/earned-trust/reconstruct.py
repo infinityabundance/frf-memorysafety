@@ -37,7 +37,7 @@ from pathlib import Path
 
 CAMPAIGN_DIR = "evaluation/earned-trust"
 CAMPAIGN_ID = "frf-etp-native-fixtures-2026-11-22"
-OPENING_SHA256 = "df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff"
+OPENING_SHA256 = "aff12c6d6bf67f40b4fd25554bf76c2721293f188d5f53befe1e905a5af1c4c6"
 EXPECTED_CASES = 13
 EXPECTED_RECEIPTS = 13
 EXPECTED_RAW_EVIDENCE = 25

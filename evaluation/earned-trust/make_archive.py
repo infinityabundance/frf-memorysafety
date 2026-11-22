@@ -564,7 +564,7 @@ not a public transparency log, and not proof that the evidence is true.
     manifest = {
         "schema": MANIFEST_SCHEMA,
         "spec": SPEC,
-        "archive_id": "frf-etp-phase10.4b-archive",
+        "archive_id": "frf-etp-1.1.0-archive",
         "created_at_unix": observed,
         "knowledge_horizon_unix": observed,
         "objects": sorted(objects, key=lambda item: item["path"]),

@@ -6,8 +6,8 @@
   "log": {
     "origin": "frf.local/etp-transparency-2026",
     "log_id": "sha256:278f4d522bfa92ae9c73632f569f8946359c647db9fc891e337d06fa8b5f0580",
-    "public_key_base64": "LMarFcwfWUdUzjGdZkP4uUqfCMb9KrUbbKHtXoFHPqo=",
-    "vkey": "frf.local/etp-transparency-2026+d931f904+ASzGqxXMH1lHVM4xnWZD+LlKnwjG/Sq1G2yh7V6BRz6q",
+    "public_key_base64": "yGWmlFhOHIbZigq6tL+HOGTUjLlByerM4qkYRAXgaWE=",
+    "vkey": "frf.local/etp-transparency-2026+6dea49ce+AchlppRYThyG2YoKurS/hzhk1Iy5QcnqzOKpGEQF4Glh",
     "algorithm": "ed25519-note-v1",
     "supported_log_versions": [
       "tlog-tiles-v1"
@@ -21,8 +21,8 @@
     "known_horizons": [
       {
         "tree_size": 1,
-        "root_hash": "5f9897a64b795ff302e6f212447e24c040c13f3e794cdcf3dbedb354b032c59c",
-        "checkpoint_sha256": "c0fe2878334596caafaeb537217e6fa3aff90caa258e005579dec74a210ffb5f"
+        "root_hash": "832e275b17c766f8cc7417545f45edfee4b90e7a0a0b69e1292e4205d57a2c01",
+        "checkpoint_sha256": "62baf9ab79856b039516e0487c6e0a3c1baa329e807559777e61232b502f947c"
       }
     ],
     "persistence": "caller_supplied"

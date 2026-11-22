@@ -3,10 +3,10 @@
   "spec": "frf-etp-v1",
   "status": "verified",
   "registry_id": "frf-etp-phase10.4a-revocation-registry",
-  "registry_sha256": "51fe1c9d735459b80c607bb84ac03fa85f6a384e2d5a93b6b085d4e9305ae6a6",
+  "registry_sha256": "72e150c6e31b6ceeb47727c0cedad47cf1953e1c2e21f08970aa20a0e7bd8922",
   "entry_count": 3,
   "policy_id": "frf-etp-test-trust-policy-2026-11-22",
-  "policy_version": 8,
+  "policy_version": 11,
   "dimensions": {
     "registry_integrity": "valid",
     "sequence_integrity": "valid",

@@ -42,14 +42,22 @@ instrument.
 | Field | Value |
 |---|---|
 | Opening manifest | `evaluation/earned-trust/protocol.json` |
-| Opening SHA-256 | `df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff` |
+| Opening SHA-256 | `aff12c6d6bf67f40b4fd25554bf76c2721293f188d5f53befe1e905a5af1c4c6` |
 | Frozen sidecar | `evaluation/earned-trust/opening.sha256` |
-| Candidate identity (tree) | `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746` |
-| Instrument identity (tree) | `7b17845a3b452874f89ee4c4a07fd391d2a7e67a9d5486dfa3a5f2fb8e847a84` |
+| Candidate identity (tree) | `28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df` |
+| Instrument identity (tree) | `833d184c4a3cf126e07c828bf6fcf2d153b8d5d4f64cdabe8e5575c47d57abda` |
 | Closure manifest | `evaluation/earned-trust/MANIFEST.json` |
-| Closure SHA-256 | `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25` |
+| Closure SHA-256 | `226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33` |
 | SARIF projection | `evaluation/earned-trust/campaign.sarif` |
-| SARIF SHA-256 | `7bbb43a7b648c78c98a8bdbcb444fa4fb6bae07e4d237a0e961137f7f9318fba` |
+| SARIF SHA-256 | `56c43de8569fc9fad7086b5991568a26173714e8832fa1077754bce1bb0fe7b5` |
+
+**1.1.0 instrument change.** The 1.1.0 crate-version bump changed
+`Cargo.toml`, a declared candidate and instrument file. The opening manifest was
+re-frozen as an explicitly separated instrument change and the same finite
+campaign was re-executed under the 1.1.0 instrument. The population, expected
+outcomes, receipts, accepted cases, retained findings, resource envelope, and
+claim ceiling are unchanged. The Phase 10.4b values remain in git history at
+commit `c150de3`.
 
 **Phase 10.3 instrument change.** Adding the attestation dependency changed
 `Cargo.toml`, and adding `src/etp_auth.rs` and changing `src/cli.rs` and

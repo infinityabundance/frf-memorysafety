@@ -267,7 +267,7 @@ def build_registry(
                 "policy_id": support_policy_id,
                 "evidence_ids": evidence_ids,
                 "subject_identity": item.get("subject_identity")
-                or "candidate:7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746",
+                or "candidate:28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df",
             },
             "reason": item.get("reason"),
             "effective_at_unix": item.get("effective_at_unix", issued),

@@ -382,7 +382,7 @@ fi
 
 if [ "$MODE" = "verify" ]; then
     IMPRINT=$(cat "$ROOT/evaluation/earned-trust/time/evidence-imprint.txt")
-    NOW=1795335000
+    NOW=1795337000
     rust_run etp-time-committed sh -c '
         set -eu
         IMPRINT=$(cat evaluation/earned-trust/time/evidence-imprint.txt)
@@ -393,7 +393,7 @@ if [ "$MODE" = "verify" ]; then
             --tsa-cert-sha256 "$CA_DIGEST" \
             --policy-oid 1.3.6.1.4.1.99999.1 \
             --trust-domain local-test-tsa \
-            --now-unix 1795335000 \
+            --now-unix 1795337000 \
             --json > target/etp-time-committed-report.json
         ./target/debug/frf-memorysafety etp time verify evaluation/earned-trust/time/token.tsr \
             --imprint "$IMPRINT" \
@@ -401,19 +401,19 @@ if [ "$MODE" = "verify" ]; then
             --tsa-cert-sha256 "$CA_DIGEST" \
             --policy-oid 1.3.6.1.4.1.99999.1 \
             --trust-domain local-test-tsa \
-            --now-unix 1795335000
+            --now-unix 1795337000
         ./target/debug/frf-memorysafety etp revocation verify \
             evaluation/earned-trust/revocations/registry.json \
             --policy evaluation/earned-trust/trust-policy.json \
             --support evaluation/earned-trust/revocations/support-model.json \
             --historical evaluation/earned-trust/revocations/historical-verdict.json \
-            --now-unix 1795335000 --json > target/etp-revocation-committed-report.json
+            --now-unix 1795337000 --json > target/etp-revocation-committed-report.json
         ./target/debug/frf-memorysafety etp revocation verify \
             evaluation/earned-trust/revocations/registry.json \
             --policy evaluation/earned-trust/trust-policy.json \
             --support evaluation/earned-trust/revocations/support-model.json \
             --historical evaluation/earned-trust/revocations/historical-verdict.json \
-            --now-unix 1795335000
+            --now-unix 1795337000
         ./target/debug/frf-memorysafety etp archive verify \
             evaluation/earned-trust/archive --json > target/etp-archive-committed-report.json
         ./target/debug/frf-memorysafety etp archive verify evaluation/earned-trust/archive

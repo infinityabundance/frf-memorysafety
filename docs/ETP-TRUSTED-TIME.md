@@ -28,7 +28,7 @@ the request, the token, and the report.
 | TSA trust domain label | `local-test-tsa` |
 | External trusted time | `false` |
 | CA subject | `CN = "FRF Test TSA CA (local, test-only)"` |
-| CA validity | 2026-11-22 08:09:07 GMT to 2026-11-24 08:09:07 GMT |
+| CA validity | 2026-11-22 08:34:02 GMT to 2026-11-24 08:34:02 GMT |
 | CA certificate PEM SHA-256 | `5627df3672b7ab958ddccdd3d23c9c1aa73467856efd534779c5040ba0f8a4ee` |
 | CA certificate DER SHA-256 (pinned digest) | `f0c0abca00067cfde4c6f472b7aba771d9423384f44c2189ed365d318ae749a2` |
 | TSA signer certificate PEM SHA-256 | `0be9b4e23110623cb07f05552b2ae74b41f03e51188592fa1ed34bf40a6d64ab` |
@@ -41,7 +41,7 @@ the request, the token, and the report.
 | Python image | `python:3.11-slim`, image id `sha256:896edfbcbf0c...e4c70` |
 
 The token is committed at `evaluation/earned-trust/time/token.tsr`. Its
-generation time is `1795334947` (2026-11-22 08:09:07 GMT). The chain is verified
+generation time is `1795336442` (2026-11-22 08:34:02 GMT). The chain is verified
 at the token generation time, so the two-day test certificate validity does not
 retroactively invalidate the historical token. A verifier that wants present
 authorization must supply a separate freshness policy; a valid historical token
@@ -54,20 +54,27 @@ fresh local TSA CA and TSA signer certificate. The old token, CA, and request
 were not reused. The token remains local test material; it is not external
 trusted time and it does not bind transparency inclusion.
 
+The 1.1.0 crate-version change re-froze the campaign closure again. The local
+test token was regenerated over
+`226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33` with a
+fresh local TSA CA and TSA signer certificate. The Phase 10.4b token remains at
+commit `c150de3`. The 1.1.0 token remains local test material; it is not
+external trusted time and it does not bind transparency inclusion.
+
 ## 2. Token and request
 
 | Field | Value |
 |---|---|
 | Evidence bytes | `evaluation/earned-trust/MANIFEST.json` |
-| Evidence SHA-256 (imprint) | `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25` |
+| Evidence SHA-256 (imprint) | `226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33` |
 | Token | `evaluation/earned-trust/time/token.tsr` |
-| Token SHA-256 | `44b31544607150507a0ac0698d5204ee71cd0e7b38b1d277dc6512d2f16c592b` |
+| Token SHA-256 | `ebe10c5d202b060c895c83a6eb278ba16ac886d331efda7b4ad8dbb36f48efce` |
 | Request | `evaluation/earned-trust/time/request.tsq` |
-| Request SHA-256 | `08db0c9fa01b8728c3db10207eb7d24e525b2c0324b19cd7dca74eaea2465490` |
+| Request SHA-256 | `71b104b8d0c14c968ae587c7bbf30a455f8f16668dc88ee286050e6f3d7518ca` |
 | Hash algorithm | `sha256` |
 | Policy OID | `1.3.6.1.4.1.99999.1` |
 | Serial | `02` |
-| Generation time | `1795334947` / `Nov 22 08:09:07 2026 GMT` |
+| Generation time | `1795336442` / `Nov 22 08:34:02 2026 GMT` |
 | Accuracy | `0x01 seconds, unspecified millis, unspecified micros` |
 | Ordering | `yes` |
 | TSA name | `DirName:/CN=FRF Local Test TSA` |

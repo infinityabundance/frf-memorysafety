@@ -233,19 +233,19 @@ of the repository.
 
 | Artifact | Path | SHA-256 |
 |---|---|---|
-| Envelope | `evaluation/earned-trust/attestations/campaign-closure.envelope.json` | `94a687ba9d2b1f080b2d9574b34529aa992ddf201b4c372935f0a7bbb2f5229e` |
-| Statement payload | `evaluation/earned-trust/attestations/campaign-closure.statement.json` | `0226c0e7cd1248c2a4cc253c29853d260de53f9a21c95b5d4fd3a1a07126a560` |
+| Envelope | `evaluation/earned-trust/attestations/campaign-closure.envelope.json` | `b80888683d282e20784e7e13663cbd4a1142806fc01f2e15de195d87cf296e52` |
+| Statement payload | `evaluation/earned-trust/attestations/campaign-closure.statement.json` | `6125c2dc915082364a105c30ab4b241f1b691df2ded9be610343b6f2de4be43d` |
 | Public key (PEM) | `evaluation/earned-trust/attestations/campaign-closure.public.pem` | present for inspection |
-| Trust policy | `evaluation/earned-trust/trust-policy.json` | `1605a8b87462b3dd3a02f8ff18d51638418969d3ddb6aa4e572f098b291d138c` |
+| Trust policy | `evaluation/earned-trust/trust-policy.json` | `8493921c9ab1f90314f6cacc037e0fec8dafa63a9adbf6f022d66cb1fbf69a69` |
 
 The predicate binds the closure digest
-`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`, the
+`226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33`, the
 candidate identity
-`7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746`, and the
+`28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df`, and the
 raw-evidence digest
-`378f1b28c75ff97b1e0baa0ff3df48eefd4b8167e775da919fb52b470421fdc7`.
+`fbb83c57ff518a95755aa5cbe7b63591e1dc4bbd79ce11ac09e08256f5d02634`.
 
-### 6.1 Phase 10.2 and Phase 10.4a campaign re-freezes
+### 6.1 Campaign re-freezes
 
 Adding the attestation dependency changed `Cargo.toml`, which is a declared
 candidate and instrument file, and adding `src/etp_auth.rs` and changing
@@ -291,9 +291,25 @@ digest `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`
 remain available at commit `eeb5c80`. The Phase 10.4b signature binds the new
 closure; no prior signature is reused.
 
-The re-freeze does not strengthen any claim. It is a separate instrument change
-and a separate execution, and it is recorded here, in `docs/ETP-CAMPAIGN.md`,
-and in `docs/ETP-MIGRATION.md`.
+1.1.0 changed `Cargo.toml`, a declared candidate and instrument file, and
+re-froze the opening manifest again as an explicitly separated instrument
+change. The same 13-case population was re-executed. The candidate tree is
+`28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df`; the
+instrument tree is
+`833d184c4a3cf126e07c828bf6fcf2d153b8d5d4f64cdabe8e5575c47d57abda`; the
+opening-manifest digest is
+`aff12c6d6bf67f40b4fd25554bf76c2721293f188d5f53befe1e905a5af1c4c6`; the
+closure digest is
+`226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33`. The
+Phase 10.4b opening digest
+`df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff` and closure
+digest `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`
+remain available at commit `c150de3`. The 1.1.0 signature binds the new closure;
+no prior signature is reused.
+
+The re-freezes do not strengthen any claim. Each is a separate instrument change
+and a separate execution, and each is recorded here, in
+`docs/ETP-CAMPAIGN.md`, and in `docs/ETP-MIGRATION.md`.
 
 ## 7. Key custody, administrative owner, rotation, and revocation
 

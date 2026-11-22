@@ -1,4 +1,6 @@
 /research/
 /target/
 **/*.rs.bk
+__pycache__/
+*.pyc
 .DS_Store

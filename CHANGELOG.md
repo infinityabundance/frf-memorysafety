@@ -9,15 +9,155 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
-## [Unreleased] - Phase 10.4b local transparency profile and witness policy
+## [1.1.0] - 2026-11-22
 
-This is an additive evidence, verification, and documentation change. It does
-not change any 1.0.0 schema meaning, receipt, measured observation, test, or
-claim ceiling. The crate version remains 1.0.0. The transparency log is local
-and test-only; no public transparency, Rekor v2 deployment, or external
-witnessing is claimed.
+Phase 10 release: the FRF Earned Trust Protocol (ETP). This is a version,
+documentation, and evidence-release change. It adds the ETP constitution and
+claim algebra, a frozen finite campaign with SARIF 2.1.0, authenticated evidence
+with role authorization, trusted-time separation with a local test TSA,
+authenticated revocation, a durable offline archive, and a pinned local
+transparency profile. It changes no 1.0.0 schema meaning, receipt, measured
+observation, test assertion, provider identity, or claim ceiling. The 60 Phase 9
+receipts and the 1.0.0 evidence freeze remain the evidence of record.
+
+The detailed Phase 10.1-10.4b records follow as subsections. Statements in those
+records that a phase did not bump or publish the crate describe that phase, not
+this combined 1.1.0 release.
 
 ### Added
+
+- **Earned-trust constitution, claim algebra, migration, and trust-gap
+  inventory (Phase 10.1).** `docs/EARNED-TRUST.md`,
+  `docs/ETP-CLAIM-INTEGRITY.md` (twenty required coordinates and ten separate
+  status dimensions), `docs/ETP-TRUST-GAP.md` (76 classified rows),
+  `docs/ETP-MIGRATION.md`, `docs/ETP-STANDARDS-REGISTRY.md`, versioned
+  `schemas/etp/` claim, obligation, status, and manifest schemas with canonical
+  conformance vectors, `src/etp.rs`, `etp validate`, and `AGENTS.md`. The
+  validator refuses universal quantification, `sound_safe_interior`,
+  `safe_compatible`, scalar scores, unresolved release premises, and erasure of
+  contradictory observations.
+- **Frozen campaign and SARIF 2.1.0 (Phase 10.2).** `docs/ETP-CAMPAIGN.md`,
+  `docs/ETP-SARIF.md`, the frozen 13-case `evaluation/earned-trust/` protocol,
+  receipts, 25 raw evidence files, closure manifest, SARIF projection, and an
+  independent standard-library reconstructor; `src/etp_campaign.rs`,
+  `src/sarif.rs`, and the `etp campaign` and `etp sarif` commands.
+- **DSSE/in-toto authenticated evidence with role authorization (Phase 10.3).**
+  `docs/ETP-AUTHENTICATED-EVIDENCE.md`, `src/etp_auth.rs`, eleven versioned
+  schemas, a versioned Ed25519 trust policy with roles, scope, actors, validity
+  windows, and distinct-actor thresholds, a discarded test-only signing key, an
+  independent OpenSSL verifier with 13 negative controls, and `etp attest
+  verify`. Signature validity, payload integrity, authorization, scope
+  applicability, freshness, semantic support, and independent review remain
+  separate; `independent_review` is `not_established`.
+- **RFC 3161 local test TSA (Phase 10.4a).** `docs/ETP-TRUSTED-TIME.md`,
+  `src/etp_time.rs`, a shell-free bounded OpenSSL adapter, a real RFC 3161 token
+  anchored in a local test-only TSA, seven verification dimensions, nine
+  temporal facts, a backdating control, `etp time verify`, and a gate-only `etp
+  time stamp`. `external_trust` is always `false`; this is not external trusted
+  time.
+- **Authenticated revocation (Phase 10.4a).** `docs/ETP-REVOCATION.md`,
+  `src/etp_revocation.rs`, an append-only DSSE-signed correction/revocation
+  registry bound to registry, policy, claim, evidence, and subject identities,
+  founded-support invalidation with alternative-support survival, historical
+  verdict replay under the original policy, present authorization under the
+  current registry, and retained dissent. This is a test-only registry, not a
+  public revocation feed.
+- **Durable archive (Phase 10.4a).** `docs/ETP-ARCHIVE.md`,
+  `src/etp_archive.rs`, and `etp archive verify`: complete object inventory,
+  digests, sizes, schemas, applicability, a knowledge horizon, required
+  categories, and reconstruction inputs, verified offline with no network.
+- **Pinned local tessera transparency (Phase 10.4b).**
+  `docs/ETP-TRANSPARENCY.md`, `src/etp_transparency.rs`, `src/etp_witness.rs`,
+  a C2SP tlog-tiles/RFC 6962 verifier for exact entry binding, inclusion,
+  signed checkpoints, two-size consistency, conflicting roots, anti-rollback,
+  tiled reconstruction, cross-log rejection, and offline verification, plus a
+  witness policy with administrative domains, shared-trust assumptions,
+  correlated-witness detection, the `2q - n > f` quorum condition, and
+  `not_observed` external witnessing. The committed log is built from
+  `transparency-dev/tessera` v1.0.4; a fresh 261-leaf log is verified by both
+  Rust and independent Python. This is a local test-only profile, not deployed
+  Rekor v2 or public transparency, and provides no external witnessing or
+  gossip.
+- **All ETP gate scripts.** `ci/etp-gate.sh` (campaign and SARIF),
+  `ci/etp-auth-gate.sh` (DSSE/in-toto and independent verifier),
+  `ci/etp-time-gate.sh` (local TSA, revocation, archive),
+  `ci/etp-transparency-gate.sh` (local tlog-tiles and witness model), and the
+  expanded `ci/gate.sh`, all under the declared memory/swap, pid, cpu, nofile,
+  OOM, capability, and no-new-privileges controls.
+
+### Changed
+
+- `Cargo.toml` and `Cargo.lock` move from 1.0.0 to 1.1.0. The crate version,
+  the ETP `FROZEN_RELEASE`/`FROZEN_COMMIT` baseline, and the frozen 1.0.0
+  evidence record remain separate identities; the crate bump does not relabel
+  or strengthen any frozen evidence.
+- README documents 1.1.0, the 495-test default gate, the ETP layer, every gate,
+  the capability matrix, and the precise claim ceiling, and links the ETP
+  documents, [`PAPER.md`](PAPER.md), and
+  [`evaluation/LIMITATIONS.md`](evaluation/LIMITATIONS.md).
+- The Phase 10.2 opening manifest was re-frozen three times as explicitly
+  separated instrument changes (Phases 10.3, 10.4a, and 10.4b). The same 13-case
+  population was re-executed each time; outcomes, retained findings, resource
+  envelope, and claim ceiling are unchanged. Per-phase digests are recorded in
+  the subsections below.
+- The 1.1.0 crate-version bump changed `Cargo.toml`, a declared candidate and
+  instrument file. As a separately recorded instrument change, the opening
+  manifest was re-frozen, the same 13-case campaign was re-executed, and the
+  attestation, local test timestamp, revocation registry, archive, and local
+  transparency log were re-bound to the new instrument. The 1.1.0 values are:
+  opening
+  `aff12c6d6bf67f40b4fd25554bf76c2721293f188d5f53befe1e905a5af1c4c6`,
+  candidate
+  `28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df`,
+  instrument
+  `833d184c4a3cf126e07c828bf6fcf2d153b8d5d4f64cdabe8e5575c47d57abda`,
+  closure
+  `226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33`, and
+  trust-policy version 11. The Phase 10.4b values remain at commit `c150de3`;
+  population, outcomes, and claim ceiling are unchanged. The gate's fixed
+  committed-verification time was advanced from `1795335000` to `1795337000` so
+  the new local test token is verified after its generation time; no freshness
+  rule, resource cap, or isolation control changed.
+
+### Not changed
+
+- No 1.0.0 receipt, claim, provider object, schema meaning, or 1.0.0 evidence
+  freeze.
+- No universal, population-level, memory-safety soundness, or compatibility
+  claim. `SAFE_COMPATIBLE` and `sound_safe_interior` remain refused.
+- No external trusted time, public transparency, Rekor v2 deployment, external
+  witnessing or gossip, Sigstore keyless identity, TUF metadata, or public
+  revocation feed.
+- No merge into `main`; `main` remains at 1.0.0.
+
+### Claim ceiling
+
+1.1.0 adds bookkeeping, authentication, time, revocation, archive, and
+transparency mechanisms over finite evidence. It does not widen a 1.0.0 claim.
+The local test TSA is not external trusted time; a token establishes only that
+the local test TSA signed the declared imprint under the pinned test CA. The
+local tessera log is not public transparency, not Rekor v2, and not a
+completeness or non-equivocation claim; it has no external witness or gossip.
+The revocation registry is test-only and not a public feed. DSSE/Ed25519
+establishes signature validity for exact received bytes, not truth,
+independent review, or authorization outside the declared policy. The archive
+establishes an offline object inventory, not authenticity or completeness of
+history. No result establishes memory safety, Rust borrow validity,
+compatibility, `SAFE_COMPATIBLE`, universal soundness, deployment security, or
+population-level detector performance. See `docs/EARNED-TRUST.md`,
+[`PAPER.md`](PAPER.md), and
+[`evaluation/LIMITATIONS.md`](evaluation/LIMITATIONS.md).
+
+### Detailed Phase 10 records
+
+#### Phase 10.4b local transparency profile and witness policy
+
+This phase is an additive evidence, verification, and documentation change. It
+does not change any 1.0.0 schema meaning, receipt, measured observation, test, or
+claim ceiling. The transparency log is local and test-only; no public
+transparency, Rekor v2 deployment, or external witnessing is claimed.
+
+#### Added
 
 - `src/etp_transparency.rs`: a C2SP tlog-tiles / RFC 6962 verifier for exact
   leaf/entry binding, Merkle inclusion, signed checkpoints, two-size consistency,
@@ -60,7 +200,7 @@ witnessing is claimed.
   no-new-privileges limits. Verification containers use `--network=none`.
 - `docs/ETP-TRANSPARENCY.md`.
 
-### Changed
+#### Changed
 
 - The Phase 10.2 opening manifest was re-frozen as an explicitly separated
   Phase 10.4b instrument change: `src/etp_transparency.rs` and
@@ -81,7 +221,7 @@ witnessing is claimed.
   keeps public transparency, external witnessing, and global non-equivocation as
   `NOT_RUN` or not deployed.
 
-### Not changed
+#### Not changed
 
 - No 1.0.0 receipt, claim, provider object, or schema meaning.
 - No universal or population-level claim.
@@ -89,13 +229,13 @@ witnessing is claimed.
   gossip, external trusted time, or public revocation feed.
 - No crate version bump and no publish.
 
-## [Unreleased] - Phase 10.4a trusted time, revocation, and durable archive
+#### Phase 10.4a trusted time, revocation, and durable archive
 
-This is an additive evidence, verification, and documentation change. It does
-not change any 1.0.0 schema meaning, receipt, measured observation, test, or
-claim ceiling. The crate version remains 1.0.0.
+This phase is an additive evidence, verification, and documentation change. It
+does not change any 1.0.0 schema meaning, receipt, measured observation, test, or
+claim ceiling. It was released as part of 1.1.0.
 
-### Added
+#### Added
 
 - `src/etp_time.rs`: shell-free, bounded RFC 3161 verification and a gate-only
   token-creation adapter, seven verification dimensions, nine separate temporal
@@ -134,7 +274,7 @@ claim ceiling. The crate version remains 1.0.0.
   revocation entry, revocation plan, revocation verification, support model,
   historical verdict, archive manifest, and archive verification.
 
-### Changed
+#### Changed
 
 - The Phase 10.2 opening manifest was re-frozen again as an explicitly separated
   instrument change: `src/etp_time.rs`, `src/etp_revocation.rs`, and
@@ -159,7 +299,7 @@ claim ceiling. The crate version remains 1.0.0.
   public revocation, and public challenge as `NOT_RUN` or not deployed.
 - `tests/etp.rs` registers the ten new schemas (29 total).
 
-### Not changed
+#### Not changed
 
 - No 1.0.0 receipt, claim, provider object, or schema meaning.
 - No universal or population-level claim.
@@ -168,13 +308,13 @@ claim ceiling. The crate version remains 1.0.0.
 - No crate version bump and no publish. Rekor/C2SP transparency remains Phase
   10.4b work.
 
-## [Unreleased] - Phase 10.3 authenticated evidence
+#### Phase 10.3 authenticated evidence
 
-This is an additive evidence, validation, and verification change. It does not
-change any 1.0.0 schema meaning, receipt, measured observation, corpus, test, or
-claim ceiling. The crate version remains 1.0.0.
+This phase is an additive evidence, validation, and verification change. It
+does not change any 1.0.0 schema meaning, receipt, measured observation, corpus,
+test, or claim ceiling. It was released as part of 1.1.0.
 
-### Added
+#### Added
 
 - [`docs/ETP-AUTHENTICATED-EVIDENCE.md`](docs/ETP-AUTHENTICATED-EVIDENCE.md):
   the DSSE v1/in-toto v1 profile, exact PAE, the seven versioned predicate
@@ -204,7 +344,7 @@ claim ceiling. The crate version remains 1.0.0.
   hardened memory, pid, cpu, nofile, OOM, capability, and no-new-privileges
   limits.
 
-### Changed
+#### Changed
 
 - The Phase 10.2 opening manifest was re-frozen as an explicitly separated
   instrument change (the attestation dependency and new source), and the same
@@ -216,20 +356,20 @@ claim ceiling. The crate version remains 1.0.0.
   timestamps, Sigstore, TUF, revocation, and independent review as `NOT_RUN`.
 - `tests/etp.rs` registers the eleven new schemas (19 total).
 
-### Not changed
+#### Not changed
 
 - No 1.0.0 receipt, claim, provider object, or schema meaning.
 - No universal or population-level claim.
 - No crate version bump, publish, transparency log, timestamp, or independent
   reviewer deployment.
 
-## [Unreleased] - Phase 10.2 ETP campaign and SARIF projection
+#### Phase 10.2 ETP campaign and SARIF projection
 
-This is an additive evidence, validation, and reporting change. It does not
-change any 1.0.0 schema meaning, receipt, measured observation, policy, corpus,
-test, or claim ceiling. The crate version remains 1.0.0.
+This phase is an additive evidence, validation, and reporting change. It does
+not change any 1.0.0 schema meaning, receipt, measured observation, policy,
+corpus, test, or claim ceiling. It was released as part of 1.1.0.
 
-### Added
+#### Added
 
 - [`docs/ETP-CAMPAIGN.md`](docs/ETP-CAMPAIGN.md): the frozen opening inventory,
   per-case receipt schema, closure rules, lossless reconciliation, real results,
@@ -258,7 +398,7 @@ test, or claim ceiling. The crate version remains 1.0.0.
 - Tests: 15 campaign reconciliation tests and 12 SARIF corruption-control
   tests.
 
-### Real campaign result
+#### Real campaign result
 
 - Campaign `frf-etp-native-fixtures-2026-11-22`; 13 declared cases; 13 receipts;
   25 raw evidence files.
@@ -282,7 +422,7 @@ test, or claim ceiling. The crate version remains 1.0.0.
 - The Python reconstructor recomputes the same counts, decisions, digests, and
   SARIF mappings from the raw receipts without importing the crate.
 
-### Claim ceiling
+#### Claim ceiling
 
 No claim is widened. Closure establishes only that the finite declared campaign
 produced its pre-registered typed observations and that the bookkeeping is
@@ -294,13 +434,13 @@ trust policy; Rekor/C2SP, RFC 3161 timestamps, Sigstore, TUF, and independent
 adjudication remain `NOT_RUN` or specified-not-deployed. A
 GitHub code-scanning view is not authoritative.
 
-## [Unreleased] - Phase 10.1 ETP foundation
+#### Phase 10.1 ETP foundation
 
-This is an additive documentation, schema, and validation change. It does not
-change any 1.0.0 schema meaning, receipt, measured observation, policy, corpus,
-test, or claim ceiling. The crate version remains 1.0.0.
+This phase is an additive documentation, schema, and validation change. It
+does not change any 1.0.0 schema meaning, receipt, measured observation, policy,
+corpus, test, or claim ceiling. It was released as part of 1.1.0.
 
-### Added
+#### Added
 
 - [`docs/EARNED-TRUST.md`](docs/EARNED-TRUST.md), the FRF Earned Trust Protocol
   constitution: mission, governing principle, layered architecture, provider
@@ -325,7 +465,7 @@ test, or claim ceiling. The crate version remains 1.0.0.
   1.0.0 evidence references.
 - [`AGENTS.md`](AGENTS.md), the AI-assisted engineering accountability rules.
 
-### Changed
+#### Changed
 
 - README adds the Phase 10.1 ETP section and links to the new documents.
 - `ci/gate.sh` bounds Cargo to two parallel jobs and disables incremental caches
@@ -333,7 +473,7 @@ test, or claim ceiling. The crate version remains 1.0.0.
   OOM protection, resource cap, isolation control, test, or assertion is removed
   or weakened. Debug and release each pass 373 tests (22 new ETP tests).
 
-### Claim ceiling
+#### Claim ceiling
 
 No claim is widened. The ETP validator establishes only that a manifest is
 structurally complete and makes no refused promotion. It does not establish
