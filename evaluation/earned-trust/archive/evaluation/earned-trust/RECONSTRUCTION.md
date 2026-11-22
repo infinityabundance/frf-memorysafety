@@ -18,12 +18,12 @@ python3 evaluation/earned-trust/verify_attestations.py \
   --campaign evaluation/earned-trust/MANIFEST.json --controls
 ```
 
-3. Timestamp verification over the exact closure digest `226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33`:
+3. Timestamp verification over the exact closure digest `d26e19bdf4515d1302ad724119eb2f4ff8f4f6d7a2544d949be0a6470613ee59`:
 
 ```sh
 python3 evaluation/earned-trust/verify_time.py \
   --token evaluation/earned-trust/time/token.tsr \
-  --imprint 226e2e9070b99d5e0563d28245cbab926cd0549484c05ef4295dd57590493b33 \
+  --imprint d26e19bdf4515d1302ad724119eb2f4ff8f4f6d7a2544d949be0a6470613ee59 \
   --tsa-cert evaluation/earned-trust/time/tsa-ca.pem \
   --policy-oid 1.3.6.1.4.1.99999.1 --controls
 ```
@@ -51,5 +51,5 @@ python3 evaluation/earned-trust/verify_transparency.py \
   --dir evaluation/earned-trust/transparency --controls
 ```
 
-Knowledge horizon: Unix `1795336442`. This archive is not an external anchor,
+Knowledge horizon: Unix `1795342701`. This archive is not an external anchor,
 not a public transparency log, and not proof that the evidence is true.

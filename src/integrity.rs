@@ -514,6 +514,45 @@ impl IntegrityReport {
         }
     }
 
+    /// Parse and validate an integrity report from canonical JSON bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IntegrityError`] for invalid JSON, schema mismatch, missing
+    /// claim ceiling, missing or invalid population, duplicate dimensions,
+    /// byte-identity across differing digests, semantic equivalence without
+    /// justification, or a refusal without detail.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, IntegrityError> {
+        let value = crate::identity::parse_strict(bytes)?;
+        let report: Self =
+            serde_json::from_value(value).map_err(|error| IntegrityError::Invalid {
+                message: error.to_string(),
+            })?;
+        report.validate()?;
+        Ok(report)
+    }
+
+    /// Human-readable status label: "established" when at least one dimension
+    /// is established and the population is complete, otherwise "refused".
+    #[must_use]
+    pub fn status_label(&self) -> &str {
+        if self.established_dimensions().is_empty() || self.population.is_none() {
+            "refused"
+        } else {
+            "established"
+        }
+    }
+
+    /// Exit status per SPEC.md §14: 0 when established, 4 when refused.
+    #[must_use]
+    pub fn exit_code(&self) -> i32 {
+        if self.status_label() == "established" {
+            0
+        } else {
+            4
+        }
+    }
+
     /// The dimensions currently marked `Established`.
     ///
     /// A `NotRun` dimension is never included.

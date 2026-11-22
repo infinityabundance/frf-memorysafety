@@ -1188,6 +1188,9 @@ fn command_etp(rest: &[String]) -> i32 {
         Some("sarif") => command_etp_sarif(&rest[1..]),
         Some("attest") => command_etp_attest(&rest[1..]),
         Some("time") => command_etp_time(&rest[1..]),
+        Some("integrity") => command_etp_integrity(&rest[1..]),
+        Some("reproducibility") => command_etp_reproducibility_verify(&rest[1..]),
+        Some("population") => command_etp_population_verify(&rest[1..]),
         Some("revocation") => command_etp_revocation(&rest[1..]),
         Some("archive") => command_etp_archive(&rest[1..]),
         Some("transparency") => command_etp_transparency(&rest[1..]),
@@ -1342,6 +1345,231 @@ fn command_etp_attest_verify(rest: &[String]) -> i32 {
         }
     } else {
         print_attestation_report(&report);
+    }
+    report.exit_code()
+}
+
+fn command_etp_integrity(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_integrity_verify(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp integrity verify FILE [--json] | etp reproducibility verify FILE [--json] | etp population verify FILE [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_integrity_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp integrity verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("etp integrity verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                path = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("etp integrity verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(&path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::integrity::IntegrityReport::from_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("integrity: {}", report.status_label());
+        println!("schema: {}", report.schema);
+        println!("spec: {}", report.spec);
+        println!("artifact binary sha256: {}", report.artifact.binary_sha256);
+        println!("artifact binary size: {}", report.artifact.binary_size);
+        println!("dimensions: {}", report.dimensions.len());
+        for assessment in &report.dimensions {
+            println!(
+                "  {}: {}",
+                assessment.dimension.as_str(),
+                assessment.status.as_str()
+            );
+        }
+        match &report.population {
+            Some(population) => {
+                println!("population: complete ({} cases)", population.count);
+            }
+            None => {
+                println!("population: missing");
+            }
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_reproducibility_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp reproducibility verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("etp reproducibility verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                path = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("etp reproducibility verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(&path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::integrity::IntegrityReport::from_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("reproducibility: {}", report.status_label());
+        println!("schema: {}", report.schema);
+        println!("spec: {}", report.spec);
+        println!("artifact binary sha256: {}", report.artifact.binary_sha256);
+        println!("artifact binary size: {}", report.artifact.binary_size);
+        println!("dimensions: {}", report.dimensions.len());
+        for assessment in &report.dimensions {
+            println!(
+                "  {}: {}",
+                assessment.dimension.as_str(),
+                assessment.status.as_str()
+            );
+        }
+        match &report.population {
+            Some(population) => {
+                println!("population: complete ({} cases)", population.count);
+            }
+            None => {
+                println!("population: missing");
+            }
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_population_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp population verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("etp population verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                path = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("etp population verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(&path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::integrity::IntegrityReport::from_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("population: {}", report.status_label());
+        println!("schema: {}", report.schema);
+        println!("spec: {}", report.spec);
+        match &report.population {
+            Some(population) => {
+                println!("population: complete ({} cases)", population.count);
+                println!("manifest digest: {}", population.manifest_digest);
+            }
+            None => {
+                println!("population: missing");
+            }
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
     }
     report.exit_code()
 }
