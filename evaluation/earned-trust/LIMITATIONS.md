@@ -2,9 +2,19 @@
 
 **Campaign:** `frf-etp-native-fixtures-2026-11-22`
 **Opening SHA-256:**
-`2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236`
+`fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec`
 **Closure SHA-256:**
-`fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`
+`607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912`
+
+**Phase 10.3 amendment.** The Phase 10.2 opening digest was
+`2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and its
+closure digest was
+`fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`. Phase
+10.3 re-froze the opening manifest as an explicitly separated instrument change
+(the attestation dependency and new source) and re-executed the same 13-case
+population. The case population, expected outcomes, acceptance policy, receipt
+contents, accepted cases, retained findings, resource envelope, and claim
+ceiling are unchanged. The original bytes remain at commit `f17111d`.
 
 This ledger states what the campaign does not establish. It is part of the
 evidence, not a caveat added after the result.
@@ -57,9 +67,11 @@ evidence, not a caveat added after the result.
 - An actor who can rewrite the opening manifest, every receipt, the raw evidence,
   the SARIF projection, and the verifier can produce a self-consistent
   alternative set. The committed digests do not prevent that.
-- No DSSE envelope, in-toto/SLSA attestation, Sigstore signature, Rekor/C2SP
-  inclusion or consistency proof, RFC 3161 timestamp, or TUF metadata exists.
-  These remain `NOT_RUN` or specified-not-deployed.
+- No Sigstore signature, Rekor/C2SP inclusion or consistency proof, RFC 3161
+  timestamp, or TUF metadata exists. Phase 10.3 adds a separate test-only
+  DSSE/in-toto attestation of the closure; it uses a discarded ephemeral key,
+  confers no independent review, and does not authenticate the campaign's
+  receipts or raw evidence. These remain `NOT_RUN` or specified-not-deployed.
 - The SARIF projection is a report. A GitHub code-scanning view or any external
   SARIF consumer is not authoritative.
 
@@ -106,7 +118,7 @@ export/verification, and independent reconstruction in hardened containers.
 `./ci/gate.sh` runs formatting, clippy with `-D warnings`, debug tests, and
 release tests. Neither gate runs `cargo`, `rustc`, or a test on the host.
 
-The repository's administrative owner controls the gate, the keys (none are
-used), and publication. Administrative control is not technical assurance. AI
-agreement is not independent confirmation. A passing validator is not a
-certification.
+The repository's administrative owner controls the gate, the keys, and
+publication. Phase 10.3 uses a discarded test-only ephemeral key; no production
+key exists. Administrative control is not technical assurance. AI agreement is
+not independent confirmation. A passing validator is not a certification.

@@ -4,10 +4,21 @@
 **Campaign identifier:** `frf-etp-native-fixtures-2026-11-22`
 **Frozen:** 2026-11-22, before the committed campaign execution.
 **Frozen protocol manifest:** [`protocol.json`](protocol.json)
-**Frozen SHA-256:** `2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236`
+**Frozen SHA-256:** `fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec`
 **Companion freeze record:** [`opening.sha256`](opening.sha256)
-**Candidate tree SHA-256:** `951a51ee72d1b0eaf69927ca17b6a2def73d5879e070cbd705b983321a3d6546`
-**Instrument tree SHA-256:** `a907e09ef3bf426a1e178eb86984f6aa5df09635c88d6252506df0b8dd53b67c`
+**Candidate tree SHA-256:** `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746`
+**Instrument tree SHA-256:** `e0264527e0dfb79e0d30967a8605784b383c0e12c8cdd94f8764457d9370d3ec`
+
+**Phase 10.3 amendment.** The Phase 10.2 opening digest was
+`2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and its
+candidate and instrument trees were
+`951a51ee72d1b0eaf69927ca17b6a2def73d5879e070cbd705b983321a3d6546` and
+`a907e09ef3bf426a1e178eb86984f6aa5df09635c88d6252506df0b8dd53b67c`. Phase
+10.3 re-froze the opening manifest as an explicitly separated instrument change
+(the attestation dependency and new source) and re-executed the same 13-case
+population. The population, expected terminal outcomes, requirements,
+obligations, mutation controls, resource envelope, acceptance policy, and claim
+ceiling are unchanged. The original bytes remain at commit `f17111d`.
 
 The machine-readable protocol is authoritative for the case population,
 requirements, obligations, expected terminal outcomes, mandatory-resolution

@@ -49,6 +49,7 @@ INSTRUMENT_PATHS = [
     "src/court.rs",
     "src/native.rs",
     "src/identity.rs",
+    "src/etp_auth.rs",
     "src/etp_campaign.rs",
     "src/sarif.rs",
     "src/cli.rs",

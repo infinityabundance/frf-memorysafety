@@ -22,7 +22,7 @@
     "files": [
       {
         "path": "Cargo.toml",
-        "sha256": "c8eabb9a86c3722fb6860dd4892c6006891f0d3d8964621b59c13cd38cbc2ba3"
+        "sha256": "51c2c6751a6f1ba5d4001cf122072af80540792e301d82bf79d17ee1e251a160"
       },
       {
         "path": "rust-toolchain.toml",
@@ -94,7 +94,7 @@
       }
     ],
     "id": "frf-memorysafety-native-fixtures",
-    "tree_sha256": "951a51ee72d1b0eaf69927ca17b6a2def73d5879e070cbd705b983321a3d6546",
+    "tree_sha256": "7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746",
     "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1",
     "version": "1.0.0"
   },
@@ -127,7 +127,7 @@
     "files": [
       {
         "path": "Cargo.toml",
-        "sha256": "c8eabb9a86c3722fb6860dd4892c6006891f0d3d8964621b59c13cd38cbc2ba3"
+        "sha256": "51c2c6751a6f1ba5d4001cf122072af80540792e301d82bf79d17ee1e251a160"
       },
       {
         "path": "rust-toolchain.toml",
@@ -146,6 +146,10 @@
         "sha256": "24009a1f2415244d660b5be52fb868bd18b6d186fbfbc8fcb513faa242e4e6bd"
       },
       {
+        "path": "src/etp_auth.rs",
+        "sha256": "ecc484eecae2a5188d0b7497bfd383fc8ddfd8cb9d777db183833a59bb2125d0"
+      },
+      {
         "path": "src/etp_campaign.rs",
         "sha256": "bbe27563cd61371312031c24ffeb150df0539e8f6c7d5c1e8d5abdb5eb521f50"
       },
@@ -155,11 +159,11 @@
       },
       {
         "path": "src/cli.rs",
-        "sha256": "74b67d3b7c93fe8268fea8b449a2eda85f207175eb1d662e671a32f3acbda0c3"
+        "sha256": "2fed0d353ef7be997bd670dced27d6b0f0b98d0a916dde880c8b5eb0c1f52537"
       },
       {
         "path": "src/lib.rs",
-        "sha256": "702a81e82e9430ff2e2a0e5f77f673d2ce7eb79cf7f7e92fbefb8d20b92ee15d"
+        "sha256": "55a3a71dbc0366b60986c609e23370bc4bbd0a1c5d0ffadde3806c5225aa08df"
       },
       {
         "path": "src/main.rs",
@@ -174,7 +178,7 @@
       "prlimit",
       "ld"
     ],
-    "tree_sha256": "a907e09ef3bf426a1e178eb86984f6aa5df09635c88d6252506df0b8dd53b67c",
+    "tree_sha256": "e0264527e0dfb79e0d30967a8605784b383c0e12c8cdd94f8764457d9370d3ec",
     "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1"
   },
   "mutation_controls": [
