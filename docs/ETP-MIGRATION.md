@@ -1,0 +1,244 @@
+# ETP migration and versioning policy
+
+**Policy identifier:** `frf-etp-v1` migration policy.
+**Applies to:** `schemas/etp/`, `src/etp.rs`, `docs/ETP-*.md`, and every future
+ETP consumer.
+**Frozen baseline:** FRF-MemorySafety 1.0.0, commit
+`02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab`.
+
+---
+
+## 1. Non-negotiable principles
+
+1. **Existing evidence keeps its original meaning.** A 1.0.0 receipt, manifest,
+   claim, verdict, report, transcript, provider identity, or schema token is
+   interpreted exactly as it was at 1.0.0. No ETP document redefines it.
+2. **No retroactive strengthening.** A later version cannot relabel a finite
+   result as universal, a model as native, a digest as authentication, a review
+   as an independent audit, or a passing gate as certification.
+3. **New schemas are versioned and additive.** A new meaning is a new schema
+   identifier, a new specification identifier, and new evidence.
+4. **Policy, predicate, and identity domains stay explicit.** Reusing a name is
+   not reusing a meaning.
+5. **`research/` remains excluded.** It is gitignored and is not an ETP input,
+   output, evidence source, or migration target.
+6. **No silent deletion.** A deprecated schema or vector remains readable and
+   documented until a declared removal version.
+
+## 2. Version grammar
+
+ETP uses two identifiers in every wire object.
+
+```text
+schema = frf-etp.<object>.v<N>
+spec   = frf-etp-v<N>
+```
+
+For `v1`:
+
+```text
+frf-etp.manifest.v1
+frf-etp.claim.v1
+frf-etp.obligation-inventory.v1
+frf-etp.status-dimensions.v1
+frf-etp.validation-report.v1
+frf-etp.freeze.v1
+frf-etp.version-registry.v1
+frf-etp.vector-index.v1
+```
+
+Rules:
+
+- `<N>` is a **major** version. A reader that does not know `<N>` must reject
+  the document. It must not attempt a best-effort decode.
+- Adding, removing, renaming, or re-typing a required field is a major change.
+- Adding an optional field with a default is still a major change in this policy,
+  because every object uses `additionalProperties: false`. A new field is a new
+  schema version.
+- Changing an enum value is a major change.
+- Changing only prose in a document is not a schema change, but it must not
+  alter the meaning of an existing field.
+- A patch or editorial release may update a conformance vector only when the
+  vector's expected outcome is unchanged. The registry SHA-256 changes; the
+  registry entry is updated in the same commit.
+
+A consumer must reject:
+
+- an unknown `<N>`;
+- an unknown `spec`;
+- a known schema with an unknown field;
+- a `v1` document that omits a required field;
+- a `v1` document that contains a scalar confidence, score, assurance level, or
+  rating field.
+
+## 3. Compatibility matrix
+
+| Producer | Consumer | Rule |
+|---|---|---|
+| `v1` | `v1` | Accept exactly the declared schema and semantics |
+| `v1` | `v2` | `v2` may read `v1` only through a named, documented migration; it must not silently reinterpret |
+| `v2` | `v1` | Refuse; a `v1` reader must not guess `v2` semantics |
+| unknown | any | Refuse |
+
+A migration function, if one is ever added, must:
+
+- be separate from the validator;
+- name the source and target schemas;
+- preserve every existing coordinate and dimension;
+- never add a stronger property;
+- never discard contradictory evidence;
+- never convert an unresolved premise into a resolved one;
+- be covered by vectors for both success and refusal.
+
+## 4. Domains and identities
+
+The following domains are distinct and are never collapsed:
+
+| Domain | 1.0.0 identity | ETP v1 treatment |
+|---|---|---|
+| Policy | `MS/POLICY/v1` and policy version | `policy_identity` text; policy version explicit |
+| Predicate / acceptance rule | finite-profile rule identity | `semantic_model` and `policy_identity`; no new hash domain |
+| Subject | `MS/SUBJECT/v1` | `subject_identity` text; unchanged meaning |
+| Source | source digest in source inventory | `source_identity` text |
+| Build | toolchain, flags, image, build recipe | `build_identity` text |
+| Artifact | executable, DSO, package, evidence bytes | `artifact_identity` text |
+| Runtime | environment, loader, resource envelope | `runtime_environment` text |
+| Provider object | FRF receipt, FRF-Fuzz finding, Gemel GID | opaque reference in `supporting_evidence`; never rehashed |
+| ETP claim | none in v1 | manifest-local `id`; no cryptographic claim identity |
+
+A hash match is not an authentication statement. An ETP `digest` field binds
+bytes; it does not assert origin, truth, or independence.
+
+## 5. 1.0.0 freeze
+
+The 1.0.0 evidence set is frozen in
+`schemas/etp/etp-freeze-1.0.0.json`. The freeze records:
+
+- release `1.0.0`, tag `v1.0.0`, commit
+  `02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab`;
+- SHA-256 for every frozen evidence and phase document;
+- the 60-receipt aggregate and the receipt manifest digest;
+- an evidence-root digest of
+  `508b495b56b28cb9d674094f21dd89153b28905d61fdf9ac227ea3ff1eac6d74`.
+
+The root algorithm is recorded in the freeze file. The Rust validator requires
+every `frf-etp.manifest.v1` baseline to match these exact values. A future
+baseline requires a new manifest schema version.
+
+The freeze does **not** cover mutable release documents such as `README.md`,
+`CHANGELOG.md`, or future ETP phase documents. Those may change without
+changing the 1.0.0 evidence meaning. The freeze does cover `SPEC.md`,
+`PAPER.md`, the evaluation ledgers, the protocol, the receipt manifest, and the
+fifteen phase documents.
+
+The freeze is not authentication. It detects accidental or silent edits to the
+declared bytes. A party that can rewrite the freeze, the registry, and all
+referenced bytes can produce a self-consistent alternative set. Authenticating
+the freeze requires a future signature, transparency log, or external anchor.
+
+## 6. What may change in a later ETP version
+
+A later major version may add:
+
+- new properties, with a new accepting rule and evidence;
+- new dimensions, while keeping the original ten separate;
+- new contradiction classes or resolution states;
+- a cryptographic claim identity;
+- campaign-closure, adjudication, and revocation schemas;
+- authenticated evidence envelopes and transparency proofs;
+- timing, interoperability, and deployment-scope evidence;
+- a new frozen baseline.
+
+A later major version may **not**:
+
+- reinterpret a 1.0.0 receipt or schema token;
+- treat a digest as authentication;
+- treat a signature as truth;
+- treat transparency inclusion as completeness;
+- treat consistency as global non-equivocation;
+- treat multiple signatures as independent reviewers;
+- treat reviewer approval as code review;
+- treat a trusted timestamp as experimental authenticity;
+- treat evidence commitment as availability;
+- treat historical validity as present authorization;
+- treat an unresolved obligation as discharged by relabeling;
+- collapse the ten dimensions into one score or grade;
+- remove a retained contradiction;
+- add a universal accepting rule without new evidence and a new gate record.
+
+## 7. Deprecation and removal
+
+1. A schema is deprecated only by a named document that states the replacement
+   schema identifier and the first release in which the old schema is no longer
+   accepted.
+2. Deprecated schemas remain in `schemas/etp/` with their original bytes and
+   registry entries until removal.
+3. Removal requires:
+   - a major version change;
+   - a migration note in this document;
+   - a vector showing that the removed schema is refused;
+   - an update to the registry and the freeze, if a frozen artifact is affected.
+4. No deprecation may retroactively change the meaning of evidence produced under
+   the deprecated schema.
+
+## 8. Change-control procedure
+
+Every ETP schema or validator change must include:
+
+1. a new or updated schema file with `$id`, `$schema`, and
+   `additionalProperties: false`;
+2. a version bump if any required field, enum, or meaning changes;
+3. new or updated conformance vectors;
+4. `schemas/etp/registry.json` SHA-256 updates;
+5. a freeze update only if the frozen 1.0.0 evidence is intentionally changed
+   (it must not be, in a non-major migration);
+6. a migration note in this document;
+7. Rust unit and integration tests;
+8. `./ci/gate.sh` with formatting, clippy `-D warnings`, debug tests, and release
+   tests;
+9. no deletion or weakening of an existing test;
+10. no change to `research/`.
+
+## 9. What Phase 10.1 adds and does not migrate
+
+Phase 10.1 adds:
+
+- `frf-etp.manifest.v1`;
+- `frf-etp.claim.v1`;
+- `frf-etp.obligation-inventory.v1`;
+- `frf-etp.status-dimensions.v1`;
+- the validation report;
+- the freeze and registry;
+- the claim-integrity, trust-gap, standards, and migration documents;
+- `AGENTS.md`.
+
+Phase 10.1 does not migrate:
+
+- any 1.0.0 receipt or claim into an ETP claim record automatically;
+- any provider object into an ETP identity;
+- any finite result into a universal result;
+- any digest into authentication;
+- `research/` into the repository;
+- the crate version.
+
+## 10. Rollback
+
+A manifest, vector, registry, or freeze change can be rolled back by reverting
+the commit. Rollback must restore the previous schema bytes, vector bytes,
+registry digests, and validator behavior together. A partial rollback that
+leaves a registry digest pointing at different bytes is an integrity failure and
+must be rejected by the gate.
+
+## 11. Non-claims
+
+This policy does not claim that:
+
+- ETP v1 is complete;
+- the registry is authenticated;
+- the freeze is externally anchored;
+- a migration is semantically sound merely because it validates;
+- a future version will be backward compatible in every direction;
+- `research/` will ever be included.
+
+The policy is a constraint on future changes, not evidence that the current
+system is trustworthy.
