@@ -1,0 +1,193 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-time-verification.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "backdating": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "enum": [
+            "not_requested",
+            "declared_precedes_timestamp",
+            "declared_equals_timestamp",
+            "declared_follows_timestamp"
+          ]
+        },
+        "declared_execution_unix": {
+          "type": ["integer", "null"]
+        },
+        "detail": { "type": "string" },
+        "execution_time_established": { "const": false },
+        "gen_time_unix": { "type": ["integer", "null"] }
+      },
+      "required": [
+        "declared_execution_unix",
+        "gen_time_unix",
+        "classification",
+        "execution_time_established",
+        "detail"
+      ],
+      "type": "object"
+    },
+    "claim_ceiling": { "minLength": 1, "type": "string" },
+    "dimensions": {
+      "additionalProperties": false,
+      "properties": {
+        "certificate_pin": { "$ref": "#/$defs/dimension" },
+        "gen_time": { "$ref": "#/$defs/dimension" },
+        "hash_algorithm": { "$ref": "#/$defs/dimension" },
+        "imprint": { "$ref": "#/$defs/dimension" },
+        "policy_oid": { "$ref": "#/$defs/dimension" },
+        "signature_chain": { "$ref": "#/$defs/dimension" },
+        "token_integrity": { "$ref": "#/$defs/dimension" }
+      },
+      "required": [
+        "token_integrity",
+        "imprint",
+        "hash_algorithm",
+        "signature_chain",
+        "policy_oid",
+        "certificate_pin",
+        "gen_time"
+      ],
+      "type": "object"
+    },
+    "execution_time_established": { "const": false },
+    "external_trust": { "const": false },
+    "expected_policy_oid": { "type": ["string", "null"] },
+    "gen_time_text": { "type": ["string", "null"] },
+    "gen_time_unix": { "type": ["integer", "null"] },
+    "gen_time_relation": {
+      "enum": ["historical", "current", "future", "unparsed"]
+    },
+    "accuracy": { "type": ["string", "null"] },
+    "hash_algorithm": { "type": ["string", "null"] },
+    "imprint_expected": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+    "imprint_in_token": { "type": ["string", "null"] },
+    "limitations": { "items": { "type": "string" }, "type": "array" },
+    "ordering": { "type": ["string", "null"] },
+    "pinned_certificate": { "type": "boolean" },
+    "policy_oid": { "type": ["string", "null"] },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "argv": { "items": { "type": "string" }, "type": "array" },
+        "duration_ms": { "type": "integer" },
+        "openssl_version": { "type": "string" },
+        "program": { "type": "string" },
+        "return_code": { "type": "integer" },
+        "stderr_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+        "stdout_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+        "work_directory": { "type": "string" }
+      },
+      "required": [
+        "program",
+        "openssl_version",
+        "argv",
+        "work_directory",
+        "duration_ms",
+        "return_code",
+        "stdout_sha256",
+        "stderr_sha256"
+      ],
+      "type": "object"
+    },
+    "refusals": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": { "type": "string" },
+          "detail": { "type": "string" }
+        },
+        "required": ["code", "detail"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "request_sha256": { "type": ["string", "null"] },
+    "schema": { "const": "frf-etp.time-verification.v1" },
+    "serial": { "type": ["string", "null"] },
+    "spec": { "const": "frf-etp-v1" },
+    "status": { "enum": ["verified", "refused"] },
+    "time_dimensions": {
+      "additionalProperties": false,
+      "properties": {
+        "correction_revocation": { "$ref": "#/$defs/temporal" },
+        "evidence_production": { "$ref": "#/$defs/temporal" },
+        "experimental_execution": { "$ref": "#/$defs/temporal" },
+        "release_authorization": { "$ref": "#/$defs/temporal" },
+        "source_creation": { "$ref": "#/$defs/temporal" },
+        "statement_authentication": { "$ref": "#/$defs/temporal" },
+        "transparency_inclusion": { "$ref": "#/$defs/temporal" },
+        "trusted_timestamping": { "$ref": "#/$defs/temporal" },
+        "witness_observation": { "$ref": "#/$defs/temporal" }
+      },
+      "required": [
+        "source_creation",
+        "experimental_execution",
+        "evidence_production",
+        "statement_authentication",
+        "trusted_timestamping",
+        "transparency_inclusion",
+        "witness_observation",
+        "release_authorization",
+        "correction_revocation"
+      ],
+      "type": "object"
+    },
+    "token_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+    "trust_domain": { "type": "string" },
+    "trusted_time_establishes": { "type": "string" },
+    "tsa_cert_dates": { "type": ["string", "null"] },
+    "tsa_cert_sha256": { "type": ["string", "null"] },
+    "tsa_cert_subject": { "type": ["string", "null"] },
+    "tsa_name": { "type": ["string", "null"] },
+    "unsupported_features": { "items": { "type": "string" }, "type": "array" }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "status",
+    "token_sha256",
+    "request_sha256",
+    "imprint_expected",
+    "imprint_in_token",
+    "hash_algorithm",
+    "policy_oid",
+    "expected_policy_oid",
+    "serial",
+    "gen_time_unix",
+    "gen_time_text",
+    "gen_time_relation",
+    "accuracy",
+    "ordering",
+    "tsa_name",
+    "tsa_cert_sha256",
+    "tsa_cert_subject",
+    "tsa_cert_dates",
+    "trust_domain",
+    "external_trust",
+    "pinned_certificate",
+    "dimensions",
+    "time_dimensions",
+    "execution_time_established",
+    "trusted_time_establishes",
+    "backdating",
+    "provenance",
+    "refusals",
+    "unsupported_features",
+    "limitations",
+    "claim_ceiling"
+  ],
+  "title": "ETP RFC 3161 time verification report v1",
+  "type": "object",
+  "$defs": {
+    "dimension": {
+      "enum": ["valid", "invalid", "partial", "not_checked", "not_applicable"]
+    },
+    "temporal": {
+      "enum": ["observed", "not_observed", "not_implemented"]
+    }
+  }
+}

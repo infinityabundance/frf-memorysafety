@@ -1,0 +1,50 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-archive-verification.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "archive_id": { "type": "string" },
+    "archive_root": { "type": "string" },
+    "claim_ceiling": { "minLength": 1, "type": "string" },
+    "knowledge_horizon_unix": { "minimum": 0, "type": "integer" },
+    "missing_required_categories": {
+      "items": { "type": "string" },
+      "type": "array"
+    },
+    "non_claims": { "items": { "type": "string" }, "type": "array" },
+    "object_count": { "minimum": 0, "type": "integer" },
+    "problems": { "items": { "type": "object" }, "type": "array" },
+    "reconstruction": { "type": "object" },
+    "refusals": { "items": { "type": "object" }, "type": "array" },
+    "required_categories": { "items": { "type": "string" }, "type": "array" },
+    "schema": { "const": "frf-etp.archive-verification.v1" },
+    "spec": { "const": "frf-etp-v1" },
+    "status": {
+      "enum": ["verified", "refused", "integrity_failure"]
+    },
+    "unlisted_objects": { "items": { "type": "string" }, "type": "array" },
+    "unsupported_features": { "items": { "type": "string" }, "type": "array" },
+    "verified_objects": { "minimum": 0, "type": "integer" }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "status",
+    "archive_id",
+    "archive_root",
+    "object_count",
+    "verified_objects",
+    "knowledge_horizon_unix",
+    "required_categories",
+    "missing_required_categories",
+    "problems",
+    "unlisted_objects",
+    "reconstruction",
+    "refusals",
+    "unsupported_features",
+    "non_claims",
+    "claim_ceiling"
+  ],
+  "title": "ETP durable offline archive verification report v1",
+  "type": "object"
+}

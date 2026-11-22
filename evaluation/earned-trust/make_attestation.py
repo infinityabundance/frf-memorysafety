@@ -359,6 +359,41 @@ def build_policy(public_key_base64: str, keyid: str, actor: str) -> dict[str, ob
     }
 
 
+def build_policy_from_base(
+    base: dict[str, object], public_key_base64: str, keyid: str, actor: str
+) -> dict[str, object]:
+    """Replace only the evidence-producer key and preserve every other role.
+
+    Adding or replacing a test key is a substantive policy change, so the
+    version is incremented. Other role keys, scopes, thresholds, and validity
+    windows are preserved byte-for-byte after JSON normalization.
+    """
+    if base.get("schema") != POLICY_SCHEMA:
+        fail("base policy schema is not frf-etp.trust-policy.v1")
+    if base.get("spec") != SPEC:
+        fail("base policy spec is not frf-etp-v1")
+    roles = base.get("roles")
+    if not isinstance(roles, list):
+        fail("base policy has no roles list")
+    policy = json.loads(json.dumps(base))
+    test_key = {
+        "keyid": keyid,
+        "algorithm": "ed25519",
+        "public_key_base64": public_key_base64,
+        "actor": actor,
+        "not_before_unix": base.get("issued_at_unix"),
+        "not_after_unix": base.get("expires_at_unix"),
+    }
+    for role in policy["roles"]:
+        if isinstance(role, dict) and role.get("id") == "evidence_producer":
+            role["keys"] = [test_key]
+            break
+    else:
+        fail("base policy has no evidence_producer role")
+    policy["version"] = int(policy.get("version", 1)) + 1
+    return policy
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -383,6 +418,11 @@ def main() -> int:
     )
     parser.add_argument("--keyid", default="frf-etp-test-ephemeral-2026-11-22")
     parser.add_argument("--actor", default="test-only-ephemeral-evidence-producer")
+    parser.add_argument(
+        "--base-policy",
+        default=None,
+        help="preserve every role except the replaced evidence-producer key",
+    )
     args = parser.parse_args()
 
     campaign_path = Path(args.campaign)
@@ -399,7 +439,15 @@ def main() -> int:
         signature = sign(private_key, message, key_dir)
         pem = public_pem(private_key, key_dir)
         public_key_base64 = base64.b64encode(raw_public_key).decode("ascii")
-        policy = build_policy(public_key_base64, args.keyid, args.actor)
+        if args.base_policy:
+            base = json.loads(Path(args.base_policy).read_text())
+            if not isinstance(base, dict):
+                fail("base policy must be a JSON object")
+            policy = build_policy_from_base(
+                base, public_key_base64, args.keyid, args.actor
+            )
+        else:
+            policy = build_policy(public_key_base64, args.keyid, args.actor)
         envelope = {
             "payloadType": PAYLOAD_TYPE,
             "payload": base64.b64encode(payload).decode("ascii"),

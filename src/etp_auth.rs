@@ -210,7 +210,7 @@ impl PredicateKind {
 }
 
 /// A DSSE v1 signature entry.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DsseSignatureEnvelope {
     /// Lookup hint for the signing key. Not an authorization statement.
@@ -220,7 +220,7 @@ pub struct DsseSignatureEnvelope {
 }
 
 /// A DSSE v1 envelope.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DsseEnvelope {
     /// Media type of the payload.
@@ -417,7 +417,7 @@ impl TrustPolicy {
 }
 
 /// One separate verification dimension.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DimensionState {
     /// The dimension was checked and holds.
@@ -800,15 +800,33 @@ fn check_text(label: &str, value: &str, limit: usize) -> Result<(), EtpAuthError
 /// an unsupported payload type, an excessive signature count, a duplicate
 /// `keyid`, malformed base64, or an oversized payload.
 pub fn parse_envelope(bytes: &[u8]) -> Result<DsseEnvelope, EtpAuthError> {
+    parse_envelope_for(bytes, DSSE_PAYLOAD_TYPE)
+}
+
+/// Parse a DSSE envelope that must carry `expected_payload_type`.
+///
+/// This is the same strict parser as [`parse_envelope`] with an explicit
+/// payload-type check. It is used by the Phase 10.4 revocation profile, which
+/// signs a different payload type with the same DSSE v1 encoding.
+///
+/// # Errors
+///
+/// Returns [`EtpAuthError`] for malformed JSON, duplicate keys, unknown fields,
+/// an unsupported payload type, an excessive signature count, a duplicate
+/// `keyid`, malformed base64, or an oversized payload.
+pub fn parse_envelope_for(
+    bytes: &[u8],
+    expected_payload_type: &str,
+) -> Result<DsseEnvelope, EtpAuthError> {
     let value = parse_strict(bytes)?;
     let envelope: DsseEnvelope =
         serde_json::from_value(value).map_err(|error| EtpAuthError::Invalid {
             message: error.to_string(),
         })?;
-    if envelope.payload_type != DSSE_PAYLOAD_TYPE {
+    if envelope.payload_type != expected_payload_type {
         return Err(EtpAuthError::Unsupported {
             message: format!(
-                "payloadType {:?} is not {DSSE_PAYLOAD_TYPE}",
+                "payloadType {:?} is not {expected_payload_type}",
                 envelope.payload_type
             ),
         });

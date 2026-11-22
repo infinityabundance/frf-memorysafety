@@ -1,0 +1,44 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-revocation-plan.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "action": { "enum": ["revoke", "correct", "dissent"] },
+          "claim_id": { "minLength": 1, "type": "string" },
+          "corrects_entry_id": { "type": ["string", "null"] },
+          "effective_at_unix": { "minimum": 0, "type": "integer" },
+          "entry_id": { "minLength": 1, "type": "string" },
+          "evidence_ids": { "items": { "type": "string" }, "type": "array" },
+          "historical_replay": { "type": "string" },
+          "reason": { "minLength": 1, "type": "string" },
+          "scope": { "minLength": 1, "type": "string" },
+          "statement": { "type": ["string", "null"] },
+          "subject_identity": { "minLength": 1, "type": "string" }
+        },
+        "required": [
+          "entry_id",
+          "action",
+          "claim_id",
+          "evidence_ids",
+          "reason",
+          "scope",
+          "subject_identity"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "issued_at_unix": { "minimum": 0, "type": "integer" },
+    "registry_id": { "minLength": 1, "type": "string" },
+    "schema": { "const": "frf-etp.revocation-plan.v1" },
+    "spec": { "const": "frf-etp-v1" }
+  },
+  "required": ["schema", "spec", "registry_id", "issued_at_unix", "entries"],
+  "title": "ETP revocation plan v1",
+  "type": "object"
+}

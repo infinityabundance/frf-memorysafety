@@ -1,0 +1,83 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-archive-manifest.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "archive_id": { "minLength": 1, "type": "string" },
+    "claim_ceiling": { "minLength": 1, "type": "string" },
+    "created_at_unix": { "minimum": 0, "type": "integer" },
+    "knowledge_horizon_unix": { "minimum": 0, "type": "integer" },
+    "non_claims": { "items": { "type": "string" }, "type": "array" },
+    "objects": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "applicability": { "minLength": 1, "type": "string" },
+          "category": { "minLength": 1, "type": "string" },
+          "observed_at_unix": { "minimum": 0, "type": "integer" },
+          "path": { "minLength": 1, "type": "string" },
+          "required": { "type": "boolean" },
+          "schema": { "minLength": 1, "type": "string" },
+          "sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+          "size": { "minimum": 0, "type": "integer" }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "size",
+          "schema",
+          "category",
+          "applicability",
+          "required",
+          "observed_at_unix"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "reconstruction": {
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "argv": { "items": { "type": "string" }, "minItems": 1, "type": "array" },
+              "purpose": { "minLength": 1, "type": "string" },
+              "requires": { "items": { "type": "string" }, "type": "array" },
+              "working_directory": { "minLength": 1, "type": "string" }
+            },
+            "required": ["purpose", "working_directory", "argv", "requires"],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "input_objects": { "items": { "type": "string" }, "type": "array" },
+        "instructions": { "minLength": 1, "type": "string" }
+      },
+      "required": ["instructions", "commands", "input_objects"],
+      "type": "object"
+    },
+    "required_categories": { "items": { "type": "string" }, "type": "array" },
+    "schema": { "const": "frf-etp.archive-manifest.v1" },
+    "spec": { "const": "frf-etp-v1" },
+    "unsupported_features": { "items": { "type": "string" }, "type": "array" }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "archive_id",
+    "created_at_unix",
+    "knowledge_horizon_unix",
+    "objects",
+    "required_categories",
+    "reconstruction",
+    "unsupported_features",
+    "claim_ceiling",
+    "non_claims"
+  ],
+  "title": "ETP durable offline archive manifest v1",
+  "type": "object"
+}

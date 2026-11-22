@@ -5,6 +5,12 @@
 //! `bridge capture` command is the sole exception: it executes the pinned
 //! provider executables named on its command line to record live evidence.
 
+#![allow(
+    clippy::manual_let_else,
+    clippy::single_match_else,
+    clippy::too_many_lines
+)]
+
 use std::collections::BTreeSet;
 use std::fs;
 use std::io::Write as _;
@@ -93,6 +99,12 @@ Commands:
   etp sarif verify FILE [--json]
   etp sarif export CAMPAIGN [--out FILE]
   etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]
+  etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json]
+  etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json]
+  etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json]
+  etp revocation record SUPPORT --out FILE [--json]
+  etp revocation model --out FILE [--json]
+  etp archive verify ARCHIVE [--json]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -1172,9 +1184,12 @@ fn command_etp(rest: &[String]) -> i32 {
         Some("campaign") => command_etp_campaign(&rest[1..]),
         Some("sarif") => command_etp_sarif(&rest[1..]),
         Some("attest") => command_etp_attest(&rest[1..]),
+        Some("time") => command_etp_time(&rest[1..]),
+        Some("revocation") => command_etp_revocation(&rest[1..]),
+        Some("archive") => command_etp_archive(&rest[1..]),
         _ => {
             eprintln!(
-                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE] | etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE] | etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json] | etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json] | etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json] | etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json] | etp revocation record SUPPORT --out FILE [--json] | etp archive verify ARCHIVE [--json]"
             );
             EXIT_USAGE
         }
@@ -1321,6 +1336,823 @@ fn command_etp_attest_verify(rest: &[String]) -> i32 {
         }
     } else {
         print_attestation_report(&report);
+    }
+    report.exit_code()
+}
+
+fn command_etp_time(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_time_verify(&rest[1..]),
+        Some("stamp") => command_etp_time_stamp(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json] | etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_time_verify(rest: &[String]) -> i32 {
+    let mut token = None;
+    let mut imprint = None;
+    let mut tsa_cert = None;
+    let mut untrusted = None;
+    let mut policy_oid = None;
+    let mut tsa_cert_sha256 = None;
+    let mut trust_domain = None;
+    let mut verify_at = None;
+    let mut now = crate::etp_time::current_unix();
+    let mut declared = None;
+    let mut openssl = PathBuf::from("openssl");
+    let mut work_dir = PathBuf::from("target/etp-time-work");
+    let mut timeout_ms = crate::etp_time::DEFAULT_TIMEOUT_MS;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--imprint" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --imprint requires a value");
+                    return EXIT_USAGE;
+                };
+                imprint = Some(value.clone());
+            }
+            "--tsa-cert" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --tsa-cert requires a path");
+                    return EXIT_USAGE;
+                };
+                tsa_cert = Some(PathBuf::from(value));
+            }
+            "--untrusted" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --untrusted requires a path");
+                    return EXIT_USAGE;
+                };
+                untrusted = Some(PathBuf::from(value));
+            }
+            "--policy-oid" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --policy-oid requires a value");
+                    return EXIT_USAGE;
+                };
+                policy_oid = Some(value.clone());
+            }
+            "--tsa-cert-sha256" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --tsa-cert-sha256 requires a value");
+                    return EXIT_USAGE;
+                };
+                tsa_cert_sha256 = Some(value.clone());
+            }
+            "--trust-domain" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --trust-domain requires a value");
+                    return EXIT_USAGE;
+                };
+                trust_domain = Some(value.clone());
+            }
+            "--verify-at-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --verify-at-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => verify_at = Some(value),
+                    Err(_) => {
+                        eprintln!("etp time verify: --verify-at-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            "--now-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --now-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => now = value,
+                    Err(_) => {
+                        eprintln!("etp time verify: --now-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            "--declared-execution-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --declared-execution-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => declared = Some(value),
+                    Err(_) => {
+                        eprintln!("etp time verify: --declared-execution-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            "--openssl" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --openssl requires a path");
+                    return EXIT_USAGE;
+                };
+                openssl = PathBuf::from(value);
+            }
+            "--work-dir" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --work-dir requires a path");
+                    return EXIT_USAGE;
+                };
+                work_dir = PathBuf::from(value);
+            }
+            "--timeout-ms" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --timeout-ms requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => timeout_ms = value,
+                    Err(_) => {
+                        eprintln!("etp time verify: --timeout-ms must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp time verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if token.is_some() {
+                    eprintln!("etp time verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                token = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(token) = token else {
+        eprintln!("etp time verify: TOKEN is required");
+        return EXIT_USAGE;
+    };
+    let Some(imprint) = imprint else {
+        eprintln!("etp time verify: --imprint is required");
+        return EXIT_USAGE;
+    };
+    let request = crate::etp_time::VerifyTokenRequest {
+        token_path: &token,
+        imprint_hex: &imprint,
+        tsa_cert_path: tsa_cert.as_deref(),
+        untrusted_path: untrusted.as_deref(),
+        expected_policy_oid: policy_oid.as_deref(),
+        expected_tsa_cert_sha256: tsa_cert_sha256.as_deref(),
+        trust_domain: trust_domain.as_deref(),
+        verify_at_unix: verify_at,
+        now_unix: now,
+        declared_execution_unix: declared,
+        openssl_bin: &openssl,
+        work_dir: &work_dir,
+        timeout_ms,
+    };
+    let report = match crate::etp_time::verify_token(&request) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_time_report(&report);
+    }
+    report.exit_code()
+}
+
+fn print_time_report(report: &crate::etp_time::TimeReport) {
+    println!("timestamp: {}", report.status.as_str());
+    println!("token sha256: {}", report.token_sha256);
+    println!("imprint expected: {}", report.imprint_expected);
+    println!(
+        "imprint in token: {}",
+        report.imprint_in_token.as_deref().unwrap_or("unparsed")
+    );
+    println!(
+        "hash algorithm: {}",
+        report.hash_algorithm.as_deref().unwrap_or("unparsed")
+    );
+    println!(
+        "policy oid: {}",
+        report.policy_oid.as_deref().unwrap_or("unparsed")
+    );
+    println!("serial: {}", report.serial.as_deref().unwrap_or("unparsed"));
+    println!(
+        "generation time: {} ({}; {})",
+        report
+            .gen_time_unix
+            .map_or_else(|| "unparsed".to_owned(), |value| value.to_string()),
+        report.gen_time_text.as_deref().unwrap_or("unparsed"),
+        report.gen_time_relation
+    );
+    println!(
+        "dimensions: token={}; imprint={}; hash={}; chain={}; policy={}; pin={}; time={}",
+        report.dimensions.token_integrity.as_str(),
+        report.dimensions.imprint.as_str(),
+        report.dimensions.hash_algorithm.as_str(),
+        report.dimensions.signature_chain.as_str(),
+        report.dimensions.policy_oid.as_str(),
+        report.dimensions.certificate_pin.as_str(),
+        report.dimensions.gen_time.as_str()
+    );
+    println!(
+        "trust domain: {} (external trust: {})",
+        report.trust_domain, report.external_trust
+    );
+    println!(
+        "temporal facts: source_creation={}; experimental_execution={}; evidence_production={}; statement_authentication={}; trusted_timestamping={}; transparency_inclusion={}; witness_observation={}; release_authorization={}; correction_revocation={}",
+        report.time_dimensions.source_creation.as_str(),
+        report.time_dimensions.experimental_execution.as_str(),
+        report.time_dimensions.evidence_production.as_str(),
+        report.time_dimensions.statement_authentication.as_str(),
+        report.time_dimensions.trusted_timestamping.as_str(),
+        report.time_dimensions.transparency_inclusion.as_str(),
+        report.time_dimensions.witness_observation.as_str(),
+        report.time_dimensions.release_authorization.as_str(),
+        report.time_dimensions.correction_revocation.as_str()
+    );
+    println!(
+        "execution time established: {}",
+        report.execution_time_established
+    );
+    println!("backdating: {}", report.backdating.classification.as_str());
+    for refusal in &report.refusals {
+        println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_time_stamp(rest: &[String]) -> i32 {
+    let mut imprint = None;
+    let mut tsa_config = None;
+    let mut out_token = None;
+    let mut out_request = None;
+    let mut tsa_section = None;
+    let mut tsa_cert = None;
+    let mut openssl = PathBuf::from("openssl");
+    let mut work_dir = PathBuf::from("target/etp-time-work");
+    let mut timeout_ms = crate::etp_time::DEFAULT_TIMEOUT_MS;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--imprint" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --imprint requires a value");
+                    return EXIT_USAGE;
+                };
+                imprint = Some(value.clone());
+            }
+            "--tsa-config" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --tsa-config requires a path");
+                    return EXIT_USAGE;
+                };
+                tsa_config = Some(PathBuf::from(value));
+            }
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --out requires a path");
+                    return EXIT_USAGE;
+                };
+                out_token = Some(PathBuf::from(value));
+            }
+            "--request-out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --request-out requires a path");
+                    return EXIT_USAGE;
+                };
+                out_request = Some(PathBuf::from(value));
+            }
+            "--tsa-section" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --tsa-section requires a value");
+                    return EXIT_USAGE;
+                };
+                tsa_section = Some(value.clone());
+            }
+            "--tsa-cert" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --tsa-cert requires a path");
+                    return EXIT_USAGE;
+                };
+                tsa_cert = Some(PathBuf::from(value));
+            }
+            "--openssl" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --openssl requires a path");
+                    return EXIT_USAGE;
+                };
+                openssl = PathBuf::from(value);
+            }
+            "--work-dir" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --work-dir requires a path");
+                    return EXIT_USAGE;
+                };
+                work_dir = PathBuf::from(value);
+            }
+            "--timeout-ms" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --timeout-ms requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => timeout_ms = value,
+                    Err(_) => {
+                        eprintln!("etp time stamp: --timeout-ms must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp time stamp: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                eprintln!("etp time stamp: unexpected argument {value}");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let (Some(imprint), Some(tsa_config), Some(out_token)) = (imprint, tsa_config, out_token)
+    else {
+        eprintln!("etp time stamp: --imprint, --tsa-config, and --out are required");
+        return EXIT_USAGE;
+    };
+    let request = crate::etp_time::StampTokenRequest {
+        imprint_hex: &imprint,
+        tsa_config: &tsa_config,
+        tsa_section: tsa_section.as_deref(),
+        out_token: &out_token,
+        out_request: out_request.as_deref(),
+        tsa_cert_path: tsa_cert.as_deref(),
+        openssl_bin: &openssl,
+        work_dir: &work_dir,
+        timeout_ms,
+    };
+    let report = match crate::etp_time::stamp_token(&request) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("timestamp token: {}", report.status.as_str());
+        println!("imprint: {}", report.imprint);
+        println!("token sha256: {}", report.token_sha256);
+        println!("request sha256: {}", report.request_sha256);
+        println!(
+            "policy oid: {}",
+            report.policy_oid.as_deref().unwrap_or("unparsed")
+        );
+        println!("serial: {}", report.serial.as_deref().unwrap_or("unparsed"));
+        println!(
+            "trust domain: {} (external trust: {})",
+            report.trust_domain, report.external_trust
+        );
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    0
+}
+
+fn command_etp_revocation(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_revocation_verify(&rest[1..]),
+        Some("record") => command_etp_revocation_record(&rest[1..]),
+        Some("model") => command_etp_revocation_model(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json] | etp revocation record SUPPORT --out FILE [--json] | etp revocation model --out FILE [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_revocation_verify(rest: &[String]) -> i32 {
+    let mut registry = None;
+    let mut policy = PathBuf::from("evaluation/earned-trust/trust-policy.json");
+    let mut support = None;
+    let mut historical = None;
+    let mut now = crate::etp_time::current_unix();
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--policy" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --policy requires a path");
+                    return EXIT_USAGE;
+                };
+                policy = PathBuf::from(value);
+            }
+            "--support" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --support requires a path");
+                    return EXIT_USAGE;
+                };
+                support = Some(PathBuf::from(value));
+            }
+            "--historical" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --historical requires a path");
+                    return EXIT_USAGE;
+                };
+                historical = Some(PathBuf::from(value));
+            }
+            "--now-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --now-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => now = value,
+                    Err(_) => {
+                        eprintln!("etp revocation verify: --now-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp revocation verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if registry.is_some() {
+                    eprintln!("etp revocation verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                registry = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(registry) = registry else {
+        eprintln!("etp revocation verify: REGISTRY is required");
+        return EXIT_USAGE;
+    };
+    let report = match crate::etp_revocation::verify_registry_file(
+        &registry,
+        &policy,
+        support.as_deref(),
+        historical.as_deref(),
+        now,
+    ) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("revocation registry: {}", report.status.as_str());
+        println!(
+            "registry: {} ({} entries)",
+            report.registry_id, report.entry_count
+        );
+        println!("registry sha256: {}", report.registry_sha256);
+        println!("policy: {}/{}", report.policy_id, report.policy_version);
+        println!(
+            "dimensions: registry={}; sequence={}; signature={}; authorization={}; freshness={}; historical={}; present={}",
+            report.dimensions.registry_integrity.as_str(),
+            report.dimensions.sequence_integrity.as_str(),
+            report.dimensions.signature_validity.as_str(),
+            report.dimensions.authorization.as_str(),
+            report.dimensions.policy_freshness.as_str(),
+            report.dimensions.historical_replay.as_str(),
+            report.dimensions.present_authorization.as_str()
+        );
+        for signer in &report.signers {
+            println!(
+                "signer {} (entry {}, actor {}): valid={}; authorized={}; current={}; {}",
+                signer.keyid,
+                signer.entry_id,
+                signer.actor.as_deref().unwrap_or("unknown"),
+                signer.signature_valid,
+                signer.authorized,
+                signer.within_validity,
+                signer.detail
+            );
+        }
+        for record in &report.revocations {
+            println!(
+                "revocation {}: claim {} evidence [{}] applied={} historical_replay={}",
+                record.entry_id,
+                record.claim_id,
+                record.evidence_ids.join(","),
+                record.applied,
+                record.historical_replay
+            );
+        }
+        for record in &report.corrections {
+            println!(
+                "correction {}: claim {} retained={}",
+                record.entry_id, record.claim_id, record.retained
+            );
+        }
+        for record in &report.retained_dissent {
+            println!(
+                "retained dissent {}: claim {}",
+                record.entry_id, record.claim_id
+            );
+        }
+        if let Some(support) = &report.support {
+            println!(
+                "support: policy {} v{}; historical verdict valid={}; freshness={}",
+                support.policy_id,
+                support.policy_version,
+                support.historical_verdict_valid,
+                support.present_freshness
+            );
+            for claim in &support.claims {
+                println!(
+                    "claim {}: historical={:?}; present={:?}; admissible={}; alternative={}; revoked evidence [{}]",
+                    claim.claim_id,
+                    claim.historical_state,
+                    claim.present_state,
+                    claim.present_admissible,
+                    claim.alternative_support,
+                    claim.revoked_evidence.join(",")
+                );
+            }
+            println!("invalidated: [{}]", support.invalidated.join(","));
+            println!(
+                "alternative survives: [{}]",
+                support.alternative_survives.join(",")
+            );
+            println!("withheld: [{}]", support.withheld.join(","));
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_revocation_record(rest: &[String]) -> i32 {
+    let mut support = None;
+    let mut out = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation record: --out requires a path");
+                    return EXIT_USAGE;
+                };
+                out = Some(PathBuf::from(value));
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp revocation record: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if support.is_some() {
+                    eprintln!("etp revocation record: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                support = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let (Some(support), Some(out)) = (support, out) else {
+        eprintln!("etp revocation record: SUPPORT and --out are required");
+        return EXIT_USAGE;
+    };
+    let bytes = match std::fs::read(&support) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("cannot read {}: {error}", support.display());
+            return EXIT_INTEGRITY;
+        }
+    };
+    let model = match crate::etp_revocation::parse_support_model(&bytes) {
+        Ok(model) => model,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    let verdict = match crate::etp_revocation::record_historical_verdict(&model) {
+        Ok(verdict) => verdict,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if let Err(error) = write_json(&out, &verdict) {
+        eprintln!("{error}");
+        return EXIT_HARNESS;
+    }
+    if json {
+        if let Err(error) = emit_json(&verdict) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("historical verdict recorded: {}", out.display());
+        println!("policy: {}/{}", verdict.policy_id, verdict.policy_version);
+        println!("verdict digest: {}", verdict.verdict_digest);
+        println!("positive claims: {}", verdict.result.positive.len());
+    }
+    0
+}
+
+fn command_etp_revocation_model(rest: &[String]) -> i32 {
+    let mut out = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation model: --out requires a path");
+                    return EXIT_USAGE;
+                };
+                out = Some(PathBuf::from(value));
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp revocation model: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                eprintln!("etp revocation model: unexpected argument {value}");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let Some(out) = out else {
+        eprintln!("etp revocation model: --out is required");
+        return EXIT_USAGE;
+    };
+    let model = match crate::etp_revocation::committed_support_model() {
+        Ok(model) => model,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if let Err(error) = write_json(&out, &model) {
+        eprintln!("{error}");
+        return EXIT_HARNESS;
+    }
+    if json {
+        if let Err(error) = emit_json(&model) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("support model written: {}", out.display());
+        println!("policy: {}/{}", model.policy.id, model.policy.version);
+        println!("claims: {}", model.claims.len());
+    }
+    0
+}
+
+fn command_etp_archive(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_archive_verify(&rest[1..]),
+        _ => {
+            eprintln!("usage: etp archive verify ARCHIVE [--json]");
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_archive_verify(rest: &[String]) -> i32 {
+    let mut archive = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp archive verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if archive.is_some() {
+                    eprintln!("etp archive verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                archive = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(archive) = archive else {
+        eprintln!("etp archive verify: ARCHIVE is required");
+        return EXIT_USAGE;
+    };
+    let report = match crate::etp_archive::verify_archive(&archive) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("archive: {}", report.status.as_str());
+        println!("archive id: {}", report.archive_id);
+        println!(
+            "objects: {}/{} verified",
+            report.verified_objects, report.object_count
+        );
+        println!("knowledge horizon: {}", report.knowledge_horizon_unix);
+        println!(
+            "required categories: [{}]",
+            report.required_categories.join(",")
+        );
+        if !report.missing_required_categories.is_empty() {
+            println!(
+                "missing required categories: [{}]",
+                report.missing_required_categories.join(",")
+            );
+        }
+        for problem in &report.problems {
+            println!("problem {}: {}", problem.path, problem.problem);
+        }
+        for unlisted in &report.unlisted_objects {
+            println!("unlisted object: {unlisted}");
+        }
+        println!(
+            "reconstruction: {} commands, {} inputs, complete={}",
+            report.reconstruction.command_count,
+            report.reconstruction.input_count,
+            report.reconstruction.complete
+        );
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code, refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
     }
     report.exit_code()
 }

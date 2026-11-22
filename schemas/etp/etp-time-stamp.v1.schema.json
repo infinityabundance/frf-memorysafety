@@ -1,0 +1,43 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-time-stamp.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "claim_ceiling": { "minLength": 1, "type": "string" },
+    "external_trust": { "const": false },
+    "gen_time_text": { "type": ["string", "null"] },
+    "gen_time_unix": { "type": ["integer", "null"] },
+    "imprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+    "policy_oid": { "type": ["string", "null"] },
+    "provenance": { "type": "object" },
+    "refusals": { "items": { "type": "object" }, "type": "array" },
+    "request_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+    "schema": { "const": "frf-etp.time-stamp.v1" },
+    "serial": { "type": ["string", "null"] },
+    "spec": { "const": "frf-etp-v1" },
+    "status": { "enum": ["verified", "refused"] },
+    "token_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+    "trust_domain": { "const": "local-test-tsa" },
+    "tsa_cert_sha256": { "type": ["string", "null"] }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "status",
+    "imprint",
+    "request_sha256",
+    "token_sha256",
+    "gen_time_unix",
+    "gen_time_text",
+    "policy_oid",
+    "serial",
+    "tsa_cert_sha256",
+    "trust_domain",
+    "external_trust",
+    "provenance",
+    "refusals",
+    "claim_ceiling"
+  ],
+  "title": "ETP RFC 3161 time stamp report v1",
+  "type": "object"
+}

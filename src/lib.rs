@@ -63,8 +63,11 @@ pub mod conversion;
 pub mod court;
 pub mod detector;
 pub mod etp;
+pub mod etp_archive;
 pub mod etp_auth;
 pub mod etp_campaign;
+pub mod etp_revocation;
+pub mod etp_time;
 pub mod evaluation;
 pub mod identity;
 pub mod mir;
@@ -127,6 +130,31 @@ pub use etp::{
     VerificationOutcome, COORDINATE_COUNT, DIMENSION_COUNT, ETP_CLAIM_CEILING, ETP_CLAIM_SCHEMA,
     ETP_MANIFEST_SCHEMA, ETP_OBLIGATION_SCHEMA, ETP_REPORT_SCHEMA, ETP_SPEC, ETP_STATUS_SCHEMA,
     FROZEN_COMMIT, FROZEN_EVIDENCE_ROOT_SHA256, FROZEN_RELEASE,
+};
+pub use etp_archive::{
+    parse_manifest as parse_archive_manifest, verify_archive, ArchiveError, ArchiveManifest,
+    ArchiveObject, ArchiveObjectProblem, ArchiveRefusal, ArchiveReport, ArchiveStatus,
+    ReconstructionCommand, ReconstructionInstructions, ReconstructionReport, ARCHIVE_CLAIM_CEILING,
+    ARCHIVE_MANIFEST_SCHEMA, ARCHIVE_REPORT_SCHEMA, MAX_ARCHIVE_OBJECTS, MAX_ARCHIVE_OBJECT_BYTES,
+};
+pub use etp_revocation::{
+    evaluate_support, parse_historical_verdict, parse_registry, parse_support_model,
+    record_historical_verdict, verify_registry_bytes, verify_registry_file, ClaimSupportReport,
+    ContradictoryRecord, CorrectionRecordReport, DissentRecordReport, HistoricalRecording,
+    RevocationAction, RevocationDimensions, RevocationEntry, RevocationError, RevocationRefusal,
+    RevocationRefusalCode, RevocationRegistry, RevocationReport, RevocationSignerReport,
+    RevocationStatus, RevocationTarget, SupportApplicationReport, SupportClaim, SupportModel,
+    HISTORICAL_VERDICT_SCHEMA, MAX_REVOCATION_ENTRIES, REVOCATION_CLAIM_CEILING,
+    REVOCATION_ENTRY_PAYLOAD_TYPE, REVOCATION_ENTRY_SCHEMA, REVOCATION_REGISTRY_SCHEMA,
+    REVOCATION_REPORT_SCHEMA, SUPPORT_MODEL_SCHEMA,
+};
+pub use etp_time::{
+    current_unix, stamp_token, verify_token, BackdatingClassification, BackdatingReport,
+    StampReport, StampTokenRequest, TemporalDimensions, TemporalFact, TimeDimensions, TimeError,
+    TimeProvenance, TimeRefusal, TimeRefusalCode, TimeReport, TimeStatus, VerifyTokenRequest,
+    DEFAULT_TIMEOUT_MS, LOCAL_TEST_TSA_TRUST_DOMAIN, MAX_TIMEOUT_MS, MAX_TIME_CAPTURE_BYTES,
+    MAX_TOKEN_BYTES, PINNED_TSA_TRUST_DOMAIN, TIME_CLAIM_CEILING, TIME_REPORT_SCHEMA,
+    TIME_STAMP_REPORT_SCHEMA, UNPINNED_TRUST_DOMAIN,
 };
 pub use identity::{
     canonical_bytes, digest_bytes, digest_value, parse_strict, require_canonical, IdentityDomain,
@@ -293,6 +321,16 @@ pub fn capabilities() -> Capabilities {
             "etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json] with separate signature, payload, authorization, scope, freshness, semantic, and independent-review dimensions",
             "correctly signed but semantically incomplete or false statements are refused; signatures by one actor are not independent reviewers and duplicate credentials never satisfy a threshold",
             "independent OpenSSL-based Python attestation verifier and hardened ci/etp-auth-gate.sh",
+            "RFC 3161 timestamp verification over a caller-pinned TSA certificate with separate imprint, hash, chain, policy, certificate-pin, and generation-time dimensions",
+            "RFC 3161 token creation through a shell-free bounded OpenSSL adapter with a private 0700 work directory and captured provenance",
+            "nine separate temporal facts: source creation, experimental execution, evidence production, statement authentication, trusted timestamping, transparency inclusion, witness observation, release authorization, and correction/revocation",
+            "backdating control: a token never establishes an earlier or later execution time; a declared execution date is refused as timestamp-proven",
+            "append-only DSSE-signed correction/revocation registry bound to registry, policy, claim, and evidence identities with a hash-chained sequence",
+            "revocation applied to the founded-support model so dependent derivations are invalidated unless alternative valid support survives",
+            "historical verdict replay under the original policy is reported separately from present authorization under the current registry and freshness rules",
+            "etp time verify, etp revocation verify, and etp archive verify with a manual parser and SPEC.md section 14 exit statuses",
+            "durable offline archive with a complete object inventory, digests, sizes, schemas, applicability, knowledge horizon, and exact reconstruction commands",
+            "independent OpenSSL-based Python timestamp verifier and hardened ci/etp-time-gate.sh",
             "versioned SARIF 2.1.0 projection with distinct rule, hazard, occurrence, candidate, and instrument-execution identities, justified locations, suppression retention, and completeness limits",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
         ],
@@ -320,11 +358,12 @@ pub fn capabilities() -> Capabilities {
             "native C callback observation and retained-pointer lifecycle recording",
             "whole-program or universal alias-compatibility claims",
             "universal safe-interior or SAFE_COMPATIBLE acceptance",
-            "authenticated ETP evidence beyond the finite DSSE/in-toto v1 profile: Rekor/C2SP transparency inclusion and consistency, RFC 3161 trusted timestamps, Sigstore keyless identity, and TUF update metadata are NOT_RUN (Phase 10.4)",
+            "authenticated ETP evidence beyond the finite DSSE/in-toto v1 profile: Rekor/C2SP transparency inclusion and consistency, external trusted timestamp authorities, Sigstore keyless identity, and TUF update metadata are NOT_RUN (Phase 10.4b)",
             "independent review of a signed statement; the committed attestation uses a test-only ephemeral key whose private key was discarded, so authentication is not independent review",
             "semantic attestation support for predicate types other than campaign closure; those predicates parse and authorize but their semantics are not evaluated",
             "live ETP campaign execution is NOT_RUN unless FRF_NATIVE_HARNESS=1; ci/etp-gate.sh is the opt-in real native path",
-            "independent ETP adjudication, public challenge, revocation registry, and campaign-closure services are SPECIFIED, not deployed",
+            "public transparency-log inclusion, witness observation, global non-equivocation, a public revocation feed, and independent adjudication are SPECIFIED, not deployed",
+            "external trusted time; the committed RFC 3161 token is anchored in a local test TSA generated inside the gate",
             "constant-time and relational timing verification for ETP claims; no timing result is represented as verified",
         ],
         #[cfg(unix)]

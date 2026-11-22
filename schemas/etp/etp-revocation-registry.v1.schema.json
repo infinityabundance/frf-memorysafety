@@ -1,0 +1,51 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-revocation-registry.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "payload": { "minLength": 1, "type": "string" },
+          "payloadType": {
+            "const": "application/vnd.frf-etp.revocation+json"
+          },
+          "signatures": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "keyid": { "minLength": 1, "type": "string" },
+                "sig": { "minLength": 1, "type": "string" }
+              },
+              "required": ["keyid", "sig"],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["payloadType", "payload", "signatures"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "issued_at_unix": { "minimum": 0, "type": "integer" },
+    "policy_id": { "minLength": 1, "type": "string" },
+    "policy_version": { "minimum": 1, "type": "integer" },
+    "registry_id": { "minLength": 1, "type": "string" },
+    "schema": { "const": "frf-etp.revocation-registry.v1" },
+    "spec": { "const": "frf-etp-v1" }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "registry_id",
+    "policy_id",
+    "policy_version",
+    "issued_at_unix",
+    "entries"
+  ],
+  "title": "ETP append-only revocation registry v1",
+  "type": "object"
+}

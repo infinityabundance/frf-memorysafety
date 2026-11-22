@@ -1,0 +1,42 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-historical-verdict.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "challenged": { "items": { "type": "string" }, "type": "array" },
+    "policy_digest": { "pattern": "^ms1-[0-9a-f]{64}$", "type": "string" },
+    "policy_id": { "minLength": 1, "type": "string" },
+    "policy_version": { "minLength": 1, "type": "string" },
+    "result": {
+      "additionalProperties": false,
+      "properties": {
+        "admissible": { "items": { "type": "string" }, "type": "array" },
+        "challenged": { "items": { "type": "string" }, "type": "array" },
+        "positive": { "items": { "type": "string" }, "type": "array" },
+        "revoked": { "items": { "type": "string" }, "type": "array" },
+        "states": { "additionalProperties": { "type": "string" }, "type": "object" }
+      },
+      "required": [
+        "positive",
+        "admissible",
+        "revoked",
+        "challenged",
+        "states"
+      ],
+      "type": "object"
+    },
+    "revoked": { "items": { "type": "string" }, "type": "array" },
+    "verdict_digest": { "pattern": "^ms1-[0-9a-f]{64}$", "type": "string" }
+  },
+  "required": [
+    "policy_id",
+    "policy_version",
+    "policy_digest",
+    "revoked",
+    "challenged",
+    "result",
+    "verdict_digest"
+  ],
+  "title": "ETP historical founded-support verdict v1",
+  "type": "object"
+}

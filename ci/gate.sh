@@ -4,9 +4,10 @@
 # Host builds are forbidden. Each gate runs in rust:1.85.0-slim with a hard
 # memory cap, a matching swap cap, a pid cap, a cpu cap, dropped capabilities,
 # no-new-privileges, and a raised OOM score so the container is killed before
-# the host is placed under memory pressure. Cargo is bounded to two parallel
-# jobs (the container's CPU cap) and incremental caches are disabled so rustc
-# stays inside the 2g cap; neither setting weakens a security or memory cap.
+# the host is placed under memory pressure. Cargo is bounded to one parallel
+# job so the release profile stays inside the 2g cap after the Phase 10.4a
+# modules were added; incremental caches are disabled. Neither setting weakens
+# a security or memory cap.
 set -eu
 
 IMAGE="${IMAGE:-rust:1.85.0-slim}"
@@ -28,7 +29,7 @@ run() {
         --security-opt no-new-privileges \
         -v "$ROOT":/src:ro -v "$ROOT/target":/src/target \
         -v frf-cargo:/cargo -e CARGO_HOME=/cargo \
-        -e CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}" -e CARGO_INCREMENTAL=0 \
+        -e CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}" -e CARGO_INCREMENTAL=0 \
         -w /src \
         "$IMAGE" "$@" >"$LOGS/$name.log" 2>&1
     then

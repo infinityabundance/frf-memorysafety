@@ -1,0 +1,101 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-support-model.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "claims": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "contradictory": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "class": { "type": "string" },
+                "id": { "type": "string" },
+                "resolution": {
+                  "enum": [
+                    "unresolved",
+                    "explained",
+                    "resolved_by_new_evidence"
+                  ]
+                },
+                "retained": { "const": true },
+                "source": { "type": "string" },
+                "statement": { "type": "string" }
+              },
+              "required": [
+                "id",
+                "class",
+                "statement",
+                "source",
+                "retained",
+                "resolution"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "evidence_ids": { "items": { "type": "string" }, "type": "array" },
+          "id": { "minLength": 1, "type": "string" }
+        },
+        "required": ["id", "evidence_ids", "contradictory"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "historical_recording": {
+      "additionalProperties": false,
+      "properties": {
+        "challenged": { "items": { "type": "string" }, "type": "array" },
+        "recorded_at_unix": { "minimum": 0, "type": "integer" },
+        "revoked": { "items": { "type": "string" }, "type": "array" }
+      },
+      "required": ["recorded_at_unix", "revoked", "challenged"],
+      "type": "object"
+    },
+    "not_after_unix": { "minimum": 0, "type": "integer" },
+    "not_before_unix": { "minimum": 0, "type": "integer" },
+    "policy": {
+      "additionalProperties": false,
+      "properties": {
+        "id": { "minLength": 1, "type": "string" },
+        "rules": {
+          "additionalProperties": false,
+          "properties": {
+            "admitted_leaves": {
+              "items": { "type": "string" },
+              "type": "array"
+            },
+            "rules": {
+              "additionalProperties": {
+                "items": { "items": { "type": "string" }, "type": "array" },
+                "type": "array"
+              },
+              "type": "object"
+            }
+          },
+          "required": ["rules", "admitted_leaves"],
+          "type": "object"
+        },
+        "version": { "minLength": 1, "type": "string" }
+      },
+      "required": ["id", "version", "rules"],
+      "type": "object"
+    },
+    "schema": { "const": "frf-etp.support-model.v1" },
+    "spec": { "const": "frf-etp-v1" }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "policy",
+    "not_before_unix",
+    "not_after_unix",
+    "historical_recording",
+    "claims"
+  ],
+  "title": "ETP founded-support model v1",
+  "type": "object"
+}

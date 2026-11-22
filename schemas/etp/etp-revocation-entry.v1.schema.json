@@ -1,0 +1,61 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-revocation-entry.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action": { "enum": ["revoke", "correct", "dissent"] },
+    "corrects_entry_id": { "type": ["string", "null"] },
+    "effective_at_unix": { "minimum": 0, "type": "integer" },
+    "entry_id": { "minLength": 1, "type": "string" },
+    "historical_replay": {
+      "enum": ["valid_under_original_policy", "not_valid"]
+    },
+    "policy_id": { "minLength": 1, "type": "string" },
+    "policy_version": { "minimum": 1, "type": "integer" },
+    "previous_entry_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": ["string", "null"]
+    },
+    "reason": { "minLength": 1, "type": "string" },
+    "registry_id": { "minLength": 1, "type": "string" },
+    "schema": { "const": "frf-etp.revocation-entry.v1" },
+    "scope": { "minLength": 1, "type": "string" },
+    "sequence": { "minimum": 1, "type": "integer" },
+    "spec": { "const": "frf-etp-v1" },
+    "statement": { "type": ["string", "null"] },
+    "target": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": { "minLength": 1, "type": "string" },
+        "evidence_ids": {
+          "items": { "type": "string" },
+          "type": "array"
+        },
+        "policy_id": { "minLength": 1, "type": "string" },
+        "subject_identity": { "minLength": 1, "type": "string" }
+      },
+      "required": ["claim_id", "policy_id", "evidence_ids", "subject_identity"],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "registry_id",
+    "policy_id",
+    "policy_version",
+    "sequence",
+    "previous_entry_sha256",
+    "entry_id",
+    "action",
+    "target",
+    "reason",
+    "effective_at_unix",
+    "scope",
+    "historical_replay",
+    "statement",
+    "corrects_entry_id"
+  ],
+  "title": "ETP revocation entry payload v1",
+  "type": "object"
+}

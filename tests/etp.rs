@@ -179,10 +179,20 @@ fn registry_digests_match_and_cover_every_schema_and_vector() {
         "frf-etp.predicate.release-adjudication.v1",
         "frf-etp.trust-policy.v1",
         "frf-etp.attestation-verification.v1",
+        "frf-etp.archive-manifest.v1",
+        "frf-etp.archive-verification.v1",
+        "frf-etp.historical-verdict.v1",
+        "frf-etp.revocation-entry.v1",
+        "frf-etp.revocation-plan.v1",
+        "frf-etp.revocation-registry.v1",
+        "frf-etp.revocation-verification.v1",
+        "frf-etp.support-model.v1",
+        "frf-etp.time-stamp.v1",
+        "frf-etp.time-verification.v1",
     ] {
         assert!(schema_ids.iter().any(|value| value == id), "missing {id}");
     }
-    assert_eq!(schema_ids.len(), 19);
+    assert_eq!(schema_ids.len(), 29);
 
     let freeze = registry["freeze"].as_object().expect("freeze");
     let freeze_path = root()

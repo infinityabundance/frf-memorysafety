@@ -1,0 +1,71 @@
+{
+  "$id": "https://frf.dev/etp/schemas/etp-revocation-verification.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "claim_ceiling": { "minLength": 1, "type": "string" },
+    "corrections": { "items": { "type": "object" }, "type": "array" },
+    "dimensions": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization": { "$ref": "#/$defs/dimension" },
+        "historical_replay": { "$ref": "#/$defs/dimension" },
+        "policy_freshness": { "$ref": "#/$defs/dimension" },
+        "present_authorization": { "$ref": "#/$defs/dimension" },
+        "registry_integrity": { "$ref": "#/$defs/dimension" },
+        "sequence_integrity": { "$ref": "#/$defs/dimension" },
+        "signature_validity": { "$ref": "#/$defs/dimension" }
+      },
+      "required": [
+        "registry_integrity",
+        "sequence_integrity",
+        "signature_validity",
+        "authorization",
+        "policy_freshness",
+        "historical_replay",
+        "present_authorization"
+      ],
+      "type": "object"
+    },
+    "entry_count": { "minimum": 0, "type": "integer" },
+    "policy_id": { "type": "string" },
+    "policy_version": { "minimum": 1, "type": "integer" },
+    "refusals": { "items": { "type": "object" }, "type": "array" },
+    "registry_id": { "type": "string" },
+    "registry_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+    "retained_dissent": { "items": { "type": "object" }, "type": "array" },
+    "revocations": { "items": { "type": "object" }, "type": "array" },
+    "schema": { "const": "frf-etp.revocation-verification.v1" },
+    "signers": { "items": { "type": "object" }, "type": "array" },
+    "spec": { "const": "frf-etp-v1" },
+    "status": { "enum": ["verified", "refused"] },
+    "support": { "type": ["object", "null"] },
+    "unsupported_features": { "items": { "type": "string" }, "type": "array" }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "status",
+    "registry_id",
+    "registry_sha256",
+    "entry_count",
+    "policy_id",
+    "policy_version",
+    "dimensions",
+    "signers",
+    "revocations",
+    "corrections",
+    "retained_dissent",
+    "support",
+    "refusals",
+    "unsupported_features",
+    "claim_ceiling"
+  ],
+  "title": "ETP revocation verification report v1",
+  "type": "object",
+  "$defs": {
+    "dimension": {
+      "enum": ["valid", "invalid", "partial", "not_checked", "not_applicable"]
+    }
+  }
+}
