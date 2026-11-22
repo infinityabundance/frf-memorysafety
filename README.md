@@ -92,7 +92,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 
 | Gate script | Result |
 |---|---|
-| `./ci/gate.sh` | `cargo fmt` clean; `cargo clippy -D warnings` clean; 351 debug and 351 release tests passed, 0 failed, 0 ignored |
+| `./ci/gate.sh` | `cargo fmt` clean; `cargo clippy -D warnings` clean; 373 debug and 373 release tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/mir-gate.sh` | PASS, LIVE MIR observations |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
@@ -102,7 +102,8 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/eval-gate.sh` | 60/60 receipts pass; 20 held-out / 11 development; 11/11 claims supported; fresh and committed receipts deterministic-identical |
 | `./ci/reconstruction-gate.sh` | independent standard-library reconstruction passes: 60/60 receipts, 20/11 split, 11/11 protocol claims, 18/18 paper claims mapped |
 
-The default gate executes all 351 tests, including the six proof-live tests on
+The default gate executes all 373 tests, including the 22 Phase 10.1 ETP tests
+(14 unit and 8 integration), the six proof-live tests on
 their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
 unit tests, the 1 live/`NOT_RUN` chain test, the 30 Phase 8 conversion-court
 tests (27 integration, including 7 live-capture/reuse tests, and 3 unit), the
@@ -565,6 +566,42 @@ Exact reproduction commands:
 ./ci/reconstruction-gate.sh
 ```
 
+### Phase 10.1 ETP foundation
+
+Phase 10.1 starts the FRF Earned Trust Protocol without changing any 1.0.0
+schema, receipt, claim, or provider identity and without bumping the crate
+version. It adds:
+
+- [`docs/EARNED-TRUST.md`](docs/EARNED-TRUST.md), the ETP constitution,
+  architecture layers, provider-authority boundaries, and permanent
+  distinctions;
+- [`docs/ETP-CLAIM-INTEGRITY.md`](docs/ETP-CLAIM-INTEGRITY.md), the generalized
+  claim algebra with twenty required coordinates and ten separate status
+  dimensions;
+- [`docs/ETP-TRUST-GAP.md`](docs/ETP-TRUST-GAP.md), a 76-row classified
+  inventory of existing and proposed capabilities;
+- [`docs/ETP-MIGRATION.md`](docs/ETP-MIGRATION.md), schema versioning,
+  compatibility, deprecation, and no-retroactive-strengthening rules;
+- [`docs/ETP-STANDARDS-REGISTRY.md`](docs/ETP-STANDARDS-REGISTRY.md), the
+  consulted standards and their exact adoption status;
+- `schemas/etp/`, with versioned claim, obligation-inventory, status-dimension,
+  and manifest schemas, canonical conformance vectors, a SHA-256 version
+  registry, and a frozen 1.0.0 evidence record;
+- `src/etp.rs` and `etp validate MANIFEST [--json]`;
+- [`AGENTS.md`](AGENTS.md), the AI-assisted engineering accountability rules.
+
+The validator refuses universal quantification, `sound_safe_interior`,
+`safe_compatible`, unresolved required premises offered for release, unresolved
+blocking obligations offered for release, scalar confidence/score fields, a
+dropped contradiction, and a positive outcome that would erase a retained native
+observation. Validation is bookkeeping, not certification. ETP v1 does not
+implement signatures, transparency logs, trusted timestamps, independent
+adjudication, or a general revocation registry.
+
+```sh
+./ci/gate.sh
+```
+
 ### NOT_RUN in this build
 
 - Live detectors over arbitrary or caller-supplied input (only the closed
@@ -994,7 +1031,7 @@ switching users), sets `FRF_NATIVE_HARNESS=1`, and runs the 17 live native tests
 It does not weaken the memory, swap, pid, CPU, file-descriptor, capability, or
 OOM settings. `ci/native.Dockerfile` is intentionally absent because runtime
 OOM and resource caps belong in the gate invocation, not in an image. The
-default gate executes 351 tests (including the 11 detector-live tests,
+default gate executes 373 tests (including the 22 ETP tests, the 11 detector-live tests,
 the 6 proof-live tests on their typed `NOT_RUN`/`checker_unavailable` paths, the
 17 bridge seal tests, the 3 bridge unit tests, the 1 live/`NOT_RUN` chain test,
 and the 9 Phase 9.1 evaluation tests) and the native gate executes 17 live native

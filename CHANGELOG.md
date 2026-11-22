@@ -9,6 +9,56 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - Phase 10.1 ETP foundation
+
+This is an additive documentation, schema, and validation change. It does not
+change any 1.0.0 schema meaning, receipt, measured observation, policy, corpus,
+test, or claim ceiling. The crate version remains 1.0.0.
+
+### Added
+
+- [`docs/EARNED-TRUST.md`](docs/EARNED-TRUST.md), the FRF Earned Trust Protocol
+  constitution: mission, governing principle, layered architecture, provider
+  boundaries, and the permanent assurance distinctions.
+- [`docs/ETP-CLAIM-INTEGRITY.md`](docs/ETP-CLAIM-INTEGRITY.md), the generalized
+  claim algebra with twenty required coordinates and ten separate status
+  dimensions, with no scalar confidence or assurance score.
+- [`docs/ETP-TRUST-GAP.md`](docs/ETP-TRUST-GAP.md), a 76-row evidence-backed
+  inventory classified as `IMPLEMENTED`, `EXECUTED_MODEL`, `SPECIFIED`,
+  `NOT_RUN`, or `BLOCKED`.
+- [`docs/ETP-MIGRATION.md`](docs/ETP-MIGRATION.md), schema/versioning,
+  compatibility, deprecation, and no-retroactive-strengthening policy.
+- [`docs/ETP-STANDARDS-REGISTRY.md`](docs/ETP-STANDARDS-REGISTRY.md), exact
+  standards versions, adopted mechanisms, implementation locations, and limits.
+- `schemas/etp/`: `frf-etp.manifest.v1`, `frf-etp.claim.v1`,
+  `frf-etp.obligation-inventory.v1`, and `frf-etp.status-dimensions.v1` JSON
+  Schemas, canonical conformance vectors, a SHA-256 version registry, and a
+  frozen 1.0.0 evidence record.
+- `src/etp.rs`, `etp validate MANIFEST [--json]`, and tests for required
+  coordinates, dimension separation, scalar-score rejection, contradiction
+  retention, unknown-premise blocking, schema-version rejection, and immutable
+  1.0.0 evidence references.
+- [`AGENTS.md`](AGENTS.md), the AI-assisted engineering accountability rules.
+
+### Changed
+
+- README adds the Phase 10.1 ETP section and links to the new documents.
+- `ci/gate.sh` bounds Cargo to two parallel jobs and disables incremental caches
+  so the larger test build stays inside the unchanged 2g memory/swap cap. No
+  OOM protection, resource cap, isolation control, test, or assertion is removed
+  or weakened. Debug and release each pass 373 tests (22 new ETP tests).
+
+### Claim ceiling
+
+No claim is widened. The ETP validator establishes only that a manifest is
+structurally complete and makes no refused promotion. It does not establish
+truth, authentication, reviewer independence, transparency completeness,
+deployment security, memory safety, compatibility, constant-time behaviour, or
+certification. Universal quantification, `sound_safe_interior`, and
+`safe_compatible` remain refused. No external provider, transparency log,
+timestamp, or adjudicator is deployed. The 60 committed receipts and all
+1.0.0 claim ceilings remain unchanged.
+
 ## [1.0.0] - 2026-10-18
 
 Phase 9 publication release. This is a version and documentation release: it
