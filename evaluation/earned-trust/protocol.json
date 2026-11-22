@@ -174,8 +174,12 @@
         "sha256": "24009a1f2415244d660b5be52fb868bd18b6d186fbfbc8fcb513faa242e4e6bd"
       },
       {
+        "path": "src/integrity.rs",
+        "sha256": "2569899d69decbd1321b97d4a47efecdaea9426020afc3673f8532a68630a37c"
+      },
+      {
         "path": "src/lib.rs",
-        "sha256": "a0e8b98b49234027316e586ad7a0b7b0de98141fe74b7c1b6006a4b67e260422"
+        "sha256": "a92e37d37a9622fe2019aef6a66f48bc99075c6a3b8932aab4c415df24f27837"
       },
       {
         "path": "src/main.rs",
@@ -198,7 +202,7 @@
       "prlimit",
       "ld"
     ],
-    "tree_sha256": "833d184c4a3cf126e07c828bf6fcf2d153b8d5d4f64cdabe8e5575c47d57abda",
+    "tree_sha256": "7ebacb322362c71bd0e8ae9f3dafa0768b1a74e3c0aa656ec2b9cce706650c21",
     "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1"
   },
   "mutation_controls": [

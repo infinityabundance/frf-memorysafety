@@ -56,6 +56,7 @@ INSTRUMENT_PATHS = [
     "src/etp_transparency.rs",
     "src/etp_witness.rs",
     "src/identity.rs",
+    "src/integrity.rs",
     "src/lib.rs",
     "src/main.rs",
     "src/native.rs",
