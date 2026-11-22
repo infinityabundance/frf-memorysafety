@@ -92,8 +92,8 @@ Each layer has its own evidence, authority, and claim ceiling.
 | 3 | Interoperability | Implemented for one recorded OpenSSL-Rust boundary and one consumer workflow | One boundary witness, one repair, one curl TLS 1.3 workflow, one loader closure |
 | 4 | Reproducibility | Implemented for a pre-registered finite evaluation and an artifact-level reconstructor | Deterministic receipt reproduction and independent artifact reconstruction |
 | 5 | ETP claim integrity, campaign closure, adjudication, revocation | Phase 10.1 starts claim integrity | Claim algebra, obligation inventory, separate dimensions, freeze, migration policy |
-| 6 | Authenticated evidence | Partially implemented: DSSE/in-toto verification, trust policy, independent verifier, local test RFC 3161 token, append-only revocation registry, durable offline archive | Who signed exact bytes, under which declared role and scope, what a local test timestamp binds, and which present authorizations a declared revocation removes; not truth, external trusted time, or transparency |
-| 7 | Public accountability | Specified, not implemented | Nothing yet; no challenge service, transparency log, or adjudication body is deployed |
+| 6 | Authenticated evidence | Partially implemented: DSSE/in-toto verification, trust policy, independent verifier, local test RFC 3161 token, append-only revocation registry, durable offline archive, local test tlog-tiles proof and witness model | Who signed exact bytes, under which declared role and scope, what a local test timestamp binds, what a local inclusion proof establishes, and which present authorizations a declared revocation removes; not truth, external trusted time, public transparency, external witnessing, or completeness |
+| 7 | Public accountability | Specified, not implemented | Nothing yet; no public challenge service, public transparency log, external witness network, or adjudication body is deployed |
 
 ### 4.1 Existing foundation
 
@@ -170,12 +170,17 @@ Phase 10.4a adds a real RFC 3161 token anchored in a local, test-only TSA, a
 shell-free bounded OpenSSL adapter, an independent timestamp verifier, nine
 separate temporal facts, an append-only DSSE-signed correction/revocation
 registry, founded-support invalidation with historical replay preserved, and a
-durable offline archive. That slice establishes who signed the exact bytes,
-what a local test timestamp binds, and which declared derivations a revocation
-removes. It does not implement a transparency log, an external trusted timestamp
-authority, Sigstore identity, TUF metadata, a public revocation feed, an
-independent reviewer, or a public challenge service. Rekor/C2SP transparency
-inclusion remains Phase 10.4b work.
+durable offline archive. Phase 10.4b adds a pinned local tlog-tiles log built
+from `transparency-dev/tessera` v1.0.4, exact entry binding, RFC 6962 inclusion
+and consistency proofs, a signed checkpoint, tiled reconstruction,
+anti-rollback, cross-log rejection, and a witness policy model that reports
+`not_observed` rather than fabricating an external witness. That slice
+establishes who signed the exact bytes, what a local test timestamp binds, what
+a local inclusion proof establishes, and which declared derivations a
+revocation removes. It does not implement a public transparency log, an
+external trusted timestamp authority, Sigstore identity, TUF metadata, a public
+revocation feed, external witnessing, an independent reviewer, or a public
+challenge service. Local inclusion is not public transparency or completeness.
 ETP distinguishes:
 
 - a digest from authentication;
@@ -289,7 +294,8 @@ first executable campaign slice. Phase 10.3 adds a finite authenticated-evidence
 slice: DSSE/in-toto verification, a trust policy, seven separate verification
 dimensions, an independent verifier, and executable refusal controls. Phase
 10.4a adds trusted-time separation, authenticated corrections/revocation, and a
-durable offline archive. In particular:
+durable offline archive. Phase 10.4b adds a pinned local transparency log with
+real inclusion and consistency proofs and a witness policy model. In particular:
 
 - no new memory-safety, compatibility, timing, or deployment claim is made;
 - the 13-case native campaign is a finite execution and bookkeeping record, not
@@ -304,9 +310,12 @@ durable offline archive. In particular:
 - the revocation registry is append-only and test-only; it is not a public feed
   and does not establish completeness or non-equivocation;
 - the durable archive is digest-bound bookkeeping, not an external anchor;
-- no transparency log, external timestamp authority, or public challenge
-  service is integrated; Rekor/C2SP inclusion remains Phase 10.4b;
+- no public transparency log, external timestamp authority, external witness
+  network, or public challenge service is integrated; the Phase 10.4b log is
+  local and test-only;
 - the Phase 10.4a instrument change re-froze the campaign opening manifest and
+  re-executed the same population; the claim ceiling is unchanged;
+- the Phase 10.4b instrument change re-froze the campaign opening manifest and
   re-executed the same population; the claim ceiling is unchanged;
 - no existing test is deleted or weakened;
 - no crate version is bumped and no package is published.

@@ -17,9 +17,11 @@ Phase 10.3. Phase 10.4a adds a local test RFC 3161 token, an append-only test
 revocation registry, and a durable offline archive; those are documented in
 [`ETP-TRUSTED-TIME.md`](ETP-TRUSTED-TIME.md),
 [`ETP-REVOCATION.md`](ETP-REVOCATION.md), and
-[`ETP-ARCHIVE.md`](ETP-ARCHIVE.md). This document does not implement Rekor or
-any transparency log, an external trusted timestamp authority, Sigstore keyless
-identity, or TUF metadata; Rekor/C2SP remains Phase 10.4b work.
+[`ETP-ARCHIVE.md`](ETP-ARCHIVE.md). Phase 10.4b adds a pinned, local, test-only
+tlog-tiles log with a real inclusion proof and signed checkpoints, documented in
+[`ETP-TRANSPARENCY.md`](ETP-TRANSPARENCY.md). This document does not implement a
+public transparency log, Rekor v2 deployment, external witnessing, an external
+trusted timestamp authority, Sigstore keyless identity, or TUF metadata.
 
 ---
 
@@ -231,17 +233,17 @@ of the repository.
 
 | Artifact | Path | SHA-256 |
 |---|---|---|
-| Envelope | `evaluation/earned-trust/attestations/campaign-closure.envelope.json` | `fafd563d816b38be8fc035f33102d0418f2e652f534b876e9057c0960d766e66` |
-| Statement payload | `evaluation/earned-trust/attestations/campaign-closure.statement.json` | `71b1e22f5035a0b59eb7011977d0075eec25c5e5fa735ef113146a56d4504d4d` |
+| Envelope | `evaluation/earned-trust/attestations/campaign-closure.envelope.json` | `94a687ba9d2b1f080b2d9574b34529aa992ddf201b4c372935f0a7bbb2f5229e` |
+| Statement payload | `evaluation/earned-trust/attestations/campaign-closure.statement.json` | `0226c0e7cd1248c2a4cc253c29853d260de53f9a21c95b5d4fd3a1a07126a560` |
 | Public key (PEM) | `evaluation/earned-trust/attestations/campaign-closure.public.pem` | present for inspection |
-| Trust policy | `evaluation/earned-trust/trust-policy.json` | `a608a33624dbef00129103afba4a56998003d3e6c0a5f426eee709929af6d2cf` |
+| Trust policy | `evaluation/earned-trust/trust-policy.json` | `1605a8b87462b3dd3a02f8ff18d51638418969d3ddb6aa4e572f098b291d138c` |
 
 The predicate binds the closure digest
-`8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`, the
+`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`, the
 candidate identity
 `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746`, and the
 raw-evidence digest
-`58c02137266d264590aaa9a60db820392de9ab40030b98a5a63ab4cc0f2dd2f4`.
+`378f1b28c75ff97b1e0baa0ff3df48eefd4b8167e775da919fb52b470421fdc7`.
 
 ### 6.1 Phase 10.2 and Phase 10.4a campaign re-freezes
 
@@ -271,6 +273,23 @@ available at commit `cb59ddb`. The original Phase 10.2 opening digest was
 closure digest was
 `fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`; those bytes
 remain available at commit `f17111d` in git history.
+
+Phase 10.4b added `src/etp_transparency.rs` and `src/etp_witness.rs`, and
+changed `src/cli.rs` and `src/lib.rs`, all declared instrument files. It
+re-froze the opening manifest and re-executed the same population. The
+candidate tree is still
+`7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746`; the
+Phase 10.4b instrument tree is
+`7b17845a3b452874f89ee4c4a07fd391d2a7e67a9d5486dfa3a5f2fb8e847a84`; the
+opening-manifest digest is
+`df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff`; the
+closure digest is
+`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`. The
+Phase 10.4a opening digest
+`08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` and closure
+digest `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`
+remain available at commit `eeb5c80`. The Phase 10.4b signature binds the new
+closure; no prior signature is reused.
 
 The re-freeze does not strengthen any claim. It is a separate instrument change
 and a separate execution, and it is recorded here, in `docs/ETP-CAMPAIGN.md`,
@@ -348,7 +367,8 @@ Authenticated evidence is not truth. In particular:
 * `independent_review: not_established` is not a negative finding, and
   `independent_review: established` would still not prove competence or
   absence of collusion;
-* inclusion in any future transparency log would not be completeness;
+* inclusion in the local test transparency log would not be completeness;
+  public transparency and external witnessing are not deployed;
 * multiple signatures are not multiple independent reviewers;
 * a trusted timestamp is not experimental authenticity; the Phase 10.4a token is
   a local test token, not external trusted time;
@@ -358,9 +378,10 @@ Authenticated evidence is not truth. In particular:
 * the finite campaign closure is not a population inference, a detector
   sensitivity estimate, a memory-safety proof, or a deployment authorization;
 * a passing gate is not certification;
-* no Rekor/C2SP inclusion proof, external trusted timestamp authority, Sigstore
-  identity, TUF metadata, public revocation feed, witness observation, or public
-  challenge service exists in Phase 10.4a. Rekor/C2SP remains Phase 10.4b.
+* no public Rekor/C2SP inclusion proof, external trusted timestamp authority,
+  Sigstore identity, TUF metadata, public revocation feed, external witness
+  observation, or public challenge service exists. The Phase 10.4b tlog-tiles
+  log is local and test-only.
 
 ## 10. Executed results
 
@@ -370,8 +391,12 @@ Authenticated evidence is not truth. In particular:
   tests passed, 0 failed, 0 ignored.
 * Phase 10.4a independent verifiers: 6 of 6 timestamp controls and 6 of 6
   revocation controls passed.
-* Full debug gate: 467 tests passed, 0 failed.
-* Full release gate: 467 tests passed, 0 failed.
+* Phase 10.4b focused transparency tests: 25 passed, 0 failed, 0 ignored.
+* Phase 10.4b independent verifier controls: 20 passed, 0 failed.
+* Phase 10.4b local log: committed size-3 log and a fresh 261-leaf tessera
+  v1.0.4 log verified by both Rust and Python; cross-log proof refused.
+* Full debug gate: 495 tests passed, 0 failed, 0 ignored.
+* Full release gate: 495 tests passed, 0 failed, 0 ignored.
 * The committed attestation is accepted by both the Rust CLI and the independent
   verifier with all seven dimensions reported separately.
 * A correctly signed statement with a missing case, a false conclusion, a

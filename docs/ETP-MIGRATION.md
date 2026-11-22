@@ -295,8 +295,10 @@ Phase 10.3 does not migrate:
 Phase 10.3 does not implement a transparency log (Rekor/C2SP), RFC 3161
 timestamps, Sigstore keyless identity, TUF metadata, a revocation registry, or a
 public challenge service. Phase 10.4a later adds a local test RFC 3161 token, an
-append-only test revocation registry, and a durable archive; Rekor/C2SP
-transparency inclusion and public challenge remain Phase 10.4b or not deployed.
+append-only test revocation registry, and a durable archive; Phase 10.4b adds a
+local test tlog-tiles log with real inclusion and consistency proofs and a
+witness/quorum model. Public Rekor/C2SP transparency and public challenge remain
+unimplemented.
 
 The eleven new schemas are registered in `schemas/etp/registry.json`. The 1.0.0
 freeze is unchanged.
@@ -370,11 +372,78 @@ Phase 10.4a does not migrate:
 Phase 10.4a does not implement Rekor/C2SP transparency inclusion or
 consistency, an external trusted timestamp authority, Sigstore keyless identity,
 TUF metadata, public revocation, global non-equivocation, witness observation,
-independent adjudication, or a public challenge service. Rekor/C2SP remains
-Phase 10.4b work.
+independent adjudication, or a public challenge service. Phase 10.4b adds a
+local test tlog-tiles inclusion proof, signed checkpoints, and a witness model,
+but not a public log or external witnessing.
 
 The ten new schemas are registered in `schemas/etp/registry.json`. The 1.0.0
 freeze is unchanged.
+
+## 9.4 What Phase 10.4b adds and does not migrate
+
+Phase 10.4b adds, without changing any 1.0.0 or earlier ETP meaning:
+
+- `src/etp_transparency.rs` and `src/etp_witness.rs`, with the inline schema
+  identifiers `frf-etp.transparency-proof.v1`,
+  `frf-etp.transparency-policy.v1`, `frf-etp.transparency-verification.v1`,
+  `frf-etp.checkpoint-verification.v1`, `frf-etp.witness-state.v1`,
+  `frf-etp.witness-policy.v1`, and `frf-etp.witness-verification.v1`;
+- `tests/etp_transparency.rs` (25 executing tests, none `#[ignore]`);
+- `etp transparency verify`, `etp checkpoint verify`, and
+  `etp witnesses verify` with `SPEC.md` section 14 exit statuses;
+- `evaluation/earned-trust/transparency/`: a pinned local tlog-tiles log with
+  the Phase 10.3 DSSE envelope as leaf 0, signed size-1 and size-3 checkpoints,
+  an inclusion and consistency proof, the public log key, a transparency policy,
+  and a witness state;
+- `evaluation/earned-trust/verify_transparency.py` (Python standard library
+  only) and `evaluation/earned-trust/make_transparency_policy.py`;
+- `ci/transparency/frf-tlog/` (pinned `transparency-dev/tessera` v1.0.4 driver)
+  and `ci/etp-transparency-gate.sh`;
+- `docs/ETP-TRANSPARENCY.md`.
+
+Adding `src/etp_transparency.rs` and `src/etp_witness.rs` and changing
+`src/cli.rs` and `src/lib.rs` is one explicitly separated instrument change. The
+campaign opening manifest was re-frozen and the same finite campaign was
+re-executed under the Phase 10.4b instrument. The population, expected terminal
+outcomes, receipts, accepted cases, retained findings, resource envelope, and
+claim ceiling are unchanged.
+
+| Field | Phase 10.4b value |
+|---|---|
+| Opening SHA-256 | `df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff` |
+| Candidate identity | `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746` |
+| Instrument identity | `7b17845a3b452874f89ee4c4a07fd391d2a7e67a9d5486dfa3a5f2fb8e847a84` |
+| Closure SHA-256 | `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25` |
+| SARIF SHA-256 | `7bbb43a7b648c78c98a8bdbcb444fa4fb6bae07e4d237a0e961137f7f9318fba` |
+| Trust-policy version | `8` |
+| Attestation envelope SHA-256 | `94a687ba9d2b1f080b2d9574b34529aa992ddf201b4c372935f0a7bbb2f5229e` |
+| Attestation statement SHA-256 | `0226c0e7cd1248c2a4cc253c29853d260de53f9a21c95b5d4fd3a1a07126a560` |
+| Timestamp token SHA-256 | `44b31544607150507a0ac0698d5204ee71cd0e7b38b1d277dc6512d2f16c592b` |
+| Revocation registry SHA-256 | `51fe1c9d735459b80c607bb84ac03fa85f6a384e2d5a93b6b085d4e9305ae6a6` |
+| Archive manifest SHA-256 | `abecbb91c27e532d5e36e50bf720e963980b017af0ec41d2102536fb242ccbfe` |
+
+The Phase 10.4a opening digest
+`08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` and its
+closure digest
+`8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab` remain
+available at commit `eeb5c80`.
+
+Phase 10.4b does not migrate:
+
+- any 1.0.0 receipt, claim, or provider object into a log entry, checkpoint, or
+  inclusion proof;
+- any digest into authentication;
+- any local test inclusion proof into public transparency or completeness;
+- any local test cosignature or witness policy into external witnessing or
+  global non-equivocation;
+- any Ed25519 checkpoint signature into a provider, Rekor, or GID identity;
+- any `research/` bytes;
+- the crate version.
+
+Phase 10.4b does not implement a public transparency log, Rekor v2 deployment,
+external witnessing or gossip, an external trusted timestamp authority, Sigstore
+keyless identity, TUF metadata, global non-equivocation, independent
+adjudication, or a public challenge service.
 
 ## 10. Rollback
 

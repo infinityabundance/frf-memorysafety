@@ -9,6 +9,86 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - Phase 10.4b local transparency profile and witness policy
+
+This is an additive evidence, verification, and documentation change. It does
+not change any 1.0.0 schema meaning, receipt, measured observation, test, or
+claim ceiling. The crate version remains 1.0.0. The transparency log is local
+and test-only; no public transparency, Rekor v2 deployment, or external
+witnessing is claimed.
+
+### Added
+
+- `src/etp_transparency.rs`: a C2SP tlog-tiles / RFC 6962 verifier for exact
+  leaf/entry binding, Merkle inclusion, signed checkpoints, two-size consistency,
+  equal-size conflicting-root detection, anti-rollback, tiled-proof
+  reconstruction, cross-log rejection, and offline checkpoint verification. The
+  seven schema identifiers are defined inline in the module.
+- `src/etp_witness.rs`: a witness policy model with administrative domains,
+  shared-trust assumptions, correlated-witness detection, the quorum-intersection
+  condition `2q - n > f`, conflicting checkpoints, rolled-back witness state, and
+  Ed25519 cosignature verification. External witnessing is reported
+  `not_observed`, never fabricated.
+- `etp transparency verify --proof FILE --checkpoint FILE --policy FILE [--json]
+  [--horizon-out FILE]`, `etp checkpoint verify FILE [--policy FILE] [--json]`,
+  and `etp witnesses verify FILE [--json]`, with manual parsing and `SPEC.md`
+  section 14 exit statuses.
+- `tests/etp_transparency.rs`: 25 executing tests, none `#[ignore]`, covering
+  wrong leaf, wrong index, wrong sibling order, wrong root, wrong signature,
+  cross-log proof, conflicting checkpoints, rollback, correlated witnesses,
+  quorum failure, missing checkpoint, malformed tile, and unsupported log
+  version.
+- `evaluation/earned-trust/transparency/`: a real, local, test-only tlog-tiles
+  log built from `transparency-dev/tessera` v1.0.4. The Phase 10.3 DSSE envelope
+  is leaf 0; the log has three leaves, signed size-1 and size-3 checkpoints, an
+  inclusion and consistency proof, the public log key, a transparency policy,
+  and a witness state. The private key was generated inside the container under
+  `target/`, removed before the gate exited, and never committed.
+- `evaluation/earned-trust/verify_transparency.py`: an independent verifier that
+  uses only the Python standard library, implements RFC 8032 Ed25519, RFC 6962,
+  tile reconstruction, and the witness model without importing the Rust code;
+  20 executable controls.
+- `evaluation/earned-trust/make_transparency_policy.py`: test-only policy
+  fixture helper.
+- `ci/transparency/frf-tlog/`: a pinned Go driver over
+  `transparency-dev/tessera` v1.0.4 (commit
+  `6bca8e8d5e23c9941f2b8a08f512b373f7131730`), with `go.mod`/`go.sum` pinned.
+- `ci/etp-transparency-gate.sh`: fmt, clippy `-D warnings`, 25 focused tests,
+  committed CLI checks, 20 independent controls, a fresh tessera log with 261
+  leaves verified by both Rust and Python, and a cross-log rejection control,
+  under the declared memory, swap, pid, cpu, nofile, OOM, capability, and
+  no-new-privileges limits. Verification containers use `--network=none`.
+- `docs/ETP-TRANSPARENCY.md`.
+
+### Changed
+
+- The Phase 10.2 opening manifest was re-frozen as an explicitly separated
+  Phase 10.4b instrument change: `src/etp_transparency.rs` and
+  `src/etp_witness.rs` were added, and `src/cli.rs` and `src/lib.rs` changed.
+  The same 13-case campaign was re-executed. The opening digest is
+  `df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff`; the
+  instrument identity is
+  `7b17845a3b452874f89ee4c4a07fd391d2a7e67a9d5486dfa3a5f2fb8e847a84`; the
+  closure digest is
+  `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`. The
+  population, outcomes, receipts, accepted cases, retained findings, resource
+  envelope, and claim ceiling are unchanged.
+- The trust policy is version 8. The committed attestation was re-signed over the
+  new closure; the test-only private key was discarded.
+- The durable archive now contains 72 objects and 20 required categories,
+  including the transparency proof, checkpoints, policy, and witness state.
+- `capabilities` reports the local transparency proof and witness model and
+  keeps public transparency, external witnessing, and global non-equivocation as
+  `NOT_RUN` or not deployed.
+
+### Not changed
+
+- No 1.0.0 receipt, claim, provider object, or schema meaning.
+- No universal or population-level claim.
+- No public transparency log, Rekor v2 deployment, external witness observation,
+  gossip, external trusted time, or public revocation feed.
+- No crate version bump and no publish.
+
 ## [Unreleased] - Phase 10.4a trusted time, revocation, and durable archive
 
 This is an additive evidence, verification, and documentation change. It does

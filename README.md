@@ -5,16 +5,17 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-Phases 10.1-10.4a add the FRF Earned Trust Protocol without changing the 1.0.0
+Phases 10.1-10.4b add the FRF Earned Trust Protocol without changing the 1.0.0
 evidence or claim ceilings: a claim algebra with twenty coordinates and ten
 separate status dimensions, a finite 13-case campaign closure, a finite
 authenticated-evidence profile built on DSSE v1, in-toto Statement v1, a
 versioned Ed25519 trust policy, and an independent verifier, plus a local test
-RFC 3161 token, an append-only test correction/revocation registry, and a
-durable offline archive. The authenticated profile records who signed exact
-bytes and whether the signed predicate agrees with the finite closure. It does
-not establish truth, independent review, transparency inclusion, external
-trusted time, or deployment security.
+RFC 3161 token, an append-only test correction/revocation registry, a durable
+offline archive, and a pinned local tlog-tiles transparency profile with real
+inclusion and consistency proofs. The authenticated profile records who signed
+exact bytes and whether the signed predicate agrees with the finite closure. It
+does not establish truth, independent review, public transparency, external
+trusted time, external witnessing, or deployment security.
 
 **This build makes no memory-safety soundness claim.** Version 1.0.0 is the
 Phase 9 release. It retains the Phase 8 OpenSSL-Rust conversion evidence, the
@@ -103,7 +104,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 
 | Gate script | Result |
 |---|---|
-| `./ci/gate.sh` | `cargo fmt` clean; `cargo clippy -D warnings` clean; 467 debug and 467 release tests passed, 0 failed, 0 ignored |
+| `./ci/gate.sh` | `cargo fmt` clean; `cargo clippy -D warnings` clean; 495 debug and 495 release tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/mir-gate.sh` | PASS, LIVE MIR observations |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
@@ -114,9 +115,11 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/reconstruction-gate.sh` | independent standard-library reconstruction passes: 60/60 receipts, 20/11 split, 11/11 protocol claims, 18/18 paper claims mapped |
 | `./ci/etp-gate.sh` (Phase 10.2) | 13-case campaign run and verify PASS; 25 raw-evidence files; SARIF export/verify PASS; independent reconstruction PASS |
 | `./ci/etp-auth-gate.sh` (Phase 10.3) | 21 focused attestation tests passed; 13 independent verifier controls passed; committed and ephemeral attestations accepted by Rust and OpenSSL verifiers; private key discarded |
-| `./ci/etp-time-gate.sh` (Phase 10.4a) | 9 time, 13 revocation, and 8 archive focused tests passed; 6/6 independent timestamp controls; 6/6 independent revocation controls; committed and fresh local TSA tokens accepted; archive 64/64 objects verified offline with no network |
+| `./ci/etp-time-gate.sh` (Phase 10.4a) | 9 time, 13 revocation, and 8 archive focused tests passed; 6/6 independent timestamp controls; 6/6 independent revocation controls; committed and fresh local TSA tokens accepted; archive 72/72 objects verified offline with no network |
+| `./ci/etp-transparency-gate.sh` (Phase 10.4b) | 25 focused transparency tests passed; 20/20 independent controls; committed size-3 log verified; fresh tessera v1.0.4 log with 261 leaves verified by Rust and Python; cross-log proof refused; no external witness |
 
-The default gate executes all 467 tests, including the 21 Phase 10.3
+The default gate executes all 495 tests, including the 25 Phase 10.4b
+transparency tests, the 21 Phase 10.3
 attestation tests (DSSE/in-toto, trust policy, semantic refusal, replay,
 duplicate credentials, expired keys, and independent review), the 30 Phase 10.4a
 time/revocation/archive tests, the 22 Phase 10.1 ETP tests (14 unit and 8
@@ -187,9 +190,28 @@ It records a complete object inventory with digests, sizes, schemas, and
 applicability, a knowledge horizon, and exact reproduction commands, and is
 verified offline with no network in a hardened container. See
 [`docs/ETP-ARCHIVE.md`](docs/ETP-ARCHIVE.md).
-Rekor/C2SP transparency inclusion, an external trusted timestamp authority,
-Sigstore identity, TUF metadata, public revocation, witness observation, and
-public challenge remain Phase 10.4b or not deployed.
+Rekor/C2SP public transparency inclusion, an external trusted timestamp
+authority, Sigstore identity, TUF metadata, public revocation, external
+witnessing, and public challenge remain `NOT_RUN` or not deployed.
+
+### Local transparency profile (Phase 10.4b)
+
+Phase 10.4b adds a pinned, local, test-only tlog-tiles profile with real
+proofs. The log is built from `transparency-dev/tessera` v1.0.4 inside a
+hardened `golang:1.24-alpine` container. The Phase 10.3 DSSE envelope is leaf
+0 of a committed size-3 log; the committed size-1 and size-3 checkpoints are
+signed by a test-only Ed25519 key generated inside the container and
+discarded. The verifier checks exact entry binding, RFC 6962 inclusion,
+checkpoint signatures, checkpoint persistence, consistency between two tree
+sizes, equal-size conflicting roots, anti-rollback against a known horizon,
+tiled reconstruction, cross-log rejection, and offline operation. The witness
+model separates administrative domains, shared trust assumptions, correlated
+witnesses, conflicting checkpoints, rolled-back state, and the quorum
+condition `2q - n > f`; it reports `not_observed` rather than fabricating an
+external witness. A fresh 261-leaf log is built and verified by both the Rust
+and independent Python implementations in the gate. This is not public
+transparency, not Rekor v2, not external witnessing, and not a completeness
+claim. See [`docs/ETP-TRANSPARENCY.md`](docs/ETP-TRANSPARENCY.md).
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
@@ -250,7 +272,7 @@ toolchains, commands, closure hashes, and the claim ceiling.
 | `etp time stamp --imprint HEX --tsa-config FILE --out TOKEN` | Gate/test helper only; shell-free bounded OpenSSL adapter, private 0700 work directory, private keys under `target/` only |
 | `etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json]` | Implemented; append-only DSSE registry, correction-authority role, historical replay, present authorization, alternative-support survival, retained dissent |
 | `etp archive verify ARCHIVE [--json]` | Implemented; complete object inventory, digests, sizes, knowledge horizon, required categories, reconstruction inputs; offline and no network |
-| Rekor/C2SP transparency inclusion, external trusted RFC 3161 time, Sigstore keyless identity, TUF metadata, public revocation feed, witness observation, public challenge | Not implemented; Phase 10.4b or not deployed |
+| Rekor/C2SP public transparency, external trusted RFC 3161 time, Sigstore keyless identity, TUF metadata, public revocation feed, external witnessing, public challenge | Not implemented; local test transparency profile only |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
 | MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
@@ -752,7 +774,9 @@ format, not a correctness or security proof.
 - Native C callback observation and retained-pointer lifecycle recording beyond
   the checked-in scripted fixtures
 - Arbitrary caller-supplied native C/Rust recording (`court run`)
-- Signed provenance attestations, transparency logs, or a trusted build root
+- Signed provenance attestations or a trusted build root (a local test
+transparency log exists in Phase 10.4b, but public transparency and external
+witnessing do not)
 - Real-scheduler race observation, sanitizer evidence, or whole-program closure
 - Universal safe-interior or `SAFE_COMPATIBLE` acceptance
 - Live detector, live Coq, and authentic native-chain evaluation arms in the
@@ -762,10 +786,11 @@ format, not a correctness or security proof.
   verification-cost inference from the Phase 9.1 finite control-family corpus
 - Live ETP campaign execution unless `FRF_NATIVE_HARNESS=1` is set in a
   native-harness build; `./ci/etp-gate.sh` is the opt-in real native path
-- Rekor/C2SP transparency inclusion or consistency, external trusted RFC 3161
-  time, Sigstore keyless identity, TUF metadata, witness observation, and public
-  revocation/challenge services; the local test timestamp and test-only
-  revocation registry are implemented but are not external trust
+- Public Rekor/C2SP transparency inclusion or consistency, external trusted RFC
+  3161 time, Sigstore keyless identity, TUF metadata, external witness
+  observation, and public revocation/challenge services; the local test
+  timestamp, test-only revocation registry, and local test tlog-tiles log are
+  implemented but are not external trust or public transparency
 - Independent ETP adjudication, public challenge, public revocation feed, and
   campaign-closure services; a test-only append-only revocation registry is
   implemented, but public services remain not deployed

@@ -6,16 +6,18 @@
 **Inventory date:** Phase 10.1.
 **Machine-readable freeze:** `schemas/etp/etp-freeze-1.0.0.json`.
 
-**Phase 10.4a update.** The rows below were written for the Phase 10.1
+**Phase 10.4a/10.4b update.** The rows below were written for the Phase 10.1
 inventory. Phase 10.4a now implements a local test RFC 3161 token and trust
 domain, a test-only append-only correction/revocation registry with founded-
-support invalidation and historical replay, and a durable offline archive. It
-still does not implement an external trusted timestamp authority, Rekor/C2SP
-transparency inclusion or consistency, a public revocation feed, witness
+support invalidation and historical replay, and a durable offline archive.
+Phase 10.4b adds a pinned, local, test-only tlog-tiles log with a real
+inclusion proof, signed checkpoints, and a witness/quorum model. Neither
+subphase implements an external trusted timestamp authority, public Rekor/C2SP
+transparency or a public-good log, a public revocation feed, external witness
 observation, global non-equivocation, independent adjudication, or a public
 challenge service. Read rows E37, P17, P19, P21, and P23 together with this
 update. The implementation documents are `ETP-TRUSTED-TIME.md`,
-`ETP-REVOCATION.md`, and `ETP-ARCHIVE.md`.
+`ETP-REVOCATION.md`, `ETP-ARCHIVE.md`, and `ETP-TRANSPARENCY.md`.
 
 This document inventories every existing 1.0.0 capability and every proposed ETP
 capability. Each row is classified as exactly one of the following.
@@ -181,10 +183,14 @@ precedence, unknown-premise blocking, and scalar-score rejection.
 
 No 1.0.0 evidence is signed, logged, or timestamped. A coordinated rewrite that
 recomputes every digest can produce a self-consistent alternative evidence set.
-DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161, and TUF are not integrated.
+DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161, and TUF are not integrated
+for 1.0.0 evidence. (Phase 10.3-10.4b add DSSE/in-toto verification, a local test
+RFC 3161 token, and a local test tlog-tiles log for the finite ETP evidence; they
+remain local and test-only, and the 1.0.0 evidence is unchanged.)
 
-**Not closed.** Phase 10.1 records the gap in
-`docs/ETP-STANDARDS-REGISTRY.md` and refuses to claim authentication.
+**Not closed for 1.0.0 evidence.** Phase 10.1 records the gap in
+`docs/ETP-STANDARDS-REGISTRY.md` and refuses to claim authentication; the later
+subphases add scoped authentication and local inclusion without a public anchor.
 
 ### 4.4 Independent adjudication and public accountability
 
@@ -227,11 +233,15 @@ campaign; items 3, 4, and 5 remain unimplemented.
    `src/etp_campaign.rs` for the declared campaign.**
 3. **A signed and logged evidence envelope** (for example DSSE plus a
    transparency-log inclusion proof) with an explicit statement that
-   authentication is not truth and inclusion is not completeness. **Not
-   implemented.**
+   authentication is not truth and inclusion is not completeness.
+   **Implemented for the local test profile:** the Phase 10.3 DSSE envelope is
+   leaf 0 of the pinned local tlog-tiles log, with a real inclusion proof and
+   signed checkpoint in `evaluation/earned-trust/transparency/`. Public
+   transparency and external witnessing remain unimplemented.
 4. **A revocation record and replay policy** that distinguishes historical
    validity from present authorization and binds the exact changed dependency.
-   **Not implemented as a general ETP registry.**
+   **Implemented for the finite Phase 10.4a support model** in
+   `src/etp_revocation.rs`; not a general or public registry.
 5. **A challenge and adjudication record** with declared roles and an
    independence dimension that is not inferred from multiple signatures. **Not
    implemented.**

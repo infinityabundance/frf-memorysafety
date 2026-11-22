@@ -42,14 +42,14 @@ instrument.
 | Field | Value |
 |---|---|
 | Opening manifest | `evaluation/earned-trust/protocol.json` |
-| Opening SHA-256 | `08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` |
+| Opening SHA-256 | `df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff` |
 | Frozen sidecar | `evaluation/earned-trust/opening.sha256` |
 | Candidate identity (tree) | `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746` |
-| Instrument identity (tree) | `74517c942798087e77335ffc28c4078ed85161a58c388b77d649cfac245cb338` |
+| Instrument identity (tree) | `7b17845a3b452874f89ee4c4a07fd391d2a7e67a9d5486dfa3a5f2fb8e847a84` |
 | Closure manifest | `evaluation/earned-trust/MANIFEST.json` |
-| Closure SHA-256 | `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab` |
+| Closure SHA-256 | `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25` |
 | SARIF projection | `evaluation/earned-trust/campaign.sarif` |
-| SARIF SHA-256 | `1db25044943c29f5b56e53a1e5ab9ba9cc88ffb91eac058463490e09a925a9c5` |
+| SARIF SHA-256 | `7bbb43a7b648c78c98a8bdbcb444fa4fb6bae07e4d237a0e961137f7f9318fba` |
 
 **Phase 10.3 instrument change.** Adding the attestation dependency changed
 `Cargo.toml`, and adding `src/etp_auth.rs` and changing `src/cli.rs` and
@@ -74,6 +74,16 @@ unchanged. The Phase 10.3 opening digest
 `fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec` and closure
 digest `607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912` remain
 available at commit `cb59ddb`.
+
+**Phase 10.4b instrument change.** Adding `src/etp_transparency.rs` and
+`src/etp_witness.rs`, and changing `src/cli.rs` and `src/lib.rs`, changed the
+declared instrument. The opening manifest was re-frozen and the same finite
+campaign was re-executed under the Phase 10.4b instrument. The population,
+expected outcomes, receipts, accepted cases, retained findings, resource
+envelope, and claim ceiling are unchanged. The Phase 10.4a opening digest
+`08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` and closure
+digest `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`
+remain available at commit `eeb5c80`.
 
 The tree digest is `sha256-sorted-path-nul-digest-lf-v1`: SHA-256 over the
 concatenation of `path`, NUL, the lowercase file SHA-256, and LF, with files
@@ -284,11 +294,13 @@ DSSE, in-toto, and an Ed25519-only trust policy are implemented for a finite
 profile in Phase 10.3; they authenticate the exact signed bytes and bind this
 closure, but they do not establish truth or independent review. Phase 10.4a adds
 a local test RFC 3161 token and an append-only test revocation registry; neither
-is external trusted time, transparency inclusion, or a public revocation feed.
-Rekor/C2SP transparency inclusion and consistency, an external trusted timestamp
+is external trusted time or a public revocation feed. Phase 10.4b adds a local
+test tlog-tiles inclusion proof, consistency proof, and signed checkpoints for
+the Phase 10.3 envelope; that is local evidence logging, not public transparency
+or completeness. Public Rekor/C2SP transparency, an external trusted timestamp
 authority, Sigstore keyless identity, TUF update metadata, independent
-adjudication, witness observation, global non-equivocation, and public challenge
-services are not implemented in this subphase. They remain `NOT_RUN` or
+adjudication, external witness observation, global non-equivocation, and public
+challenge services are not implemented. They remain `NOT_RUN` or
 specified-not-deployed. The SHA-256 freeze detects accidental or silent change
 only; an actor who can rewrite the opening manifest, every receipt, the
 projection, and the verifier can produce a self-consistent alternative set.

@@ -1,6 +1,7 @@
 # ETP durable offline archive
 
-**Subphase:** Phase 10.4a (trusted time, corrections/revocation, durable archive).
+**Subphase:** Phase 10.4a (trusted time, corrections/revocation, durable archive);
+refreshed in Phase 10.4b (local transparency profile).
 **Protocol identifier:** `frf-etp-v1`.
 **Implementation:** `src/etp_archive.rs`, `src/cli.rs`, `tests/etp_archive.rs`,
 `evaluation/earned-trust/make_archive.py`,
@@ -10,9 +11,10 @@
 1.0.0 evidence, schema meaning, or claim ceiling.
 
 The archive is a durable, self-contained copy of the finite Phase 9.1, Phase
-10.2, Phase 10.3, and Phase 10.4a records with a complete object inventory. It
-is not an external anchor, not a transparency log, and not proof that the
-archived evidence is true.
+10.2, Phase 10.3, Phase 10.4a, and Phase 10.4b records with a complete object
+inventory. It now preserves the local tlog-tiles proof, checkpoints, policy, and
+witness state, but it is not an external anchor, not a public transparency log,
+and not proof that the archived evidence is true.
 
 ---
 
@@ -23,11 +25,11 @@ archived evidence is true.
 | Archive root | `evaluation/earned-trust/archive/` |
 | Manifest | `evaluation/earned-trust/archive/manifest.json` |
 | Manifest schema | `frf-etp.archive-manifest.v1` |
-| Manifest SHA-256 | `c1dbbca82be207891179e62ef5fd5b2069b587436092e33e72b3c6a3af56adb9` |
-| Archive identifier | `frf-etp-phase10.4a-archive` |
-| Objects | `64` |
-| Knowledge horizon | `1795333079` (2026-11-22 07:37:59 GMT) |
-| Required categories | 16 |
+| Manifest SHA-256 | `abecbb91c27e532d5e36e50bf720e963980b017af0ec41d2102536fb242ccbfe` |
+| Archive identifier | `frf-etp-phase10.4b-archive` |
+| Objects | `72` |
+| Knowledge horizon | `1795334947` (2026-11-22 08:09:07 GMT) |
+| Required categories | 20 |
 
 The archive preserves the repository-relative `evaluation/earned-trust`
 layout so the committed reconstructor and verifiers run unchanged from the
@@ -48,7 +50,7 @@ required flag, and observation time. The inventory includes:
 | `raw_evidence` | 25 retained transcripts and court reports |
 | `sarif` | `campaign.sarif` |
 | `attestation` | DSSE envelope, in-toto statement, and test-only public key |
-| `policy` | `trust-policy.json` version 4 |
+| `policy` | `trust-policy.json` version 8 |
 | `time_token` | `time/token.tsr` |
 | `time_request` | `time/request.tsq` |
 | `tsa_trust_anchor` | `time/tsa-ca.pem` |
@@ -59,14 +61,22 @@ required flag, and observation time. The inventory includes:
 | `historical_verdict` | `revocations/historical-verdict.json` |
 | `revocation_plan` | `revocations/plan.json` |
 | `revocation_report` | `revocations/revocation-report.json` |
-| `verifier` | `reconstruct.py`, `verify_attestations.py`, `verify_time.py`, `verify_revocation.py` |
+| `verifier` | `reconstruct.py`, `verify_attestations.py`, `verify_time.py`, `verify_revocation.py`, `verify_transparency.py` |
+| `transparency_proof` | `transparency/proof.json` |
+| `transparency_checkpoint` | size-1 and size-3 signed checkpoints |
+| `transparency_entry` | `transparency/attestation-entry.bin` |
+| `transparency_policy` | `transparency/policy.json` |
+| `transparency_log_key` | `transparency/log-key.pub` |
+| `witness_state` | `transparency/witness-state.json` |
 | `reconstruction` | `RECONSTRUCTION.md` |
 
 The archive's time token binds the closure digest
-`8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`. The token
+`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25`. The token
 is anchored in the local test TSA, not external trusted time. The revocation
 registry is signed by the test-only correction authority and is not a public
-feed.
+feed. The archive also contains the local transparency proof, checkpoints,
+exact leaf-0 entry bytes, pinned log key, policy, and not-observed witness
+state. That is local evidence, not public transparency.
 
 ## 3. Verification
 
@@ -108,7 +118,7 @@ python3 evaluation/earned-trust/verify_attestations.py \
   --campaign evaluation/earned-trust/MANIFEST.json --controls
 python3 evaluation/earned-trust/verify_time.py \
   --token evaluation/earned-trust/time/token.tsr \
-  --imprint 8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab \
+  --imprint 20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25 \
   --tsa-cert evaluation/earned-trust/time/tsa-ca.pem \
   --policy-oid 1.3.6.1.4.1.99999.1 --controls
 python3 evaluation/earned-trust/verify_revocation.py \
@@ -129,7 +139,7 @@ the Rust binary, the archive bytes, and no network.
 
 | Control | Required result |
 |---|---|
-| valid archive | verified; 64/64 objects; reconstruction complete |
+| valid archive | verified; 72/72 objects; reconstruction complete |
 | tampered object | integrity failure, exit 3 |
 | missing object | integrity failure, exit 3 |
 | unlisted object | integrity failure, exit 3 |
@@ -160,8 +170,9 @@ mounted read-only for verification; only `target/` is writable.
 * A digest detects accidental or silent change; it is not authentication.
 * An actor who can rewrite the archive, the manifest, and every referenced byte
   can produce a self-consistent alternative archive.
-* The archive is not a transparency log, not a public revocation feed, and not a
-  certification.
+* The archive is not a public transparency log, not a public revocation feed,
+  and not a certification. Local inclusion is not public transparency,
+  completeness, external witnessing, or global non-equivocation.
 * Reproduction requires the declared images and tools; a different toolchain is
   not covered.
 * The archive contains a local test TSA token, not external trusted time.

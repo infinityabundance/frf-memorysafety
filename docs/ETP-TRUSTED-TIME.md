@@ -11,8 +11,8 @@
 
 This document records one real RFC 3161 token created by a local, test-only TSA
 inside the hardened gate. It is not external trusted time, not a public
-timestamp authority, and not a transparency log. Rekor/C2SP inclusion remains
-Phase 10.4b.
+timestamp authority, and not a transparency log. Phase 10.4b adds a separate
+local tlog-tiles log; this token does not bind inclusion in it.
 
 ---
 
@@ -28,10 +28,10 @@ the request, the token, and the report.
 | TSA trust domain label | `local-test-tsa` |
 | External trusted time | `false` |
 | CA subject | `CN = "FRF Test TSA CA (local, test-only)"` |
-| CA validity | 2026-11-22 07:37:59 GMT to 2026-11-24 07:37:59 GMT |
-| CA certificate PEM SHA-256 | `636c34f2d775ca3c9f0fcef3fd57848e51674a76933242ed48c0ff0d4d66e941` |
-| CA certificate DER SHA-256 (pinned digest) | `63f3c38594b2b76bc47bd6009fc17baebd93debba63933423dbb56980114a2ad` |
-| TSA signer certificate PEM SHA-256 | `f9ee42e5e1d5497613bb2c9daf1173a6edabc4da9c0dbd5dbe174b4ac97a90f4` |
+| CA validity | 2026-11-22 08:09:07 GMT to 2026-11-24 08:09:07 GMT |
+| CA certificate PEM SHA-256 | `5627df3672b7ab958ddccdd3d23c9c1aa73467856efd534779c5040ba0f8a4ee` |
+| CA certificate DER SHA-256 (pinned digest) | `f0c0abca00067cfde4c6f472b7aba771d9423384f44c2189ed365d318ae749a2` |
+| TSA signer certificate PEM SHA-256 | `0be9b4e23110623cb07f05552b2ae74b41f03e51188592fa1ed34bf40a6d64ab` |
 | TSA signer subject | `CN=FRF Local Test TSA` |
 | TSA extended key usage | `critical, timeStamping` |
 | TSA policy OID | `1.3.6.1.4.1.99999.1` |
@@ -41,26 +41,33 @@ the request, the token, and the report.
 | Python image | `python:3.11-slim`, image id `sha256:896edfbcbf0c...e4c70` |
 
 The token is committed at `evaluation/earned-trust/time/token.tsr`. Its
-generation time is `1795333079` (2026-11-22 07:37:59 GMT). The chain is verified
+generation time is `1795334947` (2026-11-22 08:09:07 GMT). The chain is verified
 at the token generation time, so the two-day test certificate validity does not
 retroactively invalidate the historical token. A verifier that wants present
 authorization must supply a separate freshness policy; a valid historical token
 is not present authorization.
+
+The Phase 10.4b instrument change changed the campaign closure. The local test
+token was regenerated over the exact new closure digest
+`20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25` with a
+fresh local TSA CA and TSA signer certificate. The old token, CA, and request
+were not reused. The token remains local test material; it is not external
+trusted time and it does not bind transparency inclusion.
 
 ## 2. Token and request
 
 | Field | Value |
 |---|---|
 | Evidence bytes | `evaluation/earned-trust/MANIFEST.json` |
-| Evidence SHA-256 (imprint) | `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab` |
+| Evidence SHA-256 (imprint) | `20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25` |
 | Token | `evaluation/earned-trust/time/token.tsr` |
-| Token SHA-256 | `8fb0de2ef49b073fca06538fbddd36154f08289b3c5ccc59ed622152369d6f78` |
+| Token SHA-256 | `44b31544607150507a0ac0698d5204ee71cd0e7b38b1d277dc6512d2f16c592b` |
 | Request | `evaluation/earned-trust/time/request.tsq` |
-| Request SHA-256 | `7f074442741bf1c84e951a5e76a63702097119db3956b012485916ef04d49821` |
+| Request SHA-256 | `08db0c9fa01b8728c3db10207eb7d24e525b2c0324b19cd7dca74eaea2465490` |
 | Hash algorithm | `sha256` |
 | Policy OID | `1.3.6.1.4.1.99999.1` |
 | Serial | `02` |
-| Generation time | `1795333079` / `Nov 22 07:37:59 2026 GMT` |
+| Generation time | `1795334947` / `Nov 22 08:09:07 2026 GMT` |
 | Accuracy | `0x01 seconds, unspecified millis, unspecified micros` |
 | Ordering | `yes` |
 | TSA name | `DirName:/CN=FRF Local Test TSA` |
@@ -103,8 +110,8 @@ The report keeps nine separate temporal facts. A verified token sets only
 | `evidence_production` | `not_observed` |
 | `statement_authentication` | `not_observed` |
 | `trusted_timestamping` | `observed` |
-| `transparency_inclusion` | `not_implemented` (Phase 10.4b) |
-| `witness_observation` | `not_implemented` (Phase 10.4b) |
+| `transparency_inclusion` | `not_implemented` in this token report; separate local log in Phase 10.4b |
+| `witness_observation` | `not_implemented`; Phase 10.4b reports `not_observed` |
 | `release_authorization` | `not_observed` |
 | `correction_revocation` | `not_observed` |
 
@@ -213,8 +220,10 @@ archive verification container has `--network=none`.
 * The two-day test TSA certificate validity means the chain is verified at the
   token generation time; it is not a statement about present certificate
   validity.
-* No transparency-log inclusion, consistency, non-equivocation, witness
-  observation, or public accountability service exists in Phase 10.4a.
+* No public transparency-log inclusion, consistency, non-equivocation, witness
+  observation, or public accountability service exists. Phase 10.4b adds a
+  local test tlog-tiles log, which is not public transparency or external
+  witnessing.
 * A passing gate is not a certification and not an authorization to deploy.
 
 ## 11. Citations
