@@ -441,3 +441,23 @@ fn mir_scan_uses_section_14_statuses_and_typed_not_run() {
         6
     );
 }
+
+#[test]
+fn etp_integrity_commands_accept_the_committed_receipt() {
+    let receipt = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("evaluation/earned-trust/integrity/integrity-receipt.json");
+    let receipt = receipt.to_str().unwrap();
+    assert_eq!(run(&["etp", "integrity", "verify", receipt, "--json"]), 0);
+    assert_eq!(run(&["etp", "reproducibility", receipt, "--json"]), 0);
+    assert_eq!(run(&["etp", "population", receipt, "--json"]), 0);
+}
+
+#[test]
+fn etp_integrity_commands_refuse_missing_input() {
+    assert_eq!(
+        run(&["etp", "integrity", "verify", "does-not-exist.json"]),
+        2
+    );
+    assert_eq!(run(&["etp", "reproducibility", "does-not-exist.json"]), 2);
+    assert_eq!(run(&["etp", "population", "does-not-exist.json"]), 2);
+}
