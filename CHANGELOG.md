@@ -9,6 +9,85 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - Phase 10.4a trusted time, revocation, and durable archive
+
+This is an additive evidence, verification, and documentation change. It does
+not change any 1.0.0 schema meaning, receipt, measured observation, test, or
+claim ceiling. The crate version remains 1.0.0.
+
+### Added
+
+- `src/etp_time.rs`: shell-free, bounded RFC 3161 verification and a gate-only
+  token-creation adapter, seven verification dimensions, nine separate temporal
+  facts, and a backdating control. The token is anchored in a local test-only
+  TSA; `external_trust` is always `false`.
+- `src/etp_revocation.rs`: an append-only, DSSE-signed correction/revocation
+  registry, correction-authority authorization, a hash-chained sequence,
+  founded-support invalidation with alternative-support survival, historical
+  verdict replay under the original policy, and present authorization under the
+  current registry and freshness rules.
+- `src/etp_archive.rs`: a durable offline archive verifier with a complete
+  object inventory, digests, sizes, schemas, applicability, a knowledge horizon,
+  required categories, and reconstruction-input completeness.
+- `etp time verify`, `etp time stamp`, `etp revocation verify`,
+  `etp revocation record`, `etp revocation model`, and `etp archive verify`,
+  with `SPEC.md` section 14 exit statuses.
+- `tests/etp_time.rs` (9 tests), `tests/etp_revocation.rs` (13 tests), and
+  `tests/etp_archive.rs` (8 tests). No test is `#[ignore]`.
+- `evaluation/earned-trust/verify_time.py` and
+  `evaluation/earned-trust/verify_revocation.py`: independent OpenSSL-based
+  verifiers with six executable controls each.
+- `evaluation/earned-trust/make_revocation.py` and
+  `evaluation/earned-trust/make_archive.py`: test-only generator and archive
+  builder. Private keys are written only under `target/` and removed.
+- `evaluation/earned-trust/time/`, `evaluation/earned-trust/revocations/`, and
+  `evaluation/earned-trust/archive/`: the committed local test token and
+  certificates, correction/revocation registry, support model, historical
+  verdict, and a 64-object durable archive.
+- `docs/ETP-TRUSTED-TIME.md`, `docs/ETP-REVOCATION.md`, and
+  `docs/ETP-ARCHIVE.md`.
+- `ci/etp-time-gate.sh`: focused tests, committed and fresh local TSA tokens,
+  committed and independent revocation verification, a fresh offline archive,
+  and an offline `--network=none` archive verification, with the declared
+  memory, swap, pid, cpu, nofile, OOM, capability, and no-new-privileges limits.
+- Ten versioned schemas: time verification, time stamp, revocation registry,
+  revocation entry, revocation plan, revocation verification, support model,
+  historical verdict, archive manifest, and archive verification.
+
+### Changed
+
+- The Phase 10.2 opening manifest was re-frozen again as an explicitly separated
+  instrument change: `src/etp_time.rs`, `src/etp_revocation.rs`, and
+  `src/etp_archive.rs` were added, and `src/cli.rs`, `src/lib.rs`, and
+  `src/etp_auth.rs` changed. The same 13-case campaign was re-executed. The
+  opening digest is
+  `08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a`; the
+  closure digest is
+  `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`; the
+  instrument identity is
+  `74517c942798087e77335ffc28c4078ed85161a58c388b77d649cfac245cb338`. The
+  population, outcomes, receipts, accepted cases, retained findings, resource
+  envelope, and claim ceiling are unchanged.
+- The trust policy is version 6. It retains the new evidence-producer key and a
+  test-only correction-authority key. The committed attestation was re-signed
+  over the new closure; the test-only private key was discarded.
+- `ci/gate.sh` bounds cargo to one parallel job so the release profile stays
+  inside the declared 2g cap. No memory, swap, pid, cpu, nofile, capability, or
+  OOM control was weakened.
+- `capabilities` now reports the local test timestamp, revocation, and archive,
+  and keeps external trusted time, Rekor/C2SP inclusion, witness observation,
+  public revocation, and public challenge as `NOT_RUN` or not deployed.
+- `tests/etp.rs` registers the ten new schemas (29 total).
+
+### Not changed
+
+- No 1.0.0 receipt, claim, provider object, or schema meaning.
+- No universal or population-level claim.
+- No external trusted timestamp authority, transparency log, public revocation
+  feed, witness observation, or public challenge service.
+- No crate version bump and no publish. Rekor/C2SP transparency remains Phase
+  10.4b work.
+
 ## [Unreleased] - Phase 10.3 authenticated evidence
 
 This is an additive evidence, validation, and verification change. It does not

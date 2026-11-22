@@ -341,6 +341,21 @@ complete merely because it is published. The 1.0.0 conversion module's
 property-specific reuse and revocation is a local mechanism, not the general ETP
 registry.
 
+Phase 10.4a implements one fixed, append-only, DSSE-signed correction and
+revocation registry for the finite Phase 10.4a support model. The registry binds
+the registry, policy, claim, evidence, and subject identities; a monotonic
+sequence and a previous-entry digest make reordering and silent insertion
+fail-closed. Applied revocations are mapped onto the founded-support graph, so a
+dependent derivation is invalidated unless an alternative valid support path
+survives. The verifier reports the recorded historical verdict under its
+original policy separately from present authorization under the current
+registry and freshness rules. A revoked claim can therefore remain historically
+valid and reconstructible while being inadmissible now. Corrections and
+dissenting records are retained. This registry is not a public feed, not a
+transparency log, and not a complete revocation service; public challenge and
+Rekor/C2SP inclusion remain Phase 10.4b or not deployed. See
+[`ETP-REVOCATION.md`](ETP-REVOCATION.md).
+
 ## 9. Examples
 
 ### 9.1 Valid withheld finite claim

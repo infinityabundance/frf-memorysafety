@@ -134,40 +134,52 @@
         "sha256": "dc8a9e7668c882190e58da244ac78e86d0d9875140a6249849f49b74d7382a76"
       },
       {
+        "path": "src/cli.rs",
+        "sha256": "438d270c8589cc896a751bd0f906ffaadbaf15e4a8f72b4f903387e569d35187"
+      },
+      {
         "path": "src/court.rs",
         "sha256": "127f07dfc7edcea34eb0f90137f9893c912b95bd34211fcb5593b715c57a960e"
       },
       {
-        "path": "src/native.rs",
-        "sha256": "8c148768afbda5fa761ffb5a73030f9527eb0fba90fd36555780151514bf5903"
-      },
-      {
-        "path": "src/identity.rs",
-        "sha256": "24009a1f2415244d660b5be52fb868bd18b6d186fbfbc8fcb513faa242e4e6bd"
+        "path": "src/etp_archive.rs",
+        "sha256": "1c42393cf75430e7f3c52a9a160ec5262b16019982bcd225ad9d4f80995017fc"
       },
       {
         "path": "src/etp_auth.rs",
-        "sha256": "ecc484eecae2a5188d0b7497bfd383fc8ddfd8cb9d777db183833a59bb2125d0"
+        "sha256": "8c3a3abb4cfdec99a028f1cfacb6fd3e361a00d283c3132a02dd389532ff5a24"
       },
       {
         "path": "src/etp_campaign.rs",
         "sha256": "bbe27563cd61371312031c24ffeb150df0539e8f6c7d5c1e8d5abdb5eb521f50"
       },
       {
-        "path": "src/sarif.rs",
-        "sha256": "8f3b45abf3f40b74ffb0e1477796ea4917361a6d82a77aace4f28115fb1a3301"
+        "path": "src/etp_revocation.rs",
+        "sha256": "6921c178c1f3c0f46d67b675c4026c7698a04ba97a569c3aec15212ef77f42cb"
       },
       {
-        "path": "src/cli.rs",
-        "sha256": "2fed0d353ef7be997bd670dced27d6b0f0b98d0a916dde880c8b5eb0c1f52537"
+        "path": "src/etp_time.rs",
+        "sha256": "9c73f700b92f35beaa696d09c49f818aeb2ab4567497d1d9be4cdd82cc23a975"
+      },
+      {
+        "path": "src/identity.rs",
+        "sha256": "24009a1f2415244d660b5be52fb868bd18b6d186fbfbc8fcb513faa242e4e6bd"
       },
       {
         "path": "src/lib.rs",
-        "sha256": "55a3a71dbc0366b60986c609e23370bc4bbd0a1c5d0ffadde3806c5225aa08df"
+        "sha256": "ec17b4d9536cacaffc0d0d6eb118bc250716e6cb8234d955fb673551b4914d08"
       },
       {
         "path": "src/main.rs",
         "sha256": "880b122fdedfa82f62af794b62075f3cbf3d56a0765b1ba6465d747520e7beec"
+      },
+      {
+        "path": "src/native.rs",
+        "sha256": "8c148768afbda5fa761ffb5a73030f9527eb0fba90fd36555780151514bf5903"
+      },
+      {
+        "path": "src/sarif.rs",
+        "sha256": "8f3b45abf3f40b74ffb0e1477796ea4917361a6d82a77aace4f28115fb1a3301"
       }
     ],
     "harness": "frf-native-fixture-harness",
@@ -178,7 +190,7 @@
       "prlimit",
       "ld"
     ],
-    "tree_sha256": "e0264527e0dfb79e0d30967a8605784b383c0e12c8cdd94f8764457d9370d3ec",
+    "tree_sha256": "74517c942798087e77335ffc28c4078ed85161a58c388b77d649cfac245cb338",
     "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1"
   },
   "mutation_controls": [

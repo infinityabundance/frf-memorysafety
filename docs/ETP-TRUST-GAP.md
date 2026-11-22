@@ -6,6 +6,17 @@
 **Inventory date:** Phase 10.1.
 **Machine-readable freeze:** `schemas/etp/etp-freeze-1.0.0.json`.
 
+**Phase 10.4a update.** The rows below were written for the Phase 10.1
+inventory. Phase 10.4a now implements a local test RFC 3161 token and trust
+domain, a test-only append-only correction/revocation registry with founded-
+support invalidation and historical replay, and a durable offline archive. It
+still does not implement an external trusted timestamp authority, Rekor/C2SP
+transparency inclusion or consistency, a public revocation feed, witness
+observation, global non-equivocation, independent adjudication, or a public
+challenge service. Read rows E37, P17, P19, P21, and P23 together with this
+update. The implementation documents are `ETP-TRUSTED-TIME.md`,
+`ETP-REVOCATION.md`, and `ETP-ARCHIVE.md`.
+
 This document inventories every existing 1.0.0 capability and every proposed ETP
 capability. Each row is classified as exactly one of the following.
 

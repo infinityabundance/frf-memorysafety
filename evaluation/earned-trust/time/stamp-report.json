@@ -1,0 +1,38 @@
+{
+  "schema": "frf-etp.time-stamp.v1",
+  "spec": "frf-etp-v1",
+  "status": "verified",
+  "imprint": "8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab",
+  "request_sha256": "7f074442741bf1c84e951a5e76a63702097119db3956b012485916ef04d49821",
+  "token_sha256": "8fb0de2ef49b073fca06538fbddd36154f08289b3c5ccc59ed622152369d6f78",
+  "gen_time_unix": 1795333079,
+  "gen_time_text": "Nov 22 07:37:59 2026 GMT",
+  "policy_oid": "1.3.6.1.4.1.99999.1",
+  "serial": "02",
+  "tsa_cert_sha256": "5d37a9f9aff66a93f93d010f502e4232ff15c7f5e61039afabd7946cf5e4fbb2",
+  "trust_domain": "local-test-tsa",
+  "external_trust": false,
+  "provenance": {
+    "program": "/usr/bin/openssl",
+    "openssl_version": "OpenSSL 3.0.15 3 Sep 2024 (Library: OpenSSL 3.0.15 3 Sep 2024)",
+    "argv": [
+      "/usr/bin/openssl",
+      "ts",
+      "-reply",
+      "-config",
+      "/src/target/etp-populate/tsa/tsa.cnf",
+      "-queryfile",
+      "/src/target/etp-time-work/time-stamp-33-1795333079133692920/request.tsq",
+      "-token_out",
+      "-out",
+      "/src/target/etp-time-work/time-stamp-33-1795333079133692920/token.tsr"
+    ],
+    "work_directory": "/src/target/etp-time-work/time-stamp-33-1795333079133692920 (removed)",
+    "duration_ms": 10,
+    "return_code": 0,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "6395a66dc601fddc8d733a9708efe6d58946d8ab63e83c1d5ddc1e5874139c54"
+  },
+  "refusals": [],
+  "claim_ceiling": "A verified RFC 3161 token establishes only that a timestamp authority whose certificate chains to the caller-supplied pinned certificate signed a token with the declared message imprint and generation time. It does not establish source creation, experimental execution, evidence production, statement authentication, transparency inclusion, witness observation, release authorization, or correction time. A later timestamp is not proof of an earlier execution date, and a local test TSA is not external trusted time."
+}

@@ -1,0 +1,171 @@
+{
+  "schema": "frf-etp.revocation-verification.v1",
+  "spec": "frf-etp-v1",
+  "status": "verified",
+  "registry_id": "frf-etp-phase10.4a-revocation-registry",
+  "registry_sha256": "3ff8ec9443eb62b0cdc367b18c496b6ad2b4e89f5ef4a6617c41e99b93679bf7",
+  "entry_count": 3,
+  "policy_id": "frf-etp-test-trust-policy-2026-11-22",
+  "policy_version": 6,
+  "dimensions": {
+    "registry_integrity": "valid",
+    "sequence_integrity": "valid",
+    "signature_validity": "valid",
+    "authorization": "valid",
+    "policy_freshness": "valid",
+    "historical_replay": "valid",
+    "present_authorization": "valid"
+  },
+  "signers": [
+    {
+      "entry_id": "rev-0001",
+      "keyid": "frf-etp-test-correction-2026-11-22",
+      "actor": "test-only-correction-authority",
+      "roles": [
+        "correction_authority"
+      ],
+      "signature_valid": true,
+      "authorized": true,
+      "within_validity": true,
+      "detail": "signature valid; role authorized; validity current"
+    },
+    {
+      "entry_id": "cor-0002",
+      "keyid": "frf-etp-test-correction-2026-11-22",
+      "actor": "test-only-correction-authority",
+      "roles": [
+        "correction_authority"
+      ],
+      "signature_valid": true,
+      "authorized": true,
+      "within_validity": true,
+      "detail": "signature valid; role authorized; validity current"
+    },
+    {
+      "entry_id": "dis-0003",
+      "keyid": "frf-etp-test-correction-2026-11-22",
+      "actor": "test-only-correction-authority",
+      "roles": [
+        "correction_authority"
+      ],
+      "signature_valid": true,
+      "authorized": true,
+      "within_validity": true,
+      "detail": "signature valid; role authorized; validity current"
+    }
+  ],
+  "revocations": [
+    {
+      "entry_id": "rev-0001",
+      "claim_id": "claim.campaign-closure",
+      "evidence_ids": [
+        "evidence.closure"
+      ],
+      "effective_at_unix": 1795305600,
+      "historical_replay": "valid_under_original_policy",
+      "scope": "one founded-support derivation",
+      "reason": "The closure evidence is withdrawn from present authorization; historical replay under the original policy is retained.",
+      "applied": true
+    }
+  ],
+  "corrections": [
+    {
+      "entry_id": "cor-0002",
+      "claim_id": "claim.campaign-closure",
+      "corrects_entry_id": "rev-0001",
+      "statement": "Present authorization is withheld for the closed finite campaign closure; the historical finite closure remains reconstructible under its original policy.",
+      "effective_at_unix": 1795305600,
+      "retained": true
+    }
+  ],
+  "retained_dissent": [
+    {
+      "entry_id": "dis-0003",
+      "claim_id": "claim.sarif-projection",
+      "statement": "The nondeterministic case replay remains unresolved; the dissent is retained and does not erase the positive bookkeeping result.",
+      "effective_at_unix": 1795305600,
+      "retained": true
+    }
+  ],
+  "support": {
+    "policy_id": "frf-etp-phase10.4a-support-policy",
+    "policy_version": "1",
+    "policy_digest": "ms1-2d4f593acfe665fab69e2a36ebd0318a670a0641a854e5a5a9882ea4884e49f3",
+    "recorded_at_unix": 1795305600,
+    "historical_verdict_valid": true,
+    "present_freshness": "current",
+    "claims": [
+      {
+        "claim_id": "claim.campaign-closure",
+        "historical_state": "supported",
+        "present_state": "unsupported",
+        "present_admissible": false,
+        "historically_supported": true,
+        "presently_supported": false,
+        "revoked_evidence": [
+          "evidence.closure"
+        ],
+        "alternative_support": false,
+        "contradictory_retained": []
+      },
+      {
+        "claim_id": "claim.campaign-closure-with-mirror",
+        "historical_state": "supported",
+        "present_state": "supported",
+        "present_admissible": true,
+        "historically_supported": true,
+        "presently_supported": true,
+        "revoked_evidence": [
+          "evidence.closure"
+        ],
+        "alternative_support": true,
+        "contradictory_retained": []
+      },
+      {
+        "claim_id": "claim.sarif-projection",
+        "historical_state": "supported",
+        "present_state": "challenged",
+        "present_admissible": false,
+        "historically_supported": true,
+        "presently_supported": false,
+        "revoked_evidence": [
+          "evidence.closure"
+        ],
+        "alternative_support": false,
+        "contradictory_retained": [
+          "contradiction.sarif-nondeterministic-case"
+        ]
+      },
+      {
+        "claim_id": "claim.attested-closure",
+        "historical_state": "supported",
+        "present_state": "unsupported",
+        "present_admissible": false,
+        "historically_supported": true,
+        "presently_supported": false,
+        "revoked_evidence": [
+          "evidence.closure"
+        ],
+        "alternative_support": false,
+        "contradictory_retained": []
+      }
+    ],
+    "invalidated": [
+      "claim.campaign-closure",
+      "claim.sarif-projection",
+      "claim.attested-closure"
+    ],
+    "alternative_survives": [
+      "claim.campaign-closure-with-mirror"
+    ],
+    "withheld": []
+  },
+  "refusals": [],
+  "unsupported_features": [
+    "transparency_inclusion",
+    "witness_observation",
+    "public_revocation_feed",
+    "global_non_equivocation"
+  ],
+  "claim_ceiling": "A verified revocation registry establishes only that the declared correction authority signed the exact append-only entries under the declared policy and that the declared founded-support model loses the dependent derivations named by applied revocations unless an alternative valid support path survives. It does not establish that a revocation is correct, complete, globally visible, or that historical evidence was invalid when produced. Historical replay under the original policy is not present authorization."
+}

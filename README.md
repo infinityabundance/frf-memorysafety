@@ -5,14 +5,16 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-Phases 10.1-10.3 add the FRF Earned Trust Protocol without changing the 1.0.0
+Phases 10.1-10.4a add the FRF Earned Trust Protocol without changing the 1.0.0
 evidence or claim ceilings: a claim algebra with twenty coordinates and ten
-separate status dimensions, a finite 13-case campaign closure, and a finite
+separate status dimensions, a finite 13-case campaign closure, a finite
 authenticated-evidence profile built on DSSE v1, in-toto Statement v1, a
-versioned Ed25519 trust policy, and an independent verifier. The authenticated
-profile records who signed exact bytes and whether the signed predicate agrees
-with the finite closure. It does not establish truth, independent review,
-transparency inclusion, trusted time, or deployment security.
+versioned Ed25519 trust policy, and an independent verifier, plus a local test
+RFC 3161 token, an append-only test correction/revocation registry, and a
+durable offline archive. The authenticated profile records who signed exact
+bytes and whether the signed predicate agrees with the finite closure. It does
+not establish truth, independent review, transparency inclusion, external
+trusted time, or deployment security.
 
 **This build makes no memory-safety soundness claim.** Version 1.0.0 is the
 Phase 9 release. It retains the Phase 8 OpenSSL-Rust conversion evidence, the
@@ -101,7 +103,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 
 | Gate script | Result |
 |---|---|
-| `./ci/gate.sh` | `cargo fmt` clean; `cargo clippy -D warnings` clean; 373 debug and 373 release tests passed, 0 failed, 0 ignored |
+| `./ci/gate.sh` | `cargo fmt` clean; `cargo clippy -D warnings` clean; 467 debug and 467 release tests passed, 0 failed, 0 ignored |
 | `./ci/native-gate.sh` | 17 live native tests passed, 0 failed, 0 ignored |
 | `./ci/mir-gate.sh` | PASS, LIVE MIR observations |
 | `./ci/detector-gate.sh` | 7 of 7 live mechanisms PASS; 11 live seal tests passed, 0 failed, 0 ignored |
@@ -112,16 +114,17 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/reconstruction-gate.sh` | independent standard-library reconstruction passes: 60/60 receipts, 20/11 split, 11/11 protocol claims, 18/18 paper claims mapped |
 | `./ci/etp-gate.sh` (Phase 10.2) | 13-case campaign run and verify PASS; 25 raw-evidence files; SARIF export/verify PASS; independent reconstruction PASS |
 | `./ci/etp-auth-gate.sh` (Phase 10.3) | 21 focused attestation tests passed; 13 independent verifier controls passed; committed and ephemeral attestations accepted by Rust and OpenSSL verifiers; private key discarded |
+| `./ci/etp-time-gate.sh` (Phase 10.4a) | 9 time, 13 revocation, and 8 archive focused tests passed; 6/6 independent timestamp controls; 6/6 independent revocation controls; committed and fresh local TSA tokens accepted; archive 64/64 objects verified offline with no network |
 
-The default gate executes all 426 tests, including the 21 Phase 10.3
+The default gate executes all 467 tests, including the 21 Phase 10.3
 attestation tests (DSSE/in-toto, trust policy, semantic refusal, replay,
-duplicate credentials, expired keys, and independent review), the 22 Phase 10.1
-ETP tests (14 unit and 8 integration), the Phase 10.2 campaign/SARIF tests, the
-six proof-live tests on their typed `checker_unavailable` path, the 17 bridge
-seal tests, the 3 bridge unit tests, the 1 live/`NOT_RUN` chain test, the 30
-Phase 8 conversion-court tests (27 integration, including 7 live-capture/reuse
-tests, and 3 unit), the 9 Phase 9.1 evaluation tests, and the Phase 9.2 paper
-claim-table test.
+duplicate credentials, expired keys, and independent review), the 30 Phase 10.4a
+time/revocation/archive tests, the 22 Phase 10.1 ETP tests (14 unit and 8
+integration), the Phase 10.2 campaign/SARIF tests, the six proof-live tests on
+their typed `checker_unavailable` path, the 17 bridge seal tests, the 3 bridge
+unit tests, the 1 live/`NOT_RUN` chain test, the 30 Phase 8 conversion-court
+tests (27 integration, including 7 live-capture/reuse tests, and 3 unit), the 9
+Phase 9.1 evaluation tests, and the Phase 9.2 paper claim-table test.
 `./ci/proof-gate.sh` re-runs those same six tests against live Coq; the live
 count is a subset of the base total, not additional to it.
 `./ci/bridge-gate.sh` builds and runs the three pinned providers and executes
@@ -151,10 +154,42 @@ signature is never sufficient for acceptance: the report always keeps signature
 validity, payload integrity, authorization, scope applicability, freshness,
 semantic support, and independent-review status separate. The committed
 attestation uses a discarded test-only ephemeral key and reports
-`independent_review: not_established`. Rekor/C2SP transparency, RFC 3161
-timestamps, Sigstore identity, TUF metadata, and revocation/challenge services
-remain Phase 10.4 work. See
+`independent_review: not_established`. See
 [`docs/ETP-AUTHENTICATED-EVIDENCE.md`](docs/ETP-AUTHENTICATED-EVIDENCE.md).
+
+### Trusted time, revocation, and durable archive (Phase 10.4a)
+
+Phase 10.4a adds trusted-time separation without claiming external trusted time.
+It implements a shell-free bounded OpenSSL `ts` adapter, a real RFC 3161 token
+anchored in a local test-only TSA generated inside the gate, verification of the
+imprint, signature chain to the pinned test CA, policy OID, serial, and
+generation time, and nine separate temporal facts. A later token is never
+treated as proof of an earlier execution date; a supplied declared execution
+time is refused as timestamp-proven. The token is not external trusted time and
+is not a transparency-log entry. See
+[`docs/ETP-TRUSTED-TIME.md`](docs/ETP-TRUSTED-TIME.md).
+
+It also adds an append-only, DSSE-signed correction/revocation registry bound to
+registry, policy, claim, evidence, and subject identities. Applied revocations
+are evaluated against the founded-support model, so dependent derivations are
+invalidated unless alternative valid support survives. The historical verdict is
+replayed under its original policy separately from present authorization under
+the current registry and freshness rules: a revoked claim can remain
+historically valid while being inadmissible now. Corrections and dissenting
+records are retained. The registry is test-only and not a public feed. See
+[`docs/ETP-REVOCATION.md`](docs/ETP-REVOCATION.md).
+
+The durable archive packages the evidence, receipts, raw transcripts, SARIF,
+attestations, timestamp token and certificates, policy, revocation registry,
+support model, historical verdict, verifier scripts, and reconstruction
+instructions under [`evaluation/earned-trust/archive/`](evaluation/earned-trust/archive/).
+It records a complete object inventory with digests, sizes, schemas, and
+applicability, a knowledge horizon, and exact reproduction commands, and is
+verified offline with no network in a hardened container. See
+[`docs/ETP-ARCHIVE.md`](docs/ETP-ARCHIVE.md).
+Rekor/C2SP transparency inclusion, an external trusted timestamp authority,
+Sigstore identity, TUF metadata, public revocation, witness observation, and
+public challenge remain Phase 10.4b or not deployed.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
@@ -211,7 +246,11 @@ toolchains, commands, closure hashes, and the claim ceiling.
 | Live Coq proof checking | Implemented for the checked-in finite theorem and seal controls with Debian Coq 8.16.1; unavailable without `coqc` |
 | ETP campaign closure and SARIF 2.1.0 projection | Implemented; `etp campaign verify` and `etp sarif verify` over the finite 13-case campaign; bookkeeping only |
 | `etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]` | Implemented; DSSE v1/in-toto v1, Ed25519 only, versioned trust policy, seven separate dimensions; a valid signature alone is not acceptance |
-| Rekor/C2SP transparency, RFC 3161 timestamps, Sigstore keyless identity, TUF metadata, revocation registry, public challenge | Not implemented; Phase 10.4 |
+| `etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json]` | Implemented; RFC 3161 imprint, chain, policy, serial, generation time, and certificate pin; local test TSA only, `external_trust: false` |
+| `etp time stamp --imprint HEX --tsa-config FILE --out TOKEN` | Gate/test helper only; shell-free bounded OpenSSL adapter, private 0700 work directory, private keys under `target/` only |
+| `etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json]` | Implemented; append-only DSSE registry, correction-authority role, historical replay, present authorization, alternative-support survival, retained dissent |
+| `etp archive verify ARCHIVE [--json]` | Implemented; complete object inventory, digests, sizes, knowledge horizon, required categories, reconstruction inputs; offline and no network |
+| Rekor/C2SP transparency inclusion, external trusted RFC 3161 time, Sigstore keyless identity, TUF metadata, public revocation feed, witness observation, public challenge | Not implemented; Phase 10.4b or not deployed |
 | Live Lean/Isabelle proof checking | Not implemented; `checker_unavailable`, exit 6 |
 | Arbitrary native C/Rust execution (`court run`) | Not implemented; `NOT_RUN`, exit 6 |
 | MIR-resolved caller graph, aliases, provenance, reference intervals | Not implemented; retained as explicit unknowns |
@@ -723,11 +762,13 @@ format, not a correctness or security proof.
   verification-cost inference from the Phase 9.1 finite control-family corpus
 - Live ETP campaign execution unless `FRF_NATIVE_HARNESS=1` is set in a
   native-harness build; `./ci/etp-gate.sh` is the opt-in real native path
-- DSSE envelopes, in-toto/SLSA attestations, Sigstore signatures, Rekor/C2SP
-  inclusion or consistency, RFC 3161 timestamps, and TUF metadata for the ETP
-  campaign; none is emitted or verified
-- Independent ETP adjudication, public challenge, revocation registry, and
-  campaign-closure services; these remain specified, not deployed
+- Rekor/C2SP transparency inclusion or consistency, external trusted RFC 3161
+  time, Sigstore keyless identity, TUF metadata, witness observation, and public
+  revocation/challenge services; the local test timestamp and test-only
+  revocation registry are implemented but are not external trust
+- Independent ETP adjudication, public challenge, public revocation feed, and
+  campaign-closure services; a test-only append-only revocation registry is
+  implemented, but public services remain not deployed
 - Authority of a GitHub code-scanning view or any external SARIF consumer; the
   committed SARIF file is a report projection, not a certification
 
@@ -759,6 +800,11 @@ frf-memorysafety etp campaign verify FILE [--json]
 frf-memorysafety etp campaign run --protocol FILE --out DIR [--json]
 frf-memorysafety etp sarif verify FILE [--json]
 frf-memorysafety etp sarif export CAMPAIGN [--out FILE]
+frf-memorysafety etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json]
+frf-memorysafety etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json]
+frf-memorysafety etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json]
+frf-memorysafety etp revocation record SUPPORT --out FILE [--json]
+frf-memorysafety etp archive verify ARCHIVE [--json]
 frf-memorysafety evidence verify --root DIR
 frf-memorysafety report --case FILE --format json|markdown
 

@@ -294,9 +294,86 @@ Phase 10.3 does not migrate:
 
 Phase 10.3 does not implement a transparency log (Rekor/C2SP), RFC 3161
 timestamps, Sigstore keyless identity, TUF metadata, a revocation registry, or a
-public challenge service. Those remain Phase 10.4 work.
+public challenge service. Phase 10.4a later adds a local test RFC 3161 token, an
+append-only test revocation registry, and a durable archive; Rekor/C2SP
+transparency inclusion and public challenge remain Phase 10.4b or not deployed.
 
 The eleven new schemas are registered in `schemas/etp/registry.json`. The 1.0.0
+freeze is unchanged.
+
+## 9.3 What Phase 10.4a adds and does not migrate
+
+Phase 10.4a adds, without changing any 1.0.0 meaning:
+
+- `frf-etp.time-verification.v1`;
+- `frf-etp.time-stamp.v1`;
+- `frf-etp.revocation-registry.v1`;
+- `frf-etp.revocation-entry.v1`;
+- `frf-etp.revocation-plan.v1`;
+- `frf-etp.revocation-verification.v1`;
+- `frf-etp.support-model.v1`;
+- `frf-etp.historical-verdict.v1`;
+- `frf-etp.archive-manifest.v1`;
+- `frf-etp.archive-verification.v1`;
+- `src/etp_time.rs`, `src/etp_revocation.rs`, `src/etp_archive.rs`,
+  `tests/etp_time.rs`, `tests/etp_revocation.rs`, `tests/etp_archive.rs`;
+- `etp time verify`, `etp time stamp`, `etp revocation verify`,
+  `etp revocation record`, and `etp archive verify`;
+- `evaluation/earned-trust/time/`, `evaluation/earned-trust/revocations/`,
+  `evaluation/earned-trust/archive/`;
+- `evaluation/earned-trust/verify_time.py`,
+  `evaluation/earned-trust/verify_revocation.py`,
+  `evaluation/earned-trust/make_revocation.py`, and
+  `evaluation/earned-trust/make_archive.py`;
+- `ci/etp-time-gate.sh`;
+- `docs/ETP-TRUSTED-TIME.md`, `docs/ETP-REVOCATION.md`, and
+  `docs/ETP-ARCHIVE.md`.
+
+Phase 10.4a records one explicitly separated instrument change. Adding the time,
+revocation, and archive modules changed `src/lib.rs`, `src/cli.rs`, and
+`src/etp_auth.rs`, all of which the Phase 10.2 opening manifest declares as
+instrument files. The opening manifest was re-frozen and the same finite
+campaign was re-executed under the Phase 10.4a instrument. The case population,
+expected terminal outcomes, receipt contents, accepted cases, retained findings,
+resource envelope, and claim ceiling are unchanged.
+
+| Field | Phase 10.4a value |
+|---|---|
+| Opening SHA-256 | `08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` |
+| Candidate identity | `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746` |
+| Instrument identity | `74517c942798087e77335ffc28c4078ed85161a58c388b77d649cfac245cb338` |
+| Closure SHA-256 | `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab` |
+| Trust-policy version | `6` |
+| Attestation envelope SHA-256 | `fafd563d816b38be8fc035f33102d0418f2e652f534b876e9057c0960d766e66` |
+| Timestamp token SHA-256 | `8fb0de2ef49b073fca06538fbddd36154f08289b3c5ccc59ed622152369d6f78` |
+| Revocation registry SHA-256 | `3ff8ec9443eb62b0cdc367b18c496b6ad2b4e89f5ef4a6617c41e99b93679bf7` |
+| Archive manifest SHA-256 | `c1dbbca82be207891179e62ef5fd5b2069b587436092e33e72b3c6a3af56adb9` |
+
+The Phase 10.3 opening digest
+`fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec` and its
+closure digest
+`607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912` remain
+available at commit `cb59ddb`.
+
+Phase 10.4a does not migrate:
+
+- any 1.0.0 receipt, claim, or provider object into a timestamp, revocation, or
+  archive identity;
+- any digest into authentication;
+- any local test timestamp into external trusted time;
+- any append-only test registry into a public revocation feed or transparency
+  log;
+- any historical verdict into present authorization;
+- any `research/` bytes;
+- the crate version.
+
+Phase 10.4a does not implement Rekor/C2SP transparency inclusion or
+consistency, an external trusted timestamp authority, Sigstore keyless identity,
+TUF metadata, public revocation, global non-equivocation, witness observation,
+independent adjudication, or a public challenge service. Rekor/C2SP remains
+Phase 10.4b work.
+
+The ten new schemas are registered in `schemas/etp/registry.json`. The 1.0.0
 freeze is unchanged.
 
 ## 10. Rollback

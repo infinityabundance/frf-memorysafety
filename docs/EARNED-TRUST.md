@@ -92,7 +92,7 @@ Each layer has its own evidence, authority, and claim ceiling.
 | 3 | Interoperability | Implemented for one recorded OpenSSL-Rust boundary and one consumer workflow | One boundary witness, one repair, one curl TLS 1.3 workflow, one loader closure |
 | 4 | Reproducibility | Implemented for a pre-registered finite evaluation and an artifact-level reconstructor | Deterministic receipt reproduction and independent artifact reconstruction |
 | 5 | ETP claim integrity, campaign closure, adjudication, revocation | Phase 10.1 starts claim integrity | Claim algebra, obligation inventory, separate dimensions, freeze, migration policy |
-| 6 | Authenticated evidence | Partially implemented: DSSE/in-toto verification, trust policy, independent verifier | Who signed exact bytes, under which declared role and scope; not truth, review, time, or transparency |
+| 6 | Authenticated evidence | Partially implemented: DSSE/in-toto verification, trust policy, independent verifier, local test RFC 3161 token, append-only revocation registry, durable offline archive | Who signed exact bytes, under which declared role and scope, what a local test timestamp binds, and which present authorizations a declared revocation removes; not truth, external trusted time, or transparency |
 | 7 | Public accountability | Specified, not implemented | Nothing yet; no challenge service, transparency log, or adjudication body is deployed |
 
 ### 4.1 Existing foundation
@@ -166,10 +166,16 @@ build roots, and update-framework metadata live. Phase 10.3 implements a finite
 slice: versioned DSSE v1 envelopes, Ed25519-only verification over the exact
 pre-authentication encoding, in-toto Statement v1 with separately versioned ETP
 predicates, a versioned trust policy, and an independent OpenSSL-based verifier.
-That slice establishes who signed the exact bytes and whether the signed
-predicate agrees with the referenced finite campaign closure. It does not
-implement a transparency log, trusted timestamp, Sigstore identity, TUF metadata,
-revocation registry, or independent reviewer. Those remain Phase 10.4 work.
+Phase 10.4a adds a real RFC 3161 token anchored in a local, test-only TSA, a
+shell-free bounded OpenSSL adapter, an independent timestamp verifier, nine
+separate temporal facts, an append-only DSSE-signed correction/revocation
+registry, founded-support invalidation with historical replay preserved, and a
+durable offline archive. That slice establishes who signed the exact bytes,
+what a local test timestamp binds, and which declared derivations a revocation
+removes. It does not implement a transparency log, an external trusted timestamp
+authority, Sigstore identity, TUF metadata, a public revocation feed, an
+independent reviewer, or a public challenge service. Rekor/C2SP transparency
+inclusion remains Phase 10.4b work.
 ETP distinguishes:
 
 - a digest from authentication;
@@ -281,8 +287,9 @@ done by editing a manifest.
 Phase 10.1 establishes the constitution and inventory only. Phase 10.2 adds the
 first executable campaign slice. Phase 10.3 adds a finite authenticated-evidence
 slice: DSSE/in-toto verification, a trust policy, seven separate verification
-dimensions, an independent verifier, and executable refusal controls. In
-particular:
+dimensions, an independent verifier, and executable refusal controls. Phase
+10.4a adds trusted-time separation, authenticated corrections/revocation, and a
+durable offline archive. In particular:
 
 - no new memory-safety, compatibility, timing, or deployment claim is made;
 - the 13-case native campaign is a finite execution and bookkeeping record, not
@@ -292,8 +299,15 @@ particular:
 - a valid signature is not truth and is not acceptance without semantic support;
 - the committed attestation uses a discarded test-only key and confers no
   independent review;
-- no transparency log, timestamp, revocation registry, or public challenge
-  service is integrated;
+- the committed timestamp token is anchored in a local, test-only TSA; it is not
+  external trusted time and does not establish experimental execution time;
+- the revocation registry is append-only and test-only; it is not a public feed
+  and does not establish completeness or non-equivocation;
+- the durable archive is digest-bound bookkeeping, not an external anchor;
+- no transparency log, external timestamp authority, or public challenge
+  service is integrated; Rekor/C2SP inclusion remains Phase 10.4b;
+- the Phase 10.4a instrument change re-froze the campaign opening manifest and
+  re-executed the same population; the claim ceiling is unchanged;
 - no existing test is deleted or weakened;
 - no crate version is bumped and no package is published.
 
@@ -301,9 +315,11 @@ The trust-gap inventory is in [`ETP-TRUST-GAP.md`](ETP-TRUST-GAP.md). The
 migration and versioning policy is in [`ETP-MIGRATION.md`](ETP-MIGRATION.md).
 The claim algebra is in [`ETP-CLAIM-INTEGRITY.md`](ETP-CLAIM-INTEGRITY.md). The
 authenticated-evidence profile is in
-[`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md). The
-standards actually consulted are in
-[`ETP-STANDARDS-REGISTRY.md`](ETP-STANDARDS-REGISTRY.md).
+[`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md). The local
+trusted-time profile is in [`ETP-TRUSTED-TIME.md`](ETP-TRUSTED-TIME.md). The
+revocation profile is in [`ETP-REVOCATION.md`](ETP-REVOCATION.md). The durable
+archive is in [`ETP-ARCHIVE.md`](ETP-ARCHIVE.md). The standards actually
+consulted are in [`ETP-STANDARDS-REGISTRY.md`](ETP-STANDARDS-REGISTRY.md).
 
 ## 9. References
 

@@ -13,9 +13,13 @@
 1.0.0 evidence, schema meaning, or claim ceiling.
 
 This document records the finite authenticated-evidence profile implemented in
-Phase 10.3. It does not implement Rekor or any transparency log, RFC 3161
-timestamps, Sigstore keyless identity, or TUF metadata; those remain Phase 10.4
-work.
+Phase 10.3. Phase 10.4a adds a local test RFC 3161 token, an append-only test
+revocation registry, and a durable offline archive; those are documented in
+[`ETP-TRUSTED-TIME.md`](ETP-TRUSTED-TIME.md),
+[`ETP-REVOCATION.md`](ETP-REVOCATION.md), and
+[`ETP-ARCHIVE.md`](ETP-ARCHIVE.md). This document does not implement Rekor or
+any transparency log, an external trusted timestamp authority, Sigstore keyless
+identity, or TUF metadata; Rekor/C2SP remains Phase 10.4b work.
 
 ---
 
@@ -227,19 +231,19 @@ of the repository.
 
 | Artifact | Path | SHA-256 |
 |---|---|---|
-| Envelope | `evaluation/earned-trust/attestations/campaign-closure.envelope.json` | `e6faf1f710772f89a66faf6957d71944c1d34bcf120f1e7f9bed336af38fa44a` |
-| Statement payload | `evaluation/earned-trust/attestations/campaign-closure.statement.json` | `4bbef1767d47a74ffc41b6bd3d5b3cef30d2a2de080de48b49036b1b001c5291` |
+| Envelope | `evaluation/earned-trust/attestations/campaign-closure.envelope.json` | `fafd563d816b38be8fc035f33102d0418f2e652f534b876e9057c0960d766e66` |
+| Statement payload | `evaluation/earned-trust/attestations/campaign-closure.statement.json` | `71b1e22f5035a0b59eb7011977d0075eec25c5e5fa735ef113146a56d4504d4d` |
 | Public key (PEM) | `evaluation/earned-trust/attestations/campaign-closure.public.pem` | present for inspection |
-| Trust policy | `evaluation/earned-trust/trust-policy.json` | `5ab25c27881997de2670a8d63eb595ab606f29226dc25ece1d6bc265874fd3df` |
+| Trust policy | `evaluation/earned-trust/trust-policy.json` | `a608a33624dbef00129103afba4a56998003d3e6c0a5f426eee709929af6d2cf` |
 
 The predicate binds the closure digest
-`607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912`, the
+`8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab`, the
 candidate identity
 `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746`, and the
 raw-evidence digest
-`eba054abba7f2e031e6f8a950539d2ff3a9a904aaaeb4926af3f1931695cae3c`.
+`58c02137266d264590aaa9a60db820392de9ab40030b98a5a63ab4cc0f2dd2f4`.
 
-### 6.1 Phase 10.2 campaign re-freeze
+### 6.1 Phase 10.2 and Phase 10.4a campaign re-freezes
 
 Adding the attestation dependency changed `Cargo.toml`, which is a declared
 candidate and instrument file, and adding `src/etp_auth.rs` and changing
@@ -248,22 +252,29 @@ therefore re-froze the Phase 10.2 opening manifest as an explicitly recorded
 instrument change and re-executed the same finite campaign with the Phase 10.3
 instrument.
 
-The population, expected outcomes, receipts, accepted cases, retained findings,
-resource envelope, and claim ceiling are unchanged. The candidate tree is
+Phase 10.4a added `src/etp_time.rs`, `src/etp_revocation.rs`, and
+`src/etp_archive.rs`, and changed `src/cli.rs`, `src/lib.rs`, and
+`src/etp_auth.rs`, all declared instrument files. It re-froze the opening
+manifest again and re-executed the same population. The population, expected
+outcomes, receipts, accepted cases, retained findings, resource envelope, and
+claim ceiling are unchanged. The candidate tree is
 `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746`; the
 instrument tree is
-`e0264527e0dfb79e0d30967a8605784b383c0e12c8cdd94f8764457d9370d3ec`; the
+`74517c942798087e77335ffc28c4078ed85161a58c388b77d649cfac245cb338`; the
 opening-manifest digest is
-`fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec`. The
-original Phase 10.2 opening digest was
+`08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a`. The
+Phase 10.3 opening digest
+`fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec` and closure
+digest `607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912` remain
+available at commit `cb59ddb`. The original Phase 10.2 opening digest was
 `2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and its
 closure digest was
-`fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`. Those
-bytes remain available at commit `f17111d` in git history.
+`fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`; those bytes
+remain available at commit `f17111d` in git history.
 
 The re-freeze does not strengthen any claim. It is a separate instrument change
-and a separate execution, and it is recorded here and in
-`docs/ETP-MIGRATION.md`.
+and a separate execution, and it is recorded here, in `docs/ETP-CAMPAIGN.md`,
+and in `docs/ETP-MIGRATION.md`.
 
 ## 7. Key custody, administrative owner, rotation, and revocation
 
@@ -276,12 +287,13 @@ and a separate execution, and it is recorded here and in
   not technical assurance, and this document does not claim that the owner is
   independent.
 * **Rotation.** There is no production rotation process. A new attestation
-  requires a new policy version and a new key entry. The `v1` policy is
-  test-only and expires on 2027-11-22 (Unix `1826841600`).
-* **Revocation.** There is no revocation registry or transparency log in Phase
-  10.3. Short validity windows and policy versioning are the only local
-  controls. Real revocation, non-equivocation, and public challenge remain Phase
-  10.4 work.
+  requires a new policy version and a new key entry. The current policy is
+  version 6; it is test-only and expires on 2027-11-22 (Unix `1826841600`).
+* **Revocation.** Phase 10.4a adds an append-only, DSSE-signed test revocation
+  registry for the finite Phase 10.4a support model. It is not a public feed and
+  not a transparency log. Public revocation, non-equivocation, witness
+  observation, and Rekor/C2SP inclusion remain Phase 10.4b or not deployed. See
+  [`ETP-REVOCATION.md`](ETP-REVOCATION.md).
 
 ## 8. Independent verifier
 
@@ -338,21 +350,28 @@ Authenticated evidence is not truth. In particular:
   absence of collusion;
 * inclusion in any future transparency log would not be completeness;
 * multiple signatures are not multiple independent reviewers;
-* a trusted timestamp is not experimental authenticity;
+* a trusted timestamp is not experimental authenticity; the Phase 10.4a token is
+  a local test token, not external trusted time;
 * an evidence commitment is not availability;
+* a revocation does not make historical evidence false when produced;
+* historical replay under the original policy is not present authorization;
 * the finite campaign closure is not a population inference, a detector
   sensitivity estimate, a memory-safety proof, or a deployment authorization;
 * a passing gate is not certification;
-* no Rekor/C2SP inclusion proof, RFC 3161 timestamp, Sigstore identity, TUF
-  metadata, revocation registry, or public challenge service exists in Phase
-  10.3.
+* no Rekor/C2SP inclusion proof, external trusted timestamp authority, Sigstore
+  identity, TUF metadata, public revocation feed, witness observation, or public
+  challenge service exists in Phase 10.4a. Rekor/C2SP remains Phase 10.4b.
 
 ## 10. Executed results
 
 * Rust focused attestation tests: 21 passed, 0 failed, 0 ignored.
 * Independent verifier controls: 13 passed, 0 failed.
-* Full debug gate: 426 tests passed, 0 failed.
-* Full release gate: 426 tests passed, 0 failed.
+* Phase 10.4a focused tests: 9 time tests, 13 revocation tests, and 8 archive
+  tests passed, 0 failed, 0 ignored.
+* Phase 10.4a independent verifiers: 6 of 6 timestamp controls and 6 of 6
+  revocation controls passed.
+* Full debug gate: 467 tests passed, 0 failed.
+* Full release gate: 467 tests passed, 0 failed.
 * The committed attestation is accepted by both the Rust CLI and the independent
   verifier with all seven dimensions reported separately.
 * A correctly signed statement with a missing case, a false conclusion, a

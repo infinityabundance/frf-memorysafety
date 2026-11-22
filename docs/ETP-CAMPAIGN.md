@@ -42,14 +42,14 @@ instrument.
 | Field | Value |
 |---|---|
 | Opening manifest | `evaluation/earned-trust/protocol.json` |
-| Opening SHA-256 | `fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec` |
+| Opening SHA-256 | `08325858b5a18f6a4053f4c25f081219f0f7165c8e2c51de5ec52db09e6a942a` |
 | Frozen sidecar | `evaluation/earned-trust/opening.sha256` |
 | Candidate identity (tree) | `7fd038b34643743ca4dc36ceb7026973a8900fb0bd9697abc2a9ba64bea02746` |
-| Instrument identity (tree) | `e0264527e0dfb79e0d30967a8605784b383c0e12c8cdd94f8764457d9370d3ec` |
+| Instrument identity (tree) | `74517c942798087e77335ffc28c4078ed85161a58c388b77d649cfac245cb338` |
 | Closure manifest | `evaluation/earned-trust/MANIFEST.json` |
-| Closure SHA-256 | `607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912` |
+| Closure SHA-256 | `8b343a22dfc7a35e947a2f85638284e37088a7128ecb4a3de787456db4d5b3ab` |
 | SARIF projection | `evaluation/earned-trust/campaign.sarif` |
-| SARIF SHA-256 | `336edb23e8ee3c4c9a31c2a83ec645a0993421bfd0cf775a17990ca40e9b8f8b` |
+| SARIF SHA-256 | `1db25044943c29f5b56e53a1e5ab9ba9cc88ffb91eac058463490e09a925a9c5` |
 
 **Phase 10.3 instrument change.** Adding the attestation dependency changed
 `Cargo.toml`, and adding `src/etp_auth.rs` and changing `src/cli.rs` and
@@ -57,12 +57,23 @@ instrument.
 re-frozen and the same finite campaign was re-executed under the Phase 10.3
 instrument. The population, expected outcomes, receipts, accepted cases,
 retained findings, resource envelope, and claim ceiling are unchanged. The
-original Phase 10.2 opening digest was
+The original Phase 10.2 opening digest was
 `2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236` and its
 closure digest was
 `fea6c92f9840b30a63769ebd219cced2005ab32ab6b90b7eeeba1af038f01eee`; both remain
 available at commit `f17111d`. See
 [`ETP-AUTHENTICATED-EVIDENCE.md`](ETP-AUTHENTICATED-EVIDENCE.md).
+
+**Phase 10.4a instrument change.** Adding `src/etp_time.rs`,
+`src/etp_revocation.rs`, `src/etp_archive.rs`, and their CLI integration changed
+`src/cli.rs`, `src/lib.rs`, and `src/etp_auth.rs`, all declared instrument files.
+The opening manifest was re-frozen and the same finite campaign was re-executed
+under the Phase 10.4a instrument. The population, expected outcomes, receipts,
+accepted cases, retained findings, resource envelope, and claim ceiling are
+unchanged. The Phase 10.3 opening digest
+`fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec` and closure
+digest `607b36e151fd791f9f8ed52391f7e30f2a2822bfed0c13c63943064f536ae912` remain
+available at commit `cb59ddb`.
 
 The tree digest is `sha256-sorted-path-nul-digest-lf-v1`: SHA-256 over the
 concatenation of `path`, NUL, the lowercase file SHA-256, and LF, with files
@@ -271,14 +282,16 @@ complete. It does **not** establish:
 
 DSSE, in-toto, and an Ed25519-only trust policy are implemented for a finite
 profile in Phase 10.3; they authenticate the exact signed bytes and bind this
-closure, but they do not establish truth or independent review. Rekor/C2SP
-transparency inclusion and consistency, RFC 3161 trusted timestamps, Sigstore
-keyless identity, TUF update metadata, independent adjudication, revocation
-registries, and public challenge services are not implemented in this
-subphase. They remain `NOT_RUN` or specified-not-deployed. The SHA-256 freeze
-detects accidental or silent change only; an actor who can rewrite the opening
-manifest, every receipt, the projection, and the verifier can produce a
-self-consistent alternative set.
+closure, but they do not establish truth or independent review. Phase 10.4a adds
+a local test RFC 3161 token and an append-only test revocation registry; neither
+is external trusted time, transparency inclusion, or a public revocation feed.
+Rekor/C2SP transparency inclusion and consistency, an external trusted timestamp
+authority, Sigstore keyless identity, TUF update metadata, independent
+adjudication, witness observation, global non-equivocation, and public challenge
+services are not implemented in this subphase. They remain `NOT_RUN` or
+specified-not-deployed. The SHA-256 freeze detects accidental or silent change
+only; an actor who can rewrite the opening manifest, every receipt, the
+projection, and the verifier can produce a self-consistent alternative set.
 
 ## 9. Citations
 
