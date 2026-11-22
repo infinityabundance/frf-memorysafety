@@ -284,9 +284,12 @@ authenticity property. See
 (`tests/fixtures/witness/probe.c`) with `gcc -O0 -g -fno-inline` inside the
 hardened `rust:1.85.0-slim` container, runs it with a cleared environment and a
 fixed argv, captures the real `/proc/self/exe`, argv, and `/proc/self/maps`,
-hashes every loaded regular-file DSO, and writes the canonical receipt
-`frf-etp.execution-witness.v1` under `evaluation/earned-trust/witness/`. A
-separate Python standard-library verifier recomputes the receipt hashes and
+hashes every loaded regular-file DSO, and writes a fresh canonical receipt
+into `target/etp-witness-run/`; the committed historical receipt remains under
+`evaluation/earned-trust/witness/`. The build path is fixed at
+`/tmp/frf-witness` and the maps digest is normalized over permissions and
+pathnames, so repeated gate runs do not dirty the tree or change the stable
+witness fields. A separate Python standard-library verifier recomputes the receipt hashes and
 refuses tampered executable, DSO, symbol, argv, or loader-closure fields. The
 witness self-test refuses six named refusal codes: stripped binary (missing
 symbol), ambiguous symbol query, source/binary mismatch, substituted

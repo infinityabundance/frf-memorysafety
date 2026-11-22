@@ -10,7 +10,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 IMAGE="${IMAGE:-rust:1.85.0-slim}"
-OUT="$ROOT/evaluation/earned-trust/witness"
+OUT="$ROOT/target/etp-witness-run"
 mkdir -p "$OUT"
 
 timeout 1800 docker run --rm \

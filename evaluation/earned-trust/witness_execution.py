@@ -33,7 +33,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -218,6 +217,23 @@ def hash_dsos(paths: list[str]) -> list[dict]:
     return entries
 
 
+def normalized_maps_digest(maps: list[str]) -> str:
+    """Hash the stable shape of the maps: permissions and pathname only.
+
+    Raw maps contain ASLR-dependent addresses, offsets, and inode numbers.
+    Those are observation-specific and must not be treated as a reproducible
+    identity. The normalized digest is stable for a fixed executable and
+    loader closure.
+    """
+    normalized = []
+    for line in maps:
+        parts = line.split()
+        permissions = parts[1] if len(parts) > 1 else ""
+        pathname = parts[5] if len(parts) >= 6 else ""
+        normalized.append({"permissions": permissions, "pathname": pathname})
+    return sha256_bytes(canonical(normalized))
+
+
 def loader_closure_digest(dsos: list[dict]) -> str:
     return sha256_bytes(canonical(dsos))
 
@@ -352,7 +368,7 @@ def build_receipt(root: Path, work: Path, toolchain: Path, recipe: Path, binary_
             "cleared_environment": True,
             "real_exe": real_exe,
             "exe_sha256": sha256_file(Path(real_exe)),
-            "maps_sha256": sha256_bytes(canonical(maps)),
+            "maps_sha256": normalized_maps_digest(maps),
             "maps_line_count": len(maps),
             "loaded_dsos": dsos,
             "loader_closure_sha256": closure,
@@ -480,7 +496,10 @@ def main() -> int:
     toolchain = Path(args.toolchain)
     recipe = Path(args.build_recipe)
 
-    work = Path(tempfile.mkdtemp(prefix="frf-witness-"))
+    work = Path("/tmp/frf-witness")
+    if work.exists():
+        shutil.rmtree(work)
+    work.mkdir(parents=True)
     os.chmod(work, 0o700)
     try:
         print("DEBUG: before build_receipt", file=sys.stderr)
