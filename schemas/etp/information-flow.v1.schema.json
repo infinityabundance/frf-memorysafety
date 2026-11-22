@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/information-flow.v1.schema.json",
+  "title": "ETP Information Flow Model v1",
+  "description": "Model describing an ETP information-flow classification for secret erasure, dependent branches, constant-time behavior, etc.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim",
+    "property",
+    "level",
+    "threat_model",
+    "leakage_model",
+    "quantification",
+    "assumptions",
+    "claim_ceiling"
+  ],
+  "properties": {
+    "claim": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "property": {
+          "type": "string",
+          "enum": [
+            "secret_erasure",
+            "no_secret_dependent_branch",
+            "constant_time",
+            "no_secret_dependent_address",
+            "functional_correctness",
+            "other"
+          ]
+        },
+        "level": { "type": "string", "enum": ["source", "binary"] },
+        "threat_model": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "leakage_model": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "quantification": {
+          "type": "string",
+          "enum": ["finite_observation", "finite_model_exhaustion", "bounded_model", "universal_contextual"]
+        },
+        "assumptions": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": false, "required": ["id", "statement", "state"], "properties": { "id": {"type": "string"}, "statement": {"type": "string"}, "state": { "enum": ["discharged", "declared", "unknown", "refuted", "not_applicable_with_evidence" ] } } }
+        },
+        "claim_ceiling": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "values": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "class": { "type": "string", "enum": ["public", "secret", "declassified", "derived_public", "derived_secret", "unknown"] },
+        "representation_class": { "type": "string", "enum": ["fixed_width", "variable_length", "normalized", "serialized", "spare_capacity", "uninitialized"] },
+        "length_class": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "class": { "type": "string", "enum": ["fixed_width", "variable_length", "normalized", "serialized", "spare_capacity", "uninitialized"] },
+        "observable_flag": { "type": "string", "enum": ["lengths", "capacity", "allocation_sizes", "object_shape", "pointer_derived_access", "control_flow", "algorithm_selection", "failure_behaviour"] }
+      },
+      "additionalProperties": false
+    },
+    "trace_model": {
+      "type": "object",
+      "properties": {
+        "observables_in_scope": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 10
+        },
+        "explicit_exclusions": { "type": "array", "items": { "type": "string" }, "minItems": 0 },
+        "limitations": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "fixed_iteration_count": { "type": "boolean" },
+        "no_leakage_detected": { "type": "boolean" },
+        "authenticated_execution_path": {
+          "type": "object",
+          "properties": {
+            "witness_schema": { "type": "string" },
+            "witness_sha256": { "type": "string" },
+            "exe_sha256": { "type": "string" },
+            "loader_closure_sha256": { "type": "string" },
+            "executed_function": { "type": "string" },
+            "branch_trace_digest": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

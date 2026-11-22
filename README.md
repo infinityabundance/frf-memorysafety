@@ -121,6 +121,7 @@ Verified in the pinned `rust:1.85.0-slim` container with the commands in
 | `./ci/etp-transparency-gate.sh` (Phase 10.4b) | 25 transparency tests passed, 0 failed, 0 ignored; 20/20 independent controls; committed size-3 log verified; fresh tessera v1.0.4 261-leaf log verified by Rust and Python; cross-log proof refused; no external witness |
 | `./ci/etp-integrity-gate.sh` (Phase 11.1) | two independent clean-target-dir builds were byte-identical (`1a1b9008…`, 9,466,400 bytes); 13-case population manifest `d29246c3…`; independent Python verifier passed and refused 7/7 corrupted controls |
 | `./ci/etp-witness-gate.sh` (Phase 11.2) | runs the hardened witness execution and independent verification; self-test refuses six named refusal codes (stripped binary, ambiguous symbol, source/binary mismatch, substituted executable, unexpected LD_PRELOAD DSO, preflight-vs-actual executable mismatch) |
+| `./ci/etp-information-flow-gate.sh` (Phase 12.1) | runs the hardened information-flow validator in `python:3.11-slim` with `--memory=512m --memory-swap=512m --pids-limit=512 --cpus=2 --ulimit nofile=1024:1024 --oom-score-adj=500 --cap-drop ALL --security-opt no-new-privileges --network=none`; self-test accepts the valid source-level model and refuses 9 mutated controls (unknown-as-public, missing metadata, missing leakage model, source-as-binary, fixed-iteration, absence-of-detection, scalar score, binary-without-witness, witness-digest-mismatch, universal quantification) |
 
 The default gate executes all 495 tests, including the 25 Phase 10.4b
 transparency tests, the 21 Phase 10.3
@@ -294,6 +295,30 @@ mismatch. This establishes an observed execution of one fixture on one host
 inside one hardened container; it does not establish authenticity, completeness,
 or deployment behaviour, and it does not prove the crate binary, all DSOs, or
 all processes. See [`docs/ETP-EXECUTION-WITNESS.md`](docs/ETP-EXECUTION-WITNESS.md).
+
+### Bounded information flow and leakage classification (Phase 12.1, post-1.1.0)
+
+`./ci/etp-information-flow-gate.sh` runs the Python standard-library validator
+`evaluation/earned-trust/information_flow.py` inside `python:3.11-slim` with a
+hard 512 MiB memory/swap cap, pid/cpu/nofile limits, dropped capabilities,
+`no-new-privileges`, and `--network=none`. The validator accepts a bounded
+source-level model (`evaluation/earned-trust/information-flow/model.json`) and
+emits the canonical report `frf-etp.information-flow-report.v1` under
+`evaluation/earned-trust/information-flow/report.json`. The self-test builds the
+valid model plus nine mutated controls and asserts refusal for each: unknown
+value/metadata class in a positive claim (`unknown_is_not_public`), missing
+metadata classification (`missing_metadata_classification`), missing
+threat/leakage model (`missing_leakage_model`), source-level claim presented as
+binary assurance (`source_claim_as_binary`), fixed iteration count as
+constant-time evidence (`fixed_iteration_is_not_constant_time`), absence of
+detected leakage as proof of no leakage (`absence_of_detection_is_not_absence`),
+scalar confidence/assurance score (`scalar_score_forbidden`), binary-level claim
+without a witness-bound execution path (`binary_claim_without_execution_path`),
+witness digest mismatch (`witness_digest_mismatch`), and universal
+quantification (`universal_quantification_refused`). A valid source-level model
+is accepted and states that binary behavior is not established. No live timing
+measurement is made; Phase 12.2 will add the timing profile. See
+[`docs/ETP-TIMING-AND-INFORMATION-FLOW.md`](docs/ETP-TIMING-AND-INFORMATION-FLOW.md).
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8

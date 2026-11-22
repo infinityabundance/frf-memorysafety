@@ -1,0 +1,49 @@
+{
+  "claim": {
+    "id": "frf-etp.information-flow.source.secret_erasure.v1",
+    "property": "secret_erasure",
+    "level": "source",
+    "threat_model": "local adversary observing source-level control flow and memory accesses",
+    "leakage_model": "bounded source-level leakage model over one fixture",
+    "quantification": "bounded_model",
+    "assumptions": [
+      {
+        "id": "assumption-1",
+        "statement": "the source model covers the declared function only",
+        "state": "declared"
+      }
+    ],
+    "claim_ceiling": "This source-level model does not establish binary behavior, timing behavior, or deployment security."
+  },
+  "values": [
+    {
+      "name": "secret_input",
+      "class": "secret",
+      "representation_class": "fixed_width",
+      "length_class": "fixed"
+    }
+  ],
+  "metadata": [
+    {
+      "name": "secret_input",
+      "class": "fixed_width",
+      "observable_flag": "control_flow"
+    }
+  ],
+  "trace_model": {
+    "observables_in_scope": [
+      "branch",
+      "memory_address",
+      "access_count"
+    ],
+    "explicit_exclusions": [
+      "execution_time",
+      "cache"
+    ],
+    "limitations": "no live timing measurement yet (Phase 12.2)"
+  },
+  "evidence": {
+    "fixed_iteration_count": false,
+    "no_leakage_detected": false
+  }
+}
