@@ -1,0 +1,113 @@
+{
+  "campaign_id": "frf-etp-native-fixtures-2026-11-22",
+  "claims": [
+    {
+      "expected": "13/13 pass decisions; 0 fail; 0 not_run; 0 mandatory unresolved",
+      "id": "C1",
+      "kind": "measured",
+      "metric": "exact expected-observation match over the declared population",
+      "observed": {
+        "accepted_clean_cases": 4,
+        "cases": 13,
+        "fail": 0,
+        "incomplete_transcript": 1,
+        "mandatory_unresolved": 0,
+        "not_run": 0,
+        "observed_violation": 6,
+        "pass": 13,
+        "receipts": 13,
+        "unresolved": 2,
+        "verified_compatible_within_transcript": 4
+      },
+      "receipts": [
+        "atomic-control-c",
+        "data-race-c",
+        "deferred-callback-c",
+        "legal-transfer-free-c",
+        "legal-transfer-free-rust",
+        "mutable-alias-c",
+        "nondeterministic-c",
+        "oversized-output-c",
+        "skipped-free-c",
+        "stale-generation-c",
+        "sync-callback-c",
+        "use-after-free-c",
+        "use-after-free-rust"
+      ],
+      "statement": "Every one of the 13 declared cases produced its pre-registered terminal outcome; all 13 receipts pass; no mandatory-resolution case is unresolved."
+    },
+    {
+      "expected": "13/13 receipts backed by 25 raw evidence files; 0 digest mismatches; 0 missing raw files",
+      "id": "C2",
+      "kind": "measured",
+      "metric": "receipt and raw-evidence digest agreement",
+      "observed": {
+        "digest_mismatches": 0,
+        "missing_raw_evidence": 0,
+        "raw_evidence": 25,
+        "receipts": 13,
+        "receipts_with_transcript": 12,
+        "receipts_without_transcript": 1
+      },
+      "receipts": [
+        "atomic-control-c",
+        "data-race-c",
+        "deferred-callback-c",
+        "legal-transfer-free-c",
+        "legal-transfer-free-rust",
+        "mutable-alias-c",
+        "nondeterministic-c",
+        "oversized-output-c",
+        "skipped-free-c",
+        "stale-generation-c",
+        "sync-callback-c",
+        "use-after-free-c",
+        "use-after-free-rust"
+      ],
+      "statement": "Every receipt is backed by its raw transcript and retained court report, and every raw evidence digest matches the receipt and closure manifest."
+    },
+    {
+      "expected": "13 declared cases; 13 receipts; 0 missing; 0 duplicate; 0 unexpected; 0 truncated; 0 suppressed",
+      "id": "C3",
+      "kind": "measured",
+      "metric": "complete population reconciliation",
+      "observed": {
+        "cases": 13,
+        "duplicate": 0,
+        "missing": 0,
+        "receipts": 13,
+        "suppressed": 0,
+        "truncated": 0,
+        "unexpected": 0
+      },
+      "receipts": [
+        "atomic-control-c",
+        "data-race-c",
+        "deferred-callback-c",
+        "legal-transfer-free-c",
+        "legal-transfer-free-rust",
+        "mutable-alias-c",
+        "nondeterministic-c",
+        "oversized-output-c",
+        "skipped-free-c",
+        "stale-generation-c",
+        "sync-callback-c",
+        "use-after-free-c",
+        "use-after-free-rust"
+      ],
+      "statement": "Closure counts are derived from the complete declared population; no case is missing, duplicated, unexpected, truncated, or suppressed."
+    }
+  ],
+  "claim_ceiling": "Campaign closure is bookkeeping over a finite, pre-registered case population. It establishes that every declared case has one retained typed observation and that the declared counts were derived from the complete population. It does not establish memory safety, functional correctness, detector sensitivity, proof soundness, population-level recall, reviewer independence, authentication, transparency completeness, or deployment security. A typed NOT_RUN is not a pass. A digest is not authentication. A SARIF projection is not a certification and a code-scanning view is not authoritative.",
+  "non_claims": [
+    "No population-level detector sensitivity, specificity, or defect recall is established.",
+    "No memory-safety, functional-correctness, interoperability, constant-time, or deployment-security conclusion is established.",
+    "No reviewer or adjudicator independence is established.",
+    "No signature, transparency-log inclusion, consistency, non-equivocation, trusted time, or TUF metadata is established.",
+    "No GitHub code-scanning view or external SARIF consumer is authoritative.",
+    "A passing gate is not a certification and not an authorization to deploy."
+  ],
+  "opening_sha256": "2039c3352f9edcf7d5657e341440c466a29cc6f55851b6ecb6243b46a118a236",
+  "schema": "frf-etp.campaign-claims.v1",
+  "spec": "frf-etp-v1"
+}

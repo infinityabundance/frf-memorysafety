@@ -63,6 +63,7 @@ pub mod conversion;
 pub mod court;
 pub mod detector;
 pub mod etp;
+pub mod etp_campaign;
 pub mod evaluation;
 pub mod identity;
 pub mod mir;
@@ -72,6 +73,7 @@ pub mod native;
 pub mod path_effect;
 pub mod profile;
 pub mod proof;
+pub mod sarif;
 pub mod source;
 pub mod support;
 
@@ -283,6 +285,8 @@ pub fn capabilities() -> Capabilities {
             "earned-trust claim integrity: twenty required coordinates and ten separate status dimensions with no scalar score",
             "versioned ETP claim, obligation-inventory, and status-dimension schemas with a SHA-256 conformance registry",
             "etp validate MANIFEST [--json] with contradiction retention and unknown-premise blocking",
+            "typed ETP campaign closure over the closed native fixture registry: frozen opening inventory, per-case terminal outcomes, closure manifest, and lossless reconciliation",
+            "versioned SARIF 2.1.0 projection with distinct rule, hazard, occurrence, candidate, and instrument-execution identities, justified locations, suppression retention, and completeness limits",
             "manual CLI with SPEC.md §14 exit statuses and explicit NOT_RUN responses",
         ],
         not_run: vec![
@@ -310,6 +314,7 @@ pub fn capabilities() -> Capabilities {
             "whole-program or universal alias-compatibility claims",
             "universal safe-interior or SAFE_COMPATIBLE acceptance",
             "authenticated ETP evidence: DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161, or TUF are NOT_RUN",
+            "live ETP campaign execution is NOT_RUN unless FRF_NATIVE_HARNESS=1; ci/etp-gate.sh is the opt-in real native path",
             "independent ETP adjudication, public challenge, revocation registry, and campaign-closure services are SPECIFIED, not deployed",
             "constant-time and relational timing verification for ETP claims; no timing result is represented as verified",
         ],

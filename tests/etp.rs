@@ -164,10 +164,14 @@ fn registry_digests_match_and_cover_every_schema_and_vector() {
         ETP_CLAIM_SCHEMA,
         ETP_OBLIGATION_SCHEMA,
         ETP_STATUS_SCHEMA,
+        "frf-etp.campaign-protocol.v1",
+        "frf-etp.campaign-receipt.v1",
+        "frf-etp.campaign-closure.v1",
+        "frf-etp.sarif-projection.v1",
     ] {
         assert!(schema_ids.iter().any(|value| value == id), "missing {id}");
     }
-    assert_eq!(schema_ids.len(), 4);
+    assert_eq!(schema_ids.len(), 8);
 
     let freeze = registry["freeze"].as_object().expect("freeze");
     let freeze_path = root()

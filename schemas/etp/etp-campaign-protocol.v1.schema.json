@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/etp-campaign-protocol.v1.schema.json",
+  "title": "FRF ETP campaign opening inventory v1",
+  "description": "Frozen pre-registration for one finite ETP campaign. The inventory declares the candidate, instrument, requirements, obligations, population, expected terminal outcomes, mutation controls, exclusions, resource envelope, acceptance policy, and completion expectations. It is not a population study and not a proof.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "spec",
+    "campaign_id",
+    "frozen",
+    "scope",
+    "candidate",
+    "requirements",
+    "threat_model",
+    "assumptions",
+    "obligations",
+    "population",
+    "instrument",
+    "mutation_controls",
+    "permitted_exclusions",
+    "resource_limits",
+    "acceptance_policy",
+    "completion_expectations",
+    "claims",
+    "unsupported_features",
+    "claim_ceiling"
+  ],
+  "properties": {
+    "schema": {"const": "frf-etp.campaign-protocol.v1"},
+    "spec": {"const": "frf-etp-v1"},
+    "campaign_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "frozen": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "scope": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "candidate": {"$ref": "#/$defs/candidate"},
+    "requirements": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/requirement"}},
+    "threat_model": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "assumptions": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+    "obligations": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/obligation"}},
+    "population": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"$ref": "#/$defs/case"}},
+    "instrument": {"$ref": "#/$defs/instrument"},
+    "mutation_controls": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/mutation_control"}},
+    "permitted_exclusions": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/exclusion"}},
+    "resource_limits": {"$ref": "#/$defs/resource_limits"},
+    "acceptance_policy": {"$ref": "#/$defs/acceptance_policy"},
+    "completion_expectations": {"$ref": "#/$defs/completion_expectations"},
+    "claims": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/claim"}},
+    "unsupported_features": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+    "claim_ceiling": {"type": "string", "minLength": 1, "maxLength": 8192}
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "tree_sha256_algorithm", "tree_sha256", "files"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "version": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "tree_sha256_algorithm": {"const": "sha256-sorted-path-nul-digest-lf-v1"},
+        "tree_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "files": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/file"}}
+      }
+    },
+    "instrument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "harness", "court", "crate_version", "required_tools", "tree_sha256_algorithm", "tree_sha256", "files"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "harness": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "court": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "crate_version": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "required_tools": {"type": "array", "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "tree_sha256_algorithm": {"const": "sha256-sorted-path-nul-digest-lf-v1"},
+        "tree_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "files": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/file"}}
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "obligation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "blocking"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "blocking": {"type": "boolean"}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "fixture", "category", "expected_outcome", "requirement", "obligations", "mandatory_resolution"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "fixture": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "category": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "expected_outcome": {"enum": ["verified_compatible_within_transcript", "observed_violation", "incomplete_transcript", "unresolved", "illegal_case", "not_run", "harness_failure"]},
+        "requirement": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "obligations": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "mandatory_resolution": {"type": "boolean"}
+      }
+    },
+    "mutation_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "expected"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "description": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "expected": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "reason"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "resource_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memory_mb", "swap_mb", "pids_limit", "cpus", "nofile", "oom_score_adj", "timeout_seconds"],
+      "properties": {
+        "memory_mb": {"type": "integer", "minimum": 1},
+        "swap_mb": {"type": "integer", "minimum": 1},
+        "pids_limit": {"type": "integer", "minimum": 1},
+        "cpus": {"type": "integer", "minimum": 1},
+        "nofile": {"type": "integer", "minimum": 1},
+        "oom_score_adj": {"type": "integer"},
+        "timeout_seconds": {"type": "integer", "minimum": 1}
+      }
+    },
+    "acceptance_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "expected_case_count", "expected_receipt_count", "expected_raw_evidence_count", "expected_pass_count", "expected_finding_count", "require_raw_evidence", "require_replay_identical", "not_run_is_pass"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "expected_case_count": {"type": "integer", "minimum": 1},
+        "expected_receipt_count": {"type": "integer", "minimum": 0},
+        "expected_raw_evidence_count": {"type": "integer", "minimum": 0},
+        "expected_pass_count": {"type": "integer", "minimum": 0},
+        "expected_finding_count": {"type": "integer", "minimum": 0},
+        "require_raw_evidence": {"type": "boolean"},
+        "require_replay_identical": {"type": "boolean"},
+        "not_run_is_pass": {"const": false}
+      }
+    },
+    "completion_expectations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_count", "receipt_count", "raw_evidence_count", "closure_status", "acceptance"],
+      "properties": {
+        "case_count": {"type": "integer", "minimum": 1},
+        "receipt_count": {"type": "integer", "minimum": 0},
+        "raw_evidence_count": {"type": "integer", "minimum": 0},
+        "closure_status": {"enum": ["closed", "blocked"]},
+        "acceptance": {"enum": ["accepted", "withheld"]}
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    }
+  }
+}

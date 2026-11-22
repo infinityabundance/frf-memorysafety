@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/etp-campaign-receipt.v1.schema.json",
+  "title": "FRF ETP campaign receipt v1",
+  "description": "One per-case ETP receipt binding candidate, requirement, obligation, instrument, execution, observation, adjudication, claim, release decision, raw evidence digests, and any suppression record. A receipt is bookkeeping, not a proof.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "spec",
+    "campaign_id",
+    "case_id",
+    "candidate_identity",
+    "instrument_id",
+    "instrument_execution_identity",
+    "requirement",
+    "obligations",
+    "claim",
+    "execution",
+    "observation",
+    "adjudication",
+    "release_decision",
+    "evidence",
+    "suppression"
+  ],
+  "properties": {
+    "schema": {"const": "frf-etp.campaign-receipt.v1"},
+    "spec": {"const": "frf-etp-v1"},
+    "campaign_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "case_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "candidate_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "instrument_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "instrument_execution_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "requirement": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "obligations": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+    "claim": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "execution": {"$ref": "#/$defs/execution"},
+    "observation": {"$ref": "#/$defs/observation"},
+    "adjudication": {"$ref": "#/$defs/adjudication"},
+    "release_decision": {"enum": ["eligible", "withheld", "blocked", "not_applicable"]},
+    "evidence": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/evidence"}},
+    "suppression": {"$ref": "#/$defs/suppression"}
+  },
+  "$defs": {
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "environment", "image_id", "native_harness", "replay", "replay_first_sha256", "replay_second_sha256", "tool_versions", "executable_sha256", "fixture_path", "fixture_sha256"],
+      "properties": {
+        "command": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "maxLength": 8192}},
+        "environment": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "image_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "native_harness": {"type": "boolean"},
+        "replay": {"enum": ["identical", "mismatch", "not_performed"]},
+        "replay_first_sha256": {"type": "string", "maxLength": 64},
+        "replay_second_sha256": {"type": "string", "maxLength": 64},
+        "tool_versions": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 8192}},
+        "executable_sha256": {"type": "string", "maxLength": 64},
+        "fixture_path": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "fixture_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "court_outcome", "event_count", "findings", "race_witnesses", "detail"],
+      "properties": {
+        "outcome": {"enum": ["verified_compatible_within_transcript", "observed_violation", "incomplete_transcript", "unresolved", "illegal_case", "not_run", "harness_failure"]},
+        "court_outcome": {"type": "string", "maxLength": 8192},
+        "event_count": {"type": "integer", "minimum": 0},
+        "findings": {"type": "array", "maxItems": 16384, "items": {"$ref": "#/$defs/finding"}},
+        "race_witnesses": {"type": "integer", "minimum": 0},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "class", "subject", "detail", "events"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "class": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "subject": {"type": "string", "maxLength": 8192},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "events": {"type": "integer", "minimum": 0}
+      }
+    },
+    "adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected_outcome", "observed_outcome", "decision", "mandatory_resolution", "resolution"],
+      "properties": {
+        "expected_outcome": {"enum": ["verified_compatible_within_transcript", "observed_violation", "incomplete_transcript", "unresolved", "illegal_case", "not_run", "harness_failure"]},
+        "observed_outcome": {"enum": ["verified_compatible_within_transcript", "observed_violation", "incomplete_transcript", "unresolved", "illegal_case", "not_run", "harness_failure"]},
+        "decision": {"enum": ["pass", "fail", "not_run"]},
+        "mandatory_resolution": {"type": "boolean"},
+        "resolution": {"enum": ["resolved", "unresolved", "not_applicable"]}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "sha256"],
+      "properties": {
+        "kind": {"enum": ["transcript", "court_report", "harness_detail"]},
+        "path": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "suppression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suppressed", "justification", "scope", "owner", "expiry", "invalidation"],
+      "properties": {
+        "suppressed": {"type": "boolean"},
+        "justification": {"type": "string", "maxLength": 8192},
+        "scope": {"type": "string", "maxLength": 8192},
+        "owner": {"type": "string", "maxLength": 8192},
+        "expiry": {"type": "string", "maxLength": 8192},
+        "invalidation": {"type": "string", "maxLength": 8192}
+      }
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/etp-campaign-closure.v1.schema.json",
+  "title": "FRF ETP campaign closure manifest v1",
+  "description": "Closure bookkeeping over the complete declared campaign population. The summary is not trusted: a verifier recomputes every count, outcome, decision, receipt digest, and raw-evidence digest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "spec",
+    "campaign_id",
+    "opening_manifest_path",
+    "opening_sha256",
+    "candidate_identity",
+    "instrument_id",
+    "case_count",
+    "receipt_count",
+    "raw_evidence_count",
+    "outcomes",
+    "decisions",
+    "receipts",
+    "exclusions",
+    "closure_status",
+    "acceptance",
+    "closure_reasons",
+    "claim_ceiling"
+  ],
+  "properties": {
+    "schema": {"const": "frf-etp.campaign-closure.v1"},
+    "spec": {"const": "frf-etp-v1"},
+    "campaign_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "opening_manifest_path": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "opening_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidate_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "instrument_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "case_count": {"type": "integer", "minimum": 0},
+    "receipt_count": {"type": "integer", "minimum": 0},
+    "raw_evidence_count": {"type": "integer", "minimum": 0},
+    "outcomes": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/count"}},
+    "decisions": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/count"}},
+    "receipts": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/receipt_ref"}},
+    "exclusions": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/exclusion"}},
+    "closure_status": {"enum": ["closed", "blocked"]},
+    "acceptance": {"enum": ["accepted", "withheld"]},
+    "closure_reasons": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+    "claim_ceiling": {"type": "string", "minLength": 1, "maxLength": 8192}
+  },
+  "$defs": {
+    "count": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "count"],
+      "properties": {
+        "label": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "receipt_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "path", "sha256", "outcome", "decision"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "path": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "outcome": {"enum": ["verified_compatible_within_transcript", "observed_violation", "incomplete_transcript", "unresolved", "illegal_case", "not_run", "harness_failure"]},
+        "decision": {"enum": ["pass", "fail", "not_run"]}
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "reason"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    }
+  }
+}

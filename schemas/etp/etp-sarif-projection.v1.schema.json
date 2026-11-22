@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/etp-sarif-projection.v1.schema.json",
+  "title": "FRF ETP SARIF 2.1.0 projection profile v1",
+  "description": "Structural profile for the FRF ETP SARIF 2.1.0 projection. It preserves rule, hazard, occurrence, candidate, and instrument-execution identities; permits only declared fixture artifact locations with no invented regions; retains suppressed findings; and records completeness and limits. It is not a certification and a code-scanning view is not authoritative.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "version", "runs"],
+  "properties": {
+    "$schema": {"const": "https://json.schemastore.org/sarif-2.1.0.json"},
+    "version": {"const": "2.1.0"},
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {"$ref": "#/$defs/run"}
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {"text": {"type": "string", "minLength": 1, "maxLength": 8192}}
+    },
+    "artifact_location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri"],
+      "properties": {"uri": {"type": "string", "minLength": 1, "maxLength": 8192}}
+    },
+    "physical_location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactLocation"],
+      "properties": {"artifactLocation": {"$ref": "#/$defs/artifact_location"}}
+    },
+    "logical_location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind"],
+      "properties": {
+        "name": {"type": "string", "maxLength": 8192},
+        "kind": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["physicalLocation", "logicalLocations"],
+      "properties": {
+        "physicalLocation": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/physical_location"}]},
+        "logicalLocations": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/logical_location"}}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["location", "roles", "properties"],
+      "properties": {
+        "location": {"$ref": "#/$defs/artifact_location"},
+        "roles": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "properties": {"type": "object"}
+      }
+    },
+    "suppression_properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "owner", "expiry", "invalidation"],
+      "properties": {
+        "scope": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "owner": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "expiry": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "invalidation": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "suppression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "justification", "properties"],
+      "properties": {
+        "kind": {"const": "external"},
+        "justification": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "properties": {"$ref": "#/$defs/suppression_properties"}
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "shortDescription", "fullDescription", "defaultConfiguration", "properties"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "name": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "shortDescription": {"$ref": "#/$defs/message"},
+        "fullDescription": {"$ref": "#/$defs/message"},
+        "defaultConfiguration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level"],
+          "properties": {"level": {"enum": ["none", "note", "warning", "error"]}}
+        },
+        "properties": {"type": "object"}
+      }
+    },
+    "driver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "informationUri", "rules", "properties"],
+      "properties": {
+        "name": {"const": "frf-etp-sarif-projection"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "informationUri": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "rules": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/$defs/rule"}},
+        "properties": {"type": "object"}
+      }
+    },
+    "result_properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "requirement", "obligations", "hazard", "observed_outcome", "expected_outcome", "decision", "release_decision", "candidate_identity", "instrument_execution_identity", "occurrence_id", "evidence_sha256", "finding_codes", "absence_reason", "absence_evidence", "previous_instrument_execution_identity", "scope"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "requirement": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "obligations": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "hazard": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "observed_outcome": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "expected_outcome": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "decision": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "release_decision": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "candidate_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "instrument_execution_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "occurrence_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "evidence_sha256": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+        "finding_codes": {"type": "array", "maxItems": 16384, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "absence_reason": {"type": "string", "maxLength": 8192},
+        "absence_evidence": {"type": "array", "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "previous_instrument_execution_identity": {"type": "string", "maxLength": 8192},
+        "scope": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleId", "ruleIndex", "level", "message", "locations", "fingerprints", "partialFingerprints", "baselineState", "suppressions", "properties"],
+      "properties": {
+        "ruleId": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "ruleIndex": {"type": "integer", "minimum": 0},
+        "level": {"enum": ["none", "note", "warning", "error"]},
+        "message": {"$ref": "#/$defs/message"},
+        "locations": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/location"}},
+        "fingerprints": {
+          "type": "object",
+          "required": ["frf/candidate", "frf/instrument-execution", "frf/case", "frf/occurrence"],
+          "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 8192}
+        },
+        "partialFingerprints": {"type": "object"},
+        "baselineState": {"enum": ["new", "unchanged", "updated", "absent", "renamed"]},
+        "suppressions": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/suppression"}},
+        "properties": {"$ref": "#/$defs/result_properties"}
+      }
+    },
+    "completeness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "receipt_count", "result_count", "native_manifest", "native_manifest_sha256", "shards"],
+      "properties": {
+        "complete": {"type": "boolean"},
+        "receipt_count": {"type": "integer", "minimum": 0},
+        "result_count": {"type": "integer", "minimum": 0},
+        "native_manifest": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "native_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "shards": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "first_result", "result_count", "sha256"],
+            "properties": {
+              "path": {"type": "string", "minLength": 1, "maxLength": 8192},
+              "first_result": {"type": "integer", "minimum": 0},
+              "result_count": {"type": "integer", "minimum": 1},
+              "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            }
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_results", "max_bytes", "result_count", "encoded_bytes", "truncated"],
+      "properties": {
+        "max_results": {"type": "integer", "minimum": 1},
+        "max_bytes": {"type": "integer", "minimum": 1},
+        "result_count": {"type": "integer", "minimum": 0},
+        "encoded_bytes": {"type": "integer", "minimum": 0},
+        "truncated": {"type": "boolean"}
+      }
+    },
+    "run_properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frf_projection_schema", "campaign_id", "opening_sha256", "candidate_identity", "instrument_id", "instrument_identity", "case_count", "receipt_count", "result_count", "retained_finding_count", "suppressed_result_count", "scope", "assumptions", "unsupported_features", "completeness", "limits", "claim_ceiling"],
+      "properties": {
+        "frf_projection_schema": {"const": "frf-etp.sarif-projection.v1"},
+        "campaign_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "opening_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "candidate_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "instrument_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "instrument_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "case_count": {"type": "integer", "minimum": 0},
+        "receipt_count": {"type": "integer", "minimum": 0},
+        "result_count": {"type": "integer", "minimum": 0},
+        "retained_finding_count": {"type": "integer", "minimum": 0},
+        "suppressed_result_count": {"type": "integer", "minimum": 0},
+        "scope": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "assumptions": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "unsupported_features": {"type": "array", "maxItems": 1024, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+        "completeness": {"$ref": "#/$defs/completeness"},
+        "limits": {"$ref": "#/$defs/limits"},
+        "claim_ceiling": {"type": "string", "minLength": 1, "maxLength": 8192}
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "artifacts", "results", "properties"],
+      "properties": {
+        "tool": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["driver"],
+          "properties": {"driver": {"$ref": "#/$defs/driver"}}
+        },
+        "artifacts": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/artifact"}},
+        "results": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/$defs/result"}},
+        "properties": {"$ref": "#/$defs/run_properties"}
+      }
+    }
+  }
+}

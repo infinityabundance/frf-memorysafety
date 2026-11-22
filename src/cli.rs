@@ -88,6 +88,10 @@ Commands:
   detector calibrate FILE [--json]
   detector calibrate --live --detector KIND [--json]
   etp validate MANIFEST [--json]
+  etp campaign verify FILE [--json]
+  etp campaign run --protocol FILE --out DIR [--json]
+  etp sarif verify FILE [--json]
+  etp sarif export CAMPAIGN [--out FILE]
   evidence verify --root DIR
   report --case FILE --format json|markdown
 
@@ -1162,12 +1166,326 @@ fn command_proof_verify(rest: &[String]) -> i32 {
 }
 
 fn command_etp(rest: &[String]) -> i32 {
-    if rest.first().map(String::as_str) == Some("validate") {
-        command_etp_validate(&rest[1..])
-    } else {
-        eprintln!("usage: etp validate MANIFEST [--json]");
-        EXIT_USAGE
+    match rest.first().map(String::as_str) {
+        Some("validate") => command_etp_validate(&rest[1..]),
+        Some("campaign") => command_etp_campaign(&rest[1..]),
+        Some("sarif") => command_etp_sarif(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE]"
+            );
+            EXIT_USAGE
+        }
     }
+}
+
+fn print_campaign_report(report: &crate::etp_campaign::CampaignReport) {
+    println!("campaign: {}", report.campaign_id);
+    println!("status: {}", report.status.as_str());
+    println!(
+        "closure: {}; acceptance: {}; cases: {}; receipts: {}; raw evidence: {}",
+        report.closure_status.as_str(),
+        report.acceptance.as_str(),
+        report.case_count,
+        report.receipt_count,
+        report.raw_evidence_count
+    );
+    for count in &report.outcomes {
+        println!("outcome {}: {}", count.label, count.count);
+    }
+    for count in &report.decisions {
+        println!("decision {}: {}", count.label, count.count);
+    }
+    println!("accepted cases: {}", report.accepted_cases.len());
+    for case_id in &report.retained_findings {
+        println!("retained finding: {case_id}");
+    }
+    for refusal in &report.refusals {
+        println!(
+            "refused {} ({}): {}",
+            refusal.case_id,
+            refusal.code.as_str(),
+            refusal.detail
+        );
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_campaign(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_campaign_verify(&rest[1..]),
+        Some("run") => command_etp_campaign_run(&rest[1..]),
+        _ => {
+            eprintln!("usage: etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json]");
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_campaign_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp campaign verify FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: etp campaign verify FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: etp campaign verify FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let report = match crate::etp_campaign::verify_campaign_file(Path::new(path)) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write campaign report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_campaign_report(&report);
+    }
+    report.exit_code()
+}
+
+fn command_etp_campaign_run(rest: &[String]) -> i32 {
+    let mut protocol = None;
+    let mut out = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--protocol" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                    return EXIT_USAGE;
+                };
+                protocol = Some(value.clone());
+            }
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                    return EXIT_USAGE;
+                };
+                out = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                return EXIT_USAGE;
+            }
+            _ => {
+                eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let (Some(protocol), Some(out)) = (protocol, out) else {
+        eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+        return EXIT_USAGE;
+    };
+    #[cfg(all(unix, feature = "native-harness"))]
+    {
+        let summary = match crate::etp_campaign::run_campaign(Path::new(&protocol), Path::new(&out))
+        {
+            Ok(summary) => summary,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if json {
+            if let Err(error) = emit_json(&summary) {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        } else {
+            println!("campaign: {}", summary.campaign_id);
+            println!("closure: {}", summary.closure_status.as_str());
+            println!("acceptance: {}", summary.acceptance.as_str());
+            println!(
+                "cases: {}; receipts: {}; raw evidence: {}",
+                summary.case_count, summary.receipt_count, summary.raw_evidence_count
+            );
+            println!("closure sha256: {}", summary.closure_sha256);
+        }
+        0
+    }
+    #[cfg(not(all(unix, feature = "native-harness")))]
+    {
+        let _ = (protocol, out, json);
+        eprintln!(
+            "etp campaign run is NOT_RUN: this build lacks the native-harness feature; build with --features native-harness"
+        );
+        EXIT_NOT_RUN
+    }
+}
+
+fn print_sarif_report(report: &crate::sarif::SarifReport) {
+    println!("SARIF status: {}", report.status.as_str());
+    println!(
+        "version: {}; results: {}; rules: {}; suppressed: {}",
+        report.sarif_version,
+        report.result_count,
+        report.rule_count,
+        report.suppressed_result_count
+    );
+    println!("candidate: {}", report.candidate_identity);
+    println!("instrument: {}", report.instrument_identity);
+    println!(
+        "limits: results {}/{}; bytes {}/{}",
+        report.limits.result_count,
+        report.limits.max_results,
+        report.limits.encoded_bytes,
+        report.limits.max_bytes
+    );
+    for refusal in &report.refusals {
+        println!(
+            "refused {} ({}): {}",
+            refusal.subject,
+            refusal.code.as_str(),
+            refusal.detail
+        );
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_sarif(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_sarif_verify(&rest[1..]),
+        Some("export") => command_etp_sarif_export(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_sarif_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp sarif verify FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: etp sarif verify FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: etp sarif verify FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let report = match crate::sarif::verify_sarif_file(Path::new(path)) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write SARIF report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_sarif_report(&report);
+    }
+    report.exit_code()
+}
+
+fn command_etp_sarif_export(rest: &[String]) -> i32 {
+    let mut campaign = None;
+    let mut out = None;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+                    return EXIT_USAGE;
+                };
+                out = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if campaign.is_some() {
+                    eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+                    return EXIT_USAGE;
+                }
+                campaign = Some(value);
+            }
+        }
+        index += 1;
+    }
+    let Some(campaign) = campaign else {
+        eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+        return EXIT_USAGE;
+    };
+    let bytes = match crate::sarif::export_campaign_bytes(Path::new(&campaign)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if let Some(out) = out {
+        if let Err(error) = fs::write(&out, &bytes) {
+            eprintln!("cannot write {out}: {error}");
+            return EXIT_HARNESS;
+        }
+        println!("wrote {out} ({} bytes)", bytes.len());
+    } else if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write SARIF: {error}");
+        return EXIT_HARNESS;
+    }
+    EXIT_OK
 }
 
 fn command_etp_validate(rest: &[String]) -> i32 {
