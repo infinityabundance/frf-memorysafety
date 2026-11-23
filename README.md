@@ -911,10 +911,6 @@ the court verifier. It is additive and does not change the crate version or any
   profile, identity model, justified locations, suppression rules, repaired
   versus tool-change absence, sharding/completeness limits, and the fact that a
   GitHub code-scanning view is not authoritative.
-- `evaluation/earned-trust/` contains the frozen `protocol.json`, its
-  `opening.sha256`, 13 per-case receipts, 25 raw evidence files, the closure
-  `MANIFEST.json`, the SARIF projection, and the standard-library independent
-  reconstructor.
 - `src/etp_campaign.rs` implements typed opening inventory, terminal outcomes,
   closure, and reconciliation. `src/sarif.rs` implements the projection and its
   structural verifier.
@@ -935,6 +931,49 @@ DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161 timestamps, TUF metadata, and
 independent adjudication remain `NOT_RUN`. The opening manifest is frozen by
 SHA-256 only; that is not authentication. The SARIF projection is a report
 format, not a correctness or security proof.
+
+### Phase 14.1b external closure (linked native evidence)
+
+Phase 14.1b closes the external-closure gaps without any Rust source change and
+without a campaign re-freeze. The independent Python SARIF verifier
+(`evaluation/earned-trust/verify_sarif.py`) now enforces:
+
+- **Suppression review manifest.** `schemas/etp/suppression-review.v1.schema.json`
+  and `evaluation/earned-trust/suppression-review.json` are the linked native
+  record. Every SARIF suppression must have a matching review entry with
+  `independent_of_producer = true`; a suppression without a review or with a
+  producer self-review is refused (`missing_suppression_review`, `self_review`).
+  A suppressed result remains a finding and is counted. The committed campaign
+  has an empty `reviews` array because it has no suppressions.
+- **Repaired-versus-disappeared rule.** An absent result must declare
+  `absence_reason` in {`repaired`, `tool_change`, `population_change`,
+  `instrument_change`} with non-empty `absence_evidence`; a tool or instrument
+  change also requires a distinct `previous_instrument_execution_identity`. An
+  unexplained absence or a `repaired` claim without evidence is refused
+  (`invalid_baseline_state`).
+- **Predicate cross-check.** The SARIF native-manifest digest is cross-checked
+  against the committed `MANIFEST.json` SHA-256 and the attested
+  campaign-closure predicate (`frf-etp.predicate.campaign-closure.v1`,
+  `frf-etp-v1`, subject digest); a mismatch is refused (`predicate_mismatch`).
+- **Source-only location limit.** The profile supports source locations only. A
+  location that explicitly declares a non-source kind (`mir`, `machine`,
+  `runtime`) must carry an explicit justified native reference; otherwise it is
+  refused (`non_source_location`). No MIR, machine, or runtime location is
+  invented; source-only support is a declared limitation.
+- **SARIF 2.1.0 errata and consumer restrictions.** The verifier checks the
+  schema URI, `version = "2.1.0"`, the single run, the declared driver, and the
+  projection schema. A SARIF consumer or code-scanning view is not
+  authoritative; the committed file is a report projection, not a certification.
+
+The verifier self-test now exercises 18 controls, including the six new
+external-closure controls (missing review manifest, unreviewed suppression,
+producer self-review, unexplained absence, repaired without evidence,
+native-manifest/predicate mismatch) and a non-source location control.
+
+**Honest Rust-level partial.** The Rust SARIF struct does not carry an
+`independent_review` field; the linked suppression-review manifest is the
+authoritative independent-review requirement. The Rust projection is unchanged
+and no campaign re-freeze was performed.
 
 ### NOT_RUN in this build
 

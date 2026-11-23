@@ -106,13 +106,34 @@ The profile requires every suppression to carry:
 * `properties.scope`;
 * `properties.owner`;
 * `properties.expiry`;
-* `properties.invalidation`.
+* `properties.invalidation`;
+* `properties.suppression_id` (a stable identifier used to link the suppression
+  to its review record).
 
 A missing field is refused as `unauthorized_suppression`. A valid suppression
 still differs from the native campaign record unless the corresponding receipt
 also records it; the verifier compares the projected suppression to the receipt
 and refuses an unauthorized projection. The committed campaign has no
 suppression.
+
+### 5.1 Suppression review manifest
+
+Every suppression must have a matching review entry in the linked native
+record `evaluation/earned-trust/suppression-review.json`, validated against
+`schemas/etp/suppression-review.v1.schema.json`. A review entry must include:
+
+* `suppression_id` (matches the SARIF suppression `properties.suppression_id`);
+* `result_id` (the occurrence identity of the suppressed result);
+* `justification`, `scope`, `owner`;
+* `reviewer_identity`, `reviewer_role`;
+* `independent_of_producer` (must be `true`; a producer self-review is refused);
+* `expiry`, `invalidation`;
+* `evidence_digest` (SHA-256 of the review evidence).
+
+The verifier refuses a suppression without a matching review entry as
+`missing_suppression_review` and refuses a producer self-review as
+`self_review`. The committed campaign has an empty `reviews` array because it
+has no suppressions.
 
 ## 6. Repaired versus disappeared due to a tool change
 
@@ -121,93 +142,52 @@ uses `baselineState = "absent"`, the profile requires
 `properties.absence_reason` to distinguish:
 
 * `repaired`, with non-empty `properties.absence_evidence`; or
-* `tool_change`, with non-empty `properties.absence_evidence` and a
-  `previous_instrument_execution_identity` distinct from the current
-  instrument-execution identity.
+* `tool_change` or `instrument_change`, with non-empty
+  `properties.absence_evidence` and a `previous_instrument_execution_identity`
+  distinct from the current instrument-execution identity; or
+* `population_change`, with non-empty `properties.absence_evidence`.
 
 An absent result without that evidence is refused as `invalid_baseline_state`.
 This prevents a disappeared finding from being silently relabeled as repaired
 when only the instrument changed, and prevents a repair claim without evidence.
 The committed projection emits no absent result.
 
-## 7. Completeness, sharding, and limits
+## 7. Predicate cross-check
 
-Every run records:
+The verifier cross-checks the SARIF native manifest's campaign identity and
+digest against the committed campaign closure (`evaluation/earned-trust/MANIFEST.json`)
+and the attested campaign-closure statement
+(`evaluation/earned-trust/attestations/campaign-closure.statement.json`). It
+requires:
 
-* `properties.limits.max_results` (1000);
-* `properties.limits.max_bytes` (4 MiB);
-* `properties.limits.result_count`;
-* `properties.limits.encoded_bytes` (the canonical encoded length);
-* `properties.limits.truncated`.
+* the predicate `schema` to be `frf-etp.predicate.campaign-closure.v1`;
+* the predicate `spec` to be `frf-etp-v1`;
+* the predicate `closure_sha256` to equal the SHA-256 of the committed
+  `MANIFEST.json`;
+* the predicate `campaign_id` to equal the SARIF `campaign_id`;
+* the campaign-closure subject digest to equal the SHA-256 of the committed
+  `MANIFEST.json`.
 
-It also records `properties.completeness`:
+A mismatch is refused as `predicate_mismatch`. This prevents a SARIF projection
+from being presented against a different campaign closure or predicate.
 
-* `complete`;
-* `receipt_count`;
-* `result_count`;
-* `native_manifest` and `native_manifest_sha256`;
-* `shards`.
+## 8. Source-only location support
 
-The projection never truncates silently. If the result or byte limit would be
-exceeded, `etp sarif export` returns a typed sharding-required refusal (exit 6)
-rather than emitting an incomplete document. A sharded document must set
-`complete = false`, declare explicit shard ranges, and retain the native closure
-manifest. The verifier refuses a complete document that declares shards, an
-incomplete document without shards, shard ranges that do not cover the results,
-or a shard without a safe path, a SHA-256, or a positive result count.
+The profile supports source locations only. A physical location is emitted only
+when the receipt has a raw transcript and the fixture path is declared by the
+campaign. The location contains exactly one `artifactLocation.uri` naming that
+fixture. The profile does not emit a `region` and does not invent a line,
+column, snippet, or function. A harness-level or binary finding without a
+transcript carries no physical location.
 
-The committed campaign is complete: 18 results, 42,988 canonical bytes.
+A logical location is emitted only from a retained finding subject. It names the
+subject and kind; it is not a source coordinate.
 
-## 8. Structural verification
-
-`etp sarif verify evaluation/earned-trust/campaign.sarif` checks:
-
-* the SARIF schema URI and `version = "2.1.0"`;
-* exactly one run and the declared tool driver;
-* the projection schema;
-* the native closure manifest path, digest, and campaign reconciliation;
-* the candidate, instrument, opening, and campaign identities;
-* the result occurrence population against a fresh projection from the
-  receipts;
-* rule identifiers, rule indexes, levels, messages, locations, fingerprints,
-  suppressions, and result properties;
-* the rule table;
-* the declared artifacts;
-* `result_count`, `retained_finding_count`, `suppressed_result_count`, and the
-  completeness/limit counts;
-* the canonical encoded length;
-* suppression justification, scope, owner, expiry, and invalidation;
-* absent-result repair versus tool-change evidence;
-* sharding coverage and limits.
-
-A structurally readable but disagreeing document returns exit 4. A malformed or
-unsupported document returns exit 3. A sharding-required export returns exit 6.
-
-## 9. Limits and non-claims
-
-The projection does not:
-
-* establish that a finding is true outside its finite transcript scope;
-* establish that a clean case is safe, memory-safe, or defect-free;
-* establish that a missing finding is safe;
-* establish detector sensitivity, specificity, or population recall;
-* authenticate the campaign, the candidate, the instrument, or the findings;
-* establish reviewer or adjudicator independence;
-* establish transparency-log inclusion, consistency, or non-equivocation;
-* establish a trusted time;
-* make a GitHub code-scanning view, a SARIF consumer, or a dashboard
-  authoritative;
-* certify the software or authorize deployment.
-
-DSSE, in-toto/SLSA, Sigstore, Rekor/C2SP, RFC 3161 timestamps, and TUF metadata
-are not implemented. The native closure manifest is a SHA-256-bound bookkeeping
-document, not an authenticated attestation.
-
-## 10. References
-
-1. OASIS, *SARIF 2.1.0 OASIS Standard*.
-   <https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html>
-2. OASIS, *SARIF 2.1.0 Errata 01*.
-   <https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/sarif-v2.1.0-errata01-os.html>
-3. This repository: `docs/ETP-CAMPAIGN.md`, `docs/ETP-CLAIM-INTEGRITY.md`,
-   `docs/ETP-STANDARDS-REGISTRY.md`, `SPEC.md`.
+The verifier refuses a physical location whose URI is not a declared fixture and
+rejects an invented region structurally. A location that explicitly declares a
+non-source kind (for example, `properties.location_kind = "mir"`,
+`"machine"`, or `"runtime"`) must carry an explicit justified native reference
+(`properties.native_reference` with a non-empty `uri` and `justification`);
+otherwise it is refused as `non_source_location`. The profile does not invent
+MIR, machine, or runtime locations; source-only support is a declared
+limitation, not a completeness claim.

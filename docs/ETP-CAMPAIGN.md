@@ -269,6 +269,32 @@ change without instrument-change evidence, incomplete sharding, an exceeded
 limit, a missing rule, an unsupported SARIF version, a missing native manifest,
 and an inconsistent result count.
 
+### 6.1 Suppression review and repaired-versus-disappeared rule
+
+Phase 14.1b adds a linked native suppression-review record
+(`evaluation/earned-trust/suppression-review.json`, validated against
+`schemas/etp/suppression-review.v1.schema.json`). Every SARIF suppression must
+have a matching review entry with `independent_of_producer = true`; a
+suppression without a review or with a producer self-review is refused. A
+suppressed result remains a finding and is counted. The committed campaign has
+an empty `reviews` array because it has no suppressions.
+
+An absent result must declare `absence_reason` in {`repaired`, `tool_change`,
+`population_change`, `instrument_change`} with non-empty `absence_evidence`; a
+tool or instrument change also requires a distinct
+`previous_instrument_execution_identity`. An unexplained absence or a `repaired`
+claim without evidence is refused. This prevents a disappeared finding from
+being silently relabeled as repaired when only the instrument changed.
+
+The verifier also cross-checks the SARIF native-manifest digest against the
+committed `MANIFEST.json` SHA-256 and the attested campaign-closure predicate
+(`frf-etp.predicate.campaign-closure.v1`, `frf-etp-v1`, subject digest); a
+mismatch is refused. The profile supports source locations only; a location that
+explicitly declares a non-source kind (`mir`, `machine`, `runtime`) must carry
+an explicit justified native reference, otherwise it is refused. No MIR,
+machine, or runtime location is invented; source-only support is a declared
+limitation.
+
 ## 7. Reproduction
 
 ```sh

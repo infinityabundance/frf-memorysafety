@@ -25,11 +25,23 @@
 | 17 | **authentication separate from semantic support/authorization/scope/freshness** | IMPLEMENTED | `verify_attestations.py` seven dimensions: `signature_validity`, `payload_integrity`, `authorization`, `scope_applicability`, `freshness`, `semantic_support`, `independent_review` (lines 478-492); each tracked independently in `AttestationDimensions` |
 | 18 | **keyid as hint** | IMPLEMENTED | `ETP-AUTHENTICATED-EVIDENCE.md` §2: `keyid` is a lookup hint only; `verify_attestations.py` `parse_envelope` validates duplicate keyid; `parse_policy` does not grant authority from keyid match; `src/etp_auth.rs` `AuthorizedKey` has `keyid` as hint |
 
-## Rust-level gaps (for 14.1b re-freeze)
+## Phase 14.1b external-closure status (linked native evidence)
 
-| # | Gap | Struct / Test that would need instrument change |
-|---|---|---|
-| R1 | Missing explicit independent-review field in SARIF suppression struct | `src/sarif.rs` `SarifSuppressionProperties` lacks `independent_review` field; would need re-frozen instrument change |
-| R2 | Unsupported non-source locations (MIR/machine/runtime) | `src/sarif.rs` `SarifPhysicalLocation` only handles `artifactLocation`; non-source locations not categorized; would need re-frozen instrument change |
-| R3 | No `previous_instrument_execution_identity` in SARIF result properties for tool-change tracking | `SarifResultProperties` has the field (line 313) but exporter/importer may not persist it across rebuilds; audit gate would flag |
-| R4 | In-toto predicate schema/spec not validated on SARIF import | `src/sarif.rs` verifies campaign closure but does not cross-check predicate schema against committed `trust-policy.json`; would need instrument change |
+Phase 14.1b closed the external-closure gaps without any Rust source change and
+without a campaign re-freeze. The independent Python SARIF verifier
+(`evaluation/earned-trust/verify_sarif.py`) now enforces the linked native
+suppression-review record and the attested campaign-closure predicate.
+
+| # | Requirement | Status | Linked native evidence / Control |
+|---|---|---|---|
+| R1 | Missing explicit independent-review field in SARIF suppression struct | **CLOSED via linked native evidence** | `schemas/etp/suppression-review.v1.schema.json` + `evaluation/earned-trust/suppression-review.json`; verifier requires a matching review entry with `independent_of_producer = true`; producer self-review refused; self-test control `pass:SelfReview` |
+| R2 | Unsupported non-source locations (MIR/machine/runtime) | **DECLARED SOURCE-ONLY LIMITATION** | Source-only support is declared; non-source locations require an explicit justified native reference; no native/MIR/machine/runtime location is invented; self-test control `pass:NonSourceLocation` refuses a non-source location without native reference |
+| R3 | No `previous_instrument_execution_identity` in SARIF result properties for tool-change tracking | **CLOSED via linked native evidence** | Absent results require `absence_reason` in {`repaired`, `tool_change`, `population_change`, `instrument_change`}, non-empty `absence_evidence`, and (for tool/instrument change) a distinct `previous_instrument_execution_identity`; self-test controls `pass:InvalidBaselineState` |
+| R4 | In-toto predicate schema/spec not validated on SARIF import | **CLOSED via linked native evidence** | Verifier cross-checks the SARIF native-manifest digest against the committed `MANIFEST.json` SHA-256 and the attested campaign-closure predicate (`frf-etp.predicate.campaign-closure.v1`, `frf-etp-v1`, subject digest); self-test control `pass:PredicateMismatch` |
+
+**Honest Rust-level partial.** The Rust SARIF struct (`src/sarif.rs`)
+`SarifSuppressionProperties` does not carry an `independent_review` field and
+`SarifResultProperties` does not carry the full absence-evidence vocabulary.
+The linked suppression-review manifest is therefore the authoritative
+independent-review requirement; the Rust projection remains unchanged and no
+campaign re-freeze was performed.

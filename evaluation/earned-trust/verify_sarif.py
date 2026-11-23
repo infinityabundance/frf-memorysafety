@@ -21,7 +21,13 @@ Checks performed:
     and the completeness/limit counts;
   * the canonical encoded length;
   * suppression justification, scope, owner, expiry, and invalidation;
-  * absent-result repair versus tool-change evidence;
+  * suppression review manifest: every suppression must have a matching
+    independent review entry; producer self-review is refused;
+  * absent-result repair versus tool-change evidence with
+    ``previous_instrument_execution_identity``;
+  * predicate schema/spec cross-check against the attested campaign-closure
+    statement;
+  * source-only location support with explicit native reference escape hatch;
   * sharding coverage and limits.
 
 Usage::
@@ -86,6 +92,10 @@ EXPECTED_SUPPRESSED_RESULT_COUNT = 0
 EXPECTED_MAX_RESULTS = 1000
 EXPECTED_MAX_BYTES = 4194304
 EXPECTED_ENCODED_BYTES = 42988
+EXPECTED_SUPPRESSION_REVIEW_SCHEMA = "frf-etp.suppression-review.v1"
+EXPECTED_PREDICATE_SCHEMA = "frf-etp.predicate.campaign-closure.v1"
+EXPECTED_PREDICATE_SPEC = "frf-etp-v1"
+ABSENCE_REASONS = frozenset({"repaired", "tool_change", "population_change", "instrument_change"})
 
 REFUSAL_CODES = {
     "UnsupportedVersion",
@@ -95,6 +105,10 @@ REFUSAL_CODES = {
     "MissingResult",
     "UnexpectedResult",
     "IdentityMismatch",
+    "MissingSuppressionReview",
+    "SelfReview",
+    "PredicateMismatch",
+    "NonSourceLocation",
     "FabricatedLocation",
     "UnsupportedRegion",
     "UnauthorizedSuppression",
@@ -152,10 +166,49 @@ def load_json(path: Path) -> Any:
         raise IntegrityError(f"cannot parse JSON at {path}: {error}") from error
 
 
-def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, Any]:
+def load_review(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as error:
+        raise Refused(["MissingSuppressionReview"]) from error
+
+
+def verify_campaign_sarif(
+    campaign_path: Path,
+    sarif_path: Path,
+    review_path: Path,
+    statement_path: Path,
+) -> dict[str, Any]:
     """Verify the committed SARIF projection. Raises on any mismatch."""
     campaign = load_json(campaign_path)
     sarif = load_json(sarif_path)
+    review = load_review(review_path)
+    statement = load_json(statement_path)
+
+    # --- suppression review manifest ---
+    if not isinstance(review, dict):
+        raise Refused(["MissingSuppressionReview"])
+    if review.get("schema") != EXPECTED_SUPPRESSION_REVIEW_SCHEMA:
+        raise Refused(["MissingSuppressionReview"])
+    if review.get("spec") != EXPECTED_PREDICATE_SPEC:
+        raise Refused(["MissingSuppressionReview"])
+    if review.get("campaign_id") != EXPECTED_CAMPAIGN_ID:
+        raise Refused(["CampaignInvalid"])
+    if not isinstance(review.get("claim_ceiling"), str) or not review.get("claim_ceiling").strip():
+        raise Refused(["MissingSuppressionReview"])
+    reviews = review.get("reviews")
+    if not isinstance(reviews, list):
+        raise Refused(["MissingSuppressionReview"])
+    review_by_id: dict[str, dict[str, Any]] = {}
+    for entry in reviews:
+        if not isinstance(entry, dict):
+            raise Refused(["MissingSuppressionReview"])
+        suppression_id = entry.get("suppression_id")
+        if not isinstance(suppression_id, str) or not suppression_id.strip():
+            raise Refused(["MissingSuppressionReview"])
+        if suppression_id in review_by_id:
+            raise Refused(["MissingSuppressionReview"])
+        review_by_id[suppression_id] = entry
 
     # --- schema / version ---
     if sarif.get("$schema") != SARIF_SCHEMA_URI:
@@ -240,6 +293,38 @@ def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, An
             if not shard.get("path") or not shard.get("sha256") or shard.get("result_count", 0) < 1:
                 raise Refused(["IncompleteSharding"])
 
+    # --- cross-check native manifest against committed campaign closure and attested predicate ---
+    manifest_bytes = campaign_path.read_bytes()
+    manifest_sha256 = sha256_bytes(manifest_bytes)
+    if completeness.get("native_manifest_sha256") != manifest_sha256:
+        raise Refused(["DigestMismatch"])
+    if not isinstance(statement, dict):
+        raise Refused(["PredicateMismatch"])
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict):
+        raise Refused(["PredicateMismatch"])
+    if predicate.get("schema") != EXPECTED_PREDICATE_SCHEMA:
+        raise Refused(["PredicateMismatch"])
+    if predicate.get("spec") != EXPECTED_PREDICATE_SPEC:
+        raise Refused(["PredicateMismatch"])
+    if predicate.get("closure_sha256") != manifest_sha256:
+        raise Refused(["PredicateMismatch"])
+    if predicate.get("campaign_id") != props.get("campaign_id"):
+        raise Refused(["PredicateMismatch"])
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list):
+        raise Refused(["PredicateMismatch"])
+    closure_subject = None
+    for subject in subjects:
+        if isinstance(subject, dict) and isinstance(subject.get("name"), str) and subject["name"].startswith("campaign-closure:"):
+            closure_subject = subject
+            break
+    if closure_subject is None:
+        raise Refused(["PredicateMismatch"])
+    digest = closure_subject.get("digest")
+    if not isinstance(digest, dict) or digest.get("sha256") != manifest_sha256:
+        raise Refused(["PredicateMismatch"])
+
     # --- limits ---
     limits = props.get("limits")
     if not isinstance(limits, dict):
@@ -266,11 +351,31 @@ def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, An
     for result in results:
         if not isinstance(result, dict):
             raise Refused(["InconsistentCount"])
-        if result.get("baselineState") != "new":
+        # --- baseline state ---
+        baseline_state = result.get("baselineState")
+        if baseline_state == "new":
+            if result.get("properties", {}).get("absence_reason") != "not_compared":
+                raise Refused(["InvalidBaselineState"])
+        elif baseline_state == "absent":
+            reason = result.get("properties", {}).get("absence_reason")
+            evidence = result.get("properties", {}).get("absence_evidence")
+            prev_instrument = result.get("properties", {}).get("previous_instrument_execution_identity")
+            if reason not in ABSENCE_REASONS:
+                raise Refused(["InvalidBaselineState"])
+            if not isinstance(evidence, list) or not evidence:
+                raise Refused(["InvalidBaselineState"])
+            if reason in ("tool_change", "instrument_change"):
+                if not isinstance(prev_instrument, str) or not prev_instrument:
+                    raise Refused(["InvalidBaselineState"])
+                if prev_instrument == result.get("properties", {}).get("instrument_execution_identity"):
+                    raise Refused(["InvalidBaselineState"])
+        else:
             raise Refused(["InvalidBaselineState"])
         suppressions = result.get("suppressions")
         if not isinstance(suppressions, list):
             raise Refused(["UnauthorizedSuppression"])
+        if suppressions:
+            suppressed_count += 1
         for suppression in suppressions:
             if not isinstance(suppression, dict):
                 raise Refused(["UnauthorizedSuppression"])
@@ -286,7 +391,14 @@ def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, An
                 val = sp.get(key)
                 if not isinstance(val, str) or not val.strip():
                     raise Refused(["UnauthorizedSuppression"])
-            suppressed_count += 1
+            suppression_id = sp.get("suppression_id")
+            if not isinstance(suppression_id, str) or not suppression_id.strip():
+                raise Refused(["MissingSuppressionReview"])
+            review_entry = review_by_id.get(suppression_id)
+            if review_entry is None:
+                raise Refused(["MissingSuppressionReview"])
+            if review_entry.get("independent_of_producer") is not True:
+                raise Refused(["SelfReview"])
         retained += 1
 
     # --- artifacts ---
@@ -312,7 +424,7 @@ def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, An
         if not isinstance(case_id, str) or not case_id:
             raise Refused(["IdentityMismatch"])
 
-    # --- no invented regions ---
+    # --- no invented regions; source-only locations with explicit native reference escape hatch ---
     declared_fixtures = set()
     for artifact in artifacts:
         uri = artifact.get("location", {}).get("uri")
@@ -333,6 +445,17 @@ def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, An
                 raise Refused(["FabricatedLocation"])
             if uri not in declared_fixtures:
                 raise Refused(["FabricatedLocation"])
+            location_kind = location.get("properties", {}).get("location_kind")
+            if location_kind is not None and location_kind != "source":
+                # An explicitly declared non-source location (MIR/machine/runtime)
+                # requires an explicit justified native reference.
+                native_ref = location.get("properties", {}).get("native_reference")
+                if not isinstance(native_ref, dict):
+                    raise Refused(["NonSourceLocation"])
+                if not isinstance(native_ref.get("uri"), str) or not native_ref.get("uri").strip():
+                    raise Refused(["NonSourceLocation"])
+                if not isinstance(native_ref.get("justification"), str) or not native_ref.get("justification").strip():
+                    raise Refused(["NonSourceLocation"])
             region = physical.get("region")
             if region is not None:
                 raise Refused(["UnsupportedRegion"])
@@ -346,11 +469,6 @@ def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, An
         levels.add(level)
     if "error" not in levels and "warning" not in levels:
         raise Refused(["CampaignInvalid"])
-
-    # --- baseline state ---
-    for result in results:
-        if result.get("baselineState") != "new":
-            raise Refused(["InvalidBaselineState"])
 
     return {
         "status": "Valid",
@@ -369,7 +487,12 @@ def verify_campaign_sarif(campaign_path: Path, sarif_path: Path) -> dict[str, An
     }
 
 
-def run_self_test(campaign_path: Path, sarif_path: Path) -> list[str]:
+def run_self_test(
+    campaign_path: Path,
+    sarif_path: Path,
+    review_path: Path,
+    statement_path: Path,
+) -> list[str]:
     """Mutate the committed SARIF in temp copies and require typed refusals."""
     committed = sarif_path.read_bytes()
     controls: list[str] = []
@@ -380,13 +503,13 @@ def run_self_test(campaign_path: Path, sarif_path: Path) -> list[str]:
         target.write_bytes(committed)
         return target
 
-    def expect_refusal(mutate, code: str) -> None:
+    def expect_refusal(mutate, code: str, review: Path = review_path, statement: Path = statement_path) -> None:
         sarif = json.loads(committed)
         mutate(sarif)
         tmp = fresh()
         tmp.write_text(json.dumps(sarif))
         try:
-            verify_campaign_sarif(campaign_path, tmp)
+            verify_campaign_sarif(campaign_path, tmp, review, statement)
         except Refused as error:
             if code not in error.codes:
                 raise AssertionError(f"expected refusal {code}, got {error.codes}")
@@ -444,6 +567,84 @@ def run_self_test(campaign_path: Path, sarif_path: Path) -> list[str]:
     def _campaign(d):
         d["runs"][0]["properties"]["campaign_id"] = "frf-etp-fake"
     expect_refusal(_campaign, "CampaignInvalid")
+    # 12. missing review manifest
+    missing_review = Path(tempfile.mkdtemp(prefix="frf-sarif-selftest-")) / "missing-review.json"
+    try:
+        verify_campaign_sarif(campaign_path, sarif_path, missing_review, statement_path)
+    except Refused as error:
+        if "MissingSuppressionReview" not in error.codes:
+            raise AssertionError(f"expected refusal MissingSuppressionReview, got {error.codes}")
+        controls.append("pass:MissingSuppressionReview")
+    else:
+        raise AssertionError("control MissingSuppressionReview did not refuse")
+    # 13. unreviewed suppression
+    def _unreviewed_suppression(d):
+        d["runs"][0]["results"][0]["suppressions"] = [{
+            "kind": "external",
+            "justification": "test justification",
+            "properties": {"scope": "test", "owner": "test", "expiry": "2030-01-01", "invalidation": "test", "suppression_id": "unreviewed-1"},
+        }]
+    expect_refusal(_unreviewed_suppression, "MissingSuppressionReview")
+    # 14. producer self-review
+    self_review_manifest = {
+        "schema": EXPECTED_SUPPRESSION_REVIEW_SCHEMA,
+        "spec": EXPECTED_PREDICATE_SPEC,
+        "campaign_id": EXPECTED_CAMPAIGN_ID,
+        "claim_ceiling": "Suppression review is bookkeeping over a finite set of suppressions. It does not establish the truth of the suppression or the safety of the code.",
+        "reviews": [{
+            "suppression_id": "self-review-1",
+            "result_id": "data-race-c::data_race::0",
+            "justification": "test",
+            "scope": "test",
+            "owner": "test",
+            "reviewer_identity": "producer",
+            "reviewer_role": "producer",
+            "independent_of_producer": False,
+            "expiry": "2030-01-01",
+            "invalidation": "test",
+            "evidence_digest": "0" * 64,
+        }],
+    }
+    tmp_review = Path(tempfile.mkdtemp(prefix="frf-sarif-selftest-")) / "self-review.json"
+    tmp_review.write_text(json.dumps(self_review_manifest))
+    def _self_review(d):
+        d["runs"][0]["results"][0]["suppressions"] = [{
+            "kind": "external",
+            "justification": "test justification",
+            "properties": {"scope": "test", "owner": "test", "expiry": "2030-01-01", "invalidation": "test", "suppression_id": "self-review-1"},
+        }]
+    expect_refusal(_self_review, "SelfReview", review=tmp_review)
+    # 15. unexplained absence
+    def _unexplained_absence(d):
+        d["runs"][0]["results"][0]["baselineState"] = "absent"
+        d["runs"][0]["results"][0]["properties"]["absence_reason"] = "unknown_reason"
+        d["runs"][0]["results"][0]["properties"]["absence_evidence"] = ["some evidence"]
+        d["runs"][0]["results"][0]["properties"]["previous_instrument_execution_identity"] = "prev"
+    expect_refusal(_unexplained_absence, "InvalidBaselineState")
+    # 16. repaired without evidence
+    def _repaired_without_evidence(d):
+        d["runs"][0]["results"][0]["baselineState"] = "absent"
+        d["runs"][0]["results"][0]["properties"]["absence_reason"] = "repaired"
+        d["runs"][0]["results"][0]["properties"]["absence_evidence"] = []
+        d["runs"][0]["results"][0]["properties"]["previous_instrument_execution_identity"] = "prev"
+    expect_refusal(_repaired_without_evidence, "InvalidBaselineState")
+    # 17. native-manifest/predicate mismatch
+    tmp_statement = Path(tempfile.mkdtemp(prefix="frf-sarif-selftest-")) / "statement.json"
+    statement = json.loads(statement_path.read_text())
+    statement["predicate"]["closure_sha256"] = "0" * 64
+    tmp_statement.write_text(json.dumps(statement))
+    try:
+        verify_campaign_sarif(campaign_path, sarif_path, review_path, tmp_statement)
+    except Refused as error:
+        if "PredicateMismatch" not in error.codes:
+            raise AssertionError(f"expected refusal PredicateMismatch, got {error.codes}")
+        controls.append("pass:PredicateMismatch")
+    else:
+        raise AssertionError("control PredicateMismatch did not refuse")
+    # 18. non-source location without native reference
+    def _non_source_location(d):
+        d["runs"][0]["results"][0]["locations"][0]["properties"] = {"location_kind": "mir"}
+    expect_refusal(_non_source_location, "NonSourceLocation")
 
     return controls
 
@@ -452,22 +653,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="verify_sarif")
     parser.add_argument("--campaign", required=True, help="MANIFEST.json path")
     parser.add_argument("--sarf", required=True, help="campaign.sarif path")
+    parser.add_argument("--review", default="evaluation/earned-trust/suppression-review.json", help="suppression review manifest path")
+    parser.add_argument("--statement", default="evaluation/earned-trust/attestations/campaign-closure.statement.json", help="attested campaign-closure statement path")
     parser.add_argument("--json", action="store_true", help="emit JSON report")
     parser.add_argument("--self-test", action="store_true", help="run mutated negative controls")
     args = parser.parse_args()
 
     campaign_path = Path(args.campaign)
     sarif_path = Path(args.sarf)
+    review_path = Path(args.review)
+    statement_path = Path(args.statement)
 
     if args.self_test:
-        controls = run_self_test(campaign_path, sarif_path)
+        controls = run_self_test(campaign_path, sarif_path, review_path, statement_path)
         print(f"controls passed: {len(controls)}")
         for control in controls:
             print(control)
         return 0
 
     try:
-        report = verify_campaign_sarif(campaign_path, sarif_path)
+        report = verify_campaign_sarif(campaign_path, sarif_path, review_path, statement_path)
     except Refused as error:
         if args.json:
             print(json.dumps({"status": "Refused", "codes": error.codes}, indent=2))

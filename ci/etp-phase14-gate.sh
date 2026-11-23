@@ -88,6 +88,8 @@ python_run etp-phase14-py-sarif \
     python3 evaluation/earned-trust/verify_sarif.py \
     --campaign evaluation/earned-trust/MANIFEST.json \
     --sarf evaluation/earned-trust/campaign.sarif \
+    --review evaluation/earned-trust/suppression-review.json \
+    --statement evaluation/earned-trust/attestations/campaign-closure.statement.json \
     --json
 
 # 3. Run Python SARIF verifier self-test
@@ -95,6 +97,8 @@ python_run etp-phase14-py-sarif-selftest \
     python3 evaluation/earned-trust/verify_sarif.py \
     --campaign evaluation/earned-trust/MANIFEST.json \
     --sarf evaluation/earned-trust/campaign.sarif \
+    --review evaluation/earned-trust/suppression-review.json \
+    --statement evaluation/earned-trust/attestations/campaign-closure.statement.json \
     --self-test
 
 # 4. Run Python attestation verifier on committed evidence
