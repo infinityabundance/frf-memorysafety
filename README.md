@@ -358,6 +358,26 @@ missing cleanse on relocation -> violation;
 uninitialized read -> valgrind-detected;
 leak -> valgrind-detected;
 missing/empty valgrind output -> not_run;
+
+Phase 13.1a adds an interoperability matrix for a length-prefixed TCP protocol.
+`ci/etp-interop-gate.sh` runs inside `frf-etp-interop:1` (python:3.11-slim with
+gcc/binutils/libc6-dev pre-installed) with hard memory/swap caps, pid/cpu/nofile
+limits, dropped capabilities, `no-new-privileges`, and `--network=none`. It
+compiles `tests/fixtures/interop/interop.c` twice (`-DREFERENCE` and `-DCANDIDATE`)
+with `gcc -O1 -fno-inline -fno-builtin -g`, runs the genuine four-way matrix for
+six pre-registered cases (`empty`, `short`, `max_4096`, `malformed_length`,
+`truncated`, `oversize_common`), records per-process identity (exe digest, loaded
+DSO paths/digests, loader-closure digest), case population reconciliation,
+per-cell results, common failures, candidate-specific failures, and emits a
+canonical `frf-etp.interop-matrix.v1` report under
+`evaluation/earned-trust/interop/report.json`. The candidate has one labeled
+synthetic defect (truncating a 4096-byte payload at 2048) to exercise the matrix;
+it is not an organically discovered vulnerability. The self-test exercises eight
+controls: wrong endpoint, wrong executable identity, collapsed matrix, missing
+population case, duplicate population case, stale fixture, substituted DSO,
+common-failure preservation, and candidate-specific-failure detection. Fresh
+runs go to `target/etp-interop-run/`; committed evidence under
+`evaluation/earned-trust/interop/`; repeated runs must not dirty the tree.
 scalar confidence/assurance score -> refusal. At least 7 controls.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),

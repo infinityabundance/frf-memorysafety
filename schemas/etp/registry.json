@@ -1,1 +1,270 @@
-{"baseline":{"commit":"02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab","evidence_root_sha256":"508b495b56b28cb9d674094f21dd89153b28905d61fdf9ac227ea3ff1eac6d74","release":"1.0.0"},"digest_note":"SHA-256 binds exact bytes. A digest is not authentication, not a signature, and not evidence that the content is true.","freeze":{"path":"etp-freeze-1.0.0.json","sha256":"9fd6124fd8c644ae02dbc09924bab12342a606829ae165730b51c72874c4d6a8"},"schema":"frf-etp.version-registry.v1","schemas":[{"id":"frf-etp.archive-manifest.v1","path":"etp-archive-manifest.v1.schema.json","sha256":"b4da882098372bcd252d6e9242edc9a26dd3a0305a83372ac7d212a1b66c6f76","spec":"frf-etp-v1"},{"id":"frf-etp.archive-verification.v1","path":"etp-archive-verification.v1.schema.json","sha256":"3e58473e3e07175860fc8e45b7dfb6c7c6a7f43f629e9a6fea257a223dbd6ec5","spec":"frf-etp-v1"},{"id":"frf-etp.attestation-verification.v1","path":"etp-attestation-verification.v1.schema.json","sha256":"4fbac5be0310dbc77e5a82e806164df533c7c97bf62951b87a2cf466de8771d6","spec":"frf-etp-v1"},{"id":"frf-etp.campaign-closure.v1","path":"etp-campaign-closure.v1.schema.json","sha256":"6daa7e05c9b7962f949f5bd9c55ce06be731909e6b25e9fb803f11002627c0e3","spec":"frf-etp-v1"},{"id":"frf-etp.campaign-protocol.v1","path":"etp-campaign-protocol.v1.schema.json","sha256":"31bb2c7346466eae6cec7aa5436c953c9d859840fbf24343b4aac767706be0e2","spec":"frf-etp-v1"},{"id":"frf-etp.campaign-receipt.v1","path":"etp-campaign-receipt.v1.schema.json","sha256":"c88040d92a508758604f4a151b83ee62331375a5e9f0670f6327a34ae8b3d63b","spec":"frf-etp-v1"},{"id":"frf-etp.claim.v1","path":"etp-claim.v1.schema.json","sha256":"8e6d26009b58f58cd8cf356b04b2062a402aaac60ae6ff9cc15f7e31e8137713","spec":"frf-etp-v1"},{"id":"frf-etp.dsse-envelope.v1","path":"etp-dsse-envelope.v1.schema.json","sha256":"008597b0ada9c303e56f8f8d3d3a7a3f37523b9b8bd98d17ab982ef4ea78554f","spec":"frf-etp-v1"},{"id":"frf-etp.historical-verdict.v1","path":"etp-historical-verdict.v1.schema.json","sha256":"ce491b2501c0979e1934cede80a2eb039ef1005704e9157ed1da530c7fd76291","spec":"frf-etp-v1"},{"id":"frf-etp.in-toto-statement.v1","path":"etp-in-toto-statement.v1.schema.json","sha256":"5d4b5cd462c3b0f13ab2892f66d1fea2f4ad87b115c0d0a12c47836b680ef60d","spec":"frf-etp-v1"},{"id":"frf-etp.manifest.v1","path":"etp-manifest.v1.schema.json","sha256":"88505e411bd752809a1e4aad942056a6d73c3ae19ecf542d7d3707f0e6d16ad7","spec":"frf-etp-v1"},{"id":"frf-etp.obligation-inventory.v1","path":"etp-obligation-inventory.v1.schema.json","sha256":"e8d03e8b547a04b22b17c0152ba9099666812915175a65f6b5b4411403d9fbae","spec":"frf-etp-v1"},{"id":"frf-etp.predicate.campaign-closure.v1","path":"etp-predicate-campaign-closure.v1.schema.json","sha256":"5a99a4729c89a4be47bc34bcfb1b03a7869c018f01e06ccc8b38262d7182ddc6","spec":"frf-etp-v1"},{"id":"frf-etp.predicate.consumer-closure.v1","path":"etp-predicate-consumer-closure.v1.schema.json","sha256":"9fd6766395aa648df7236c1b84e87743b5cdb1e9e1893e54a7fa023b0c561f7e","spec":"frf-etp-v1"},{"id":"frf-etp.predicate.instrument-qualification.v1","path":"etp-predicate-instrument-qualification.v1.schema.json","sha256":"8eebd4a8b2b9a76362d832abb5cab9b479e84eb9e2019b0e3bb32b3244b52af3","spec":"frf-etp-v1"},{"id":"frf-etp.predicate.proof-admission.v1","path":"etp-predicate-proof-admission.v1.schema.json","sha256":"3813e90c95d70e7d535184abc1de93fd96426abd34db71c2f1f5062df72ab715","spec":"frf-etp-v1"},{"id":"frf-etp.predicate.release-adjudication.v1","path":"etp-predicate-release-adjudication.v1.schema.json","sha256":"af779a2088b4fb8c6ae3517cc640d9bd4bbb578b954708dce9273462dee4898b","spec":"frf-etp-v1"},{"id":"frf-etp.predicate.reproduction.v1","path":"etp-predicate-reproduction.v1.schema.json","sha256":"0090fa49af534adefa267eacd5c39bee03e49aff95a00534f74f59e36be40752","spec":"frf-etp-v1"},{"id":"frf-etp.predicate.security-findings.v1","path":"etp-predicate-security-findings.v1.schema.json","sha256":"93f8ab5667abbf373de098a37b5d907795b86f32ad4c7b2fe4547d7d75fb2dde","spec":"frf-etp-v1"},{"id":"frf-etp.revocation-entry.v1","path":"etp-revocation-entry.v1.schema.json","sha256":"b8a92cf3f85e2b8c603cfff3d604f90258d4f21313e45cbff44d8d9652a6986e","spec":"frf-etp-v1"},{"id":"frf-etp.revocation-plan.v1","path":"etp-revocation-plan.v1.schema.json","sha256":"743d347680fd909ada819831bb42f137ac65e9fd0a4442dc8f3e46f48c551be1","spec":"frf-etp-v1"},{"id":"frf-etp.revocation-registry.v1","path":"etp-revocation-registry.v1.schema.json","sha256":"ad8474ef4a408c1827e83ebb56fbb2b1e35e509aa934b5c348ab4f98ccf23b74","spec":"frf-etp-v1"},{"id":"frf-etp.revocation-verification.v1","path":"etp-revocation-verification.v1.schema.json","sha256":"5f3eb497f2cdb5eccb627c8e75a0600f91742863ad3a0f4f4b4daceb6c79271c","spec":"frf-etp-v1"},{"id":"frf-etp.sarif-projection.v1","path":"etp-sarif-projection.v1.schema.json","sha256":"5dda72f1e6de6acdb5c4bbaf333f701bb0c7f6c6dbdcc40be40ae42860199c1b","spec":"frf-etp-v1"},{"id":"frf-etp.status-dimensions.v1","path":"etp-status-dimensions.v1.schema.json","sha256":"6dd4ee85bcba79b35e73ebea221bd0399a7925d1a46216f1b8bfea9bf8f167b7","spec":"frf-etp-v1"},{"id":"frf-etp.support-model.v1","path":"etp-support-model.v1.schema.json","sha256":"947364a9e11e2e3229e0863bc8935cd1a9f696a07c1f631c711e40c788a90ece","spec":"frf-etp-v1"},{"id":"frf-etp.time-stamp.v1","path":"etp-time-stamp.v1.schema.json","sha256":"ebfa4e29fbdb8a8a0db5ffa03b48362d01fc107c050b3072729adced2a2a5a99","spec":"frf-etp-v1"},{"id":"frf-etp.time-verification.v1","path":"etp-time-verification.v1.schema.json","sha256":"9c071009d0937509c384ce3c132a4554a3eeffb435b899637ba5e703296aec52","spec":"frf-etp-v1"},{"id":"frf-etp.trust-policy.v1","path":"etp-trust-policy.v1.schema.json","sha256":"74902524a2f1f4e2e372998632014839354440d04ef4715f89ac5697c99ed1c6","spec":"frf-etp-v1"}],"spec":"frf-etp-v1","vectors":[{"path":"vectors/index.json","sha256":"a6c3dd9d4ac2a46a08932bc4ba34e34a5bc76594db1eb35be2cb91c4f10bfff2"},{"path":"vectors/invalid/baseline-mismatch.manifest.json","sha256":"5271ab53de192407769d8aeddafc9182396e930abcecd0604d1e3b69050bf093"},{"path":"vectors/invalid/blocked-obligation-eligible.manifest.json","sha256":"1eca5db8aa8e9021fe2dbecb036dca02099bfa768ebc64c8c55c307ebce9774e"},{"path":"vectors/invalid/confidence-scalar.manifest.json","sha256":"a7da0695c8fd4f1423c079c50700589e4712ea89cbb89cefb07e1f8fe409385d"},{"path":"vectors/invalid/dimension-quantifier-mismatch.manifest.json","sha256":"3f5675217b77ccdcd3861166b41b0046685ecd0b8cc93b2fdc3a5e53cff9ea27"},{"path":"vectors/invalid/dropped-contradiction.manifest.json","sha256":"78e0de0c9d7fd50de946ad3b444a8e073375043eb58943bcd8c719d9f66c8573"},{"path":"vectors/invalid/merged-dimension.manifest.json","sha256":"fa1613b0624931c2254ec9fd89cf35cce11ae4969f5c3e8d1e1c51fec7c949b2"},{"path":"vectors/invalid/missing-coordinate.manifest.json","sha256":"82d24d8a5f5d2b27f960a32907d2f213eddc9541bd506e1735876df9bcf515d9"},{"path":"vectors/invalid/missing-dimension.manifest.json","sha256":"f626da09daa8b96e03be345231a4120a4fa45d6bbebd8b5489682085b36e5951"},{"path":"vectors/invalid/modality-mismatch.manifest.json","sha256":"023e2fe6fb4c277b6ad8c76442ba7a441d603b3cd4555a4b58eae332bc8cdf64"},{"path":"vectors/invalid/native-observation-proof.manifest.json","sha256":"6f6b1daf3aebd472850f41c4ed2739fcf39becde0106a9414b32426b64dc826a"},{"path":"vectors/invalid/universal-claim.manifest.json","sha256":"501a30f871ca9295600c34b32f4fae5c68249c58b60cba39633a87f970402581"},{"path":"vectors/invalid/unknown-premise-eligible.manifest.json","sha256":"fd1490b7ab747cfe8cf7d150a120d138eda38725411ddce72ce6acdb29634a53"},{"path":"vectors/invalid/wrong-schema.manifest.json","sha256":"e010de3adeea8c69f8666d7ff3d7c26982f387ee8daa6202f09d717de4338274"},{"path":"vectors/valid/claim.json","sha256":"c074d11a61614e247f29f2ffc4fcd93ab46d09c28c32b7f79ae8363bc292d1a3"},{"path":"vectors/valid/manifest.json","sha256":"9c3bf9f2814a95f4068de9424f5bfbefe9b4fd0bc5571be5e4c3fba3b678c93d"},{"path":"vectors/valid/obligation-inventory.json","sha256":"5330f9137d7ca0042e9bde4f8df238a8cca8bf28537114e8b35117df501c7930"},{"path":"vectors/valid/status-dimensions.json","sha256":"422f19b9e885e02451e5bcfe4a4606b1f257c3a0eb24f082116ab4b39b6c42c4"}]}
+{
+  "baseline": {
+    "commit": "02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab",
+    "evidence_root_sha256": "508b495b56b28cb9d674094f21dd89153b28905d61fdf9ac227ea3ff1eac6d74",
+    "release": "1.0.0"
+  },
+  "digest_note": "SHA-256 binds exact bytes. A digest is not authentication, not a signature, and not evidence that the content is true.",
+  "freeze": {
+    "path": "etp-freeze-1.0.0.json",
+    "sha256": "9fd6124fd8c644ae02dbc09924bab12342a606829ae165730b51c72874c4d6a8"
+  },
+  "schema": "frf-etp.version-registry.v1",
+  "schemas": [
+    {
+      "id": "frf-etp.archive-manifest.v1",
+      "path": "etp-archive-manifest.v1.schema.json",
+      "sha256": "b4da882098372bcd252d6e9242edc9a26dd3a0305a83372ac7d212a1b66c6f76",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.archive-verification.v1",
+      "path": "etp-archive-verification.v1.schema.json",
+      "sha256": "3e58473e3e07175860fc8e45b7dfb6c7c6a7f43f629e9a6fea257a223dbd6ec5",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.attestation-verification.v1",
+      "path": "etp-attestation-verification.v1.schema.json",
+      "sha256": "4fbac5be0310dbc77e5a82e806164df533c7c97bf62951b87a2cf466de8771d6",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.campaign-closure.v1",
+      "path": "etp-campaign-closure.v1.schema.json",
+      "sha256": "6daa7e05c9b7962f949f5bd9c55ce06be731909e6b25e9fb803f11002627c0e3",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.campaign-protocol.v1",
+      "path": "etp-campaign-protocol.v1.schema.json",
+      "sha256": "31bb2c7346466eae6cec7aa5436c953c9d859840fbf24343b4aac767706be0e2",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.campaign-receipt.v1",
+      "path": "etp-campaign-receipt.v1.schema.json",
+      "sha256": "c88040d92a508758604f4a151b83ee62331375a5e9f0670f6327a34ae8b3d63b",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.claim.v1",
+      "path": "etp-claim.v1.schema.json",
+      "sha256": "8e6d26009b58f58cd8cf356b04b2062a402aaac60ae6ff9cc15f7e31e8137713",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.dsse-envelope.v1",
+      "path": "etp-dsse-envelope.v1.schema.json",
+      "sha256": "008597b0ada9c303e56f8f8d3d3a7a3f37523b9b8bd98d17ab982ef4ea78554f",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.historical-verdict.v1",
+      "path": "etp-historical-verdict.v1.schema.json",
+      "sha256": "ce491b2501c0979e1934cede80a2eb039ef1005704e9157ed1da530c7fd76291",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.in-toto-statement.v1",
+      "path": "etp-in-toto-statement.v1.schema.json",
+      "sha256": "5d4b5cd462c3b0f13ab2892f66d1fea2f4ad87b115c0d0a12c47836b680ef60d",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.manifest.v1",
+      "path": "etp-manifest.v1.schema.json",
+      "sha256": "88505e411bd752809a1e4aad942056a6d73c3ae19ecf542d7d3707f0e6d16ad7",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.obligation-inventory.v1",
+      "path": "etp-obligation-inventory.v1.schema.json",
+      "sha256": "e8d03e8b547a04b22b17c0152ba9099666812915175a65f6b5b4411403d9fbae",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.predicate.campaign-closure.v1",
+      "path": "etp-predicate-campaign-closure.v1.schema.json",
+      "sha256": "5a99a4729c89a4be47bc34bcfb1b03a7869c018f01e06ccc8b38262d7182ddc6",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.predicate.consumer-closure.v1",
+      "path": "etp-predicate-consumer-closure.v1.schema.json",
+      "sha256": "9fd6766395aa648df7236c1b84e87743b5cdb1e9e1893e54a7fa023b0c561f7e",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.predicate.instrument-qualification.v1",
+      "path": "etp-predicate-instrument-qualification.v1.schema.json",
+      "sha256": "8eebd4a8b2b9a76362d832abb5cab9b479e84eb9e2019b0e3bb32b3244b52af3",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.predicate.proof-admission.v1",
+      "path": "etp-predicate-proof-admission.v1.schema.json",
+      "sha256": "3813e90c95d70e7d535184abc1de93fd96426abd34db71c2f1f5062df72ab715",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.predicate.release-adjudication.v1",
+      "path": "etp-predicate-release-adjudication.v1.schema.json",
+      "sha256": "af779a2088b4fb8c6ae3517cc640d9bd4bbb578b954708dce9273462dee4898b",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.predicate.reproduction.v1",
+      "path": "etp-predicate-reproduction.v1.schema.json",
+      "sha256": "0090fa49af534adefa267eacd5c39bee03e49aff95a00534f74f59e36be40752",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.predicate.security-findings.v1",
+      "path": "etp-predicate-security-findings.v1.schema.json",
+      "sha256": "93f8ab5667abbf373de098a37b5d907795b86f32ad4c7b2fe4547d7d75fb2dde",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.revocation-entry.v1",
+      "path": "etp-revocation-entry.v1.schema.json",
+      "sha256": "b8a92cf3f85e2b8c603cfff3d604f90258d4f21313e45cbff44d8d9652a6986e",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.revocation-plan.v1",
+      "path": "etp-revocation-plan.v1.schema.json",
+      "sha256": "743d347680fd909ada819831bb42f137ac65e9fd0a4442dc8f3e46f48c551be1",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.revocation-registry.v1",
+      "path": "etp-revocation-registry.v1.schema.json",
+      "sha256": "ad8474ef4a408c1827e83ebb56fbb2b1e35e509aa934b5c348ab4f98ccf23b74",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.revocation-verification.v1",
+      "path": "etp-revocation-verification.v1.schema.json",
+      "sha256": "5f3eb497f2cdb5eccb627c8e75a0600f91742863ad3a0f4f4b4daceb6c79271c",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.sarif-projection.v1",
+      "path": "etp-sarif-projection.v1.schema.json",
+      "sha256": "5dda72f1e6de6acdb5c4bbaf333f701bb0c7f6c6dbdcc40be40ae42860199c1b",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.status-dimensions.v1",
+      "path": "etp-status-dimensions.v1.schema.json",
+      "sha256": "6dd4ee85bcba79b35e73ebea221bd0399a7925d1a46216f1b8bfea9bf8f167b7",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.support-model.v1",
+      "path": "etp-support-model.v1.schema.json",
+      "sha256": "947364a9e11e2e3229e0863bc8935cd1a9f696a07c1f631c711e40c788a90ece",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.time-stamp.v1",
+      "path": "etp-time-stamp.v1.schema.json",
+      "sha256": "ebfa4e29fbdb8a8a0db5ffa03b48362d01fc107c050b3072729adced2a2a5a99",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.time-verification.v1",
+      "path": "etp-time-verification.v1.schema.json",
+      "sha256": "9c071009d0937509c384ce3c132a4554a3eeffb435b899637ba5e703296aec52",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.trust-policy.v1",
+      "path": "etp-trust-policy.v1.schema.json",
+      "sha256": "74902524a2f1f4e2e372998632014839354440d04ef4715f89ac5697c99ed1c6",
+      "spec": "frf-etp-v1"
+    },
+    {
+      "id": "frf-etp.interop-matrix.v1",
+      "path": "interop-matrix.v1.schema.json",
+      "sha256": "11a95931032584c8d0ad678d37955f53c5525fb91f502f00153e1e178f42fdc1",
+      "spec": "frf-etp-v1"
+    }
+  ],
+  "spec": "frf-etp-v1",
+  "vectors": [
+    {
+      "path": "vectors/index.json",
+      "sha256": "a6c3dd9d4ac2a46a08932bc4ba34e34a5bc76594db1eb35be2cb91c4f10bfff2"
+    },
+    {
+      "path": "vectors/invalid/baseline-mismatch.manifest.json",
+      "sha256": "5271ab53de192407769d8aeddafc9182396e930abcecd0604d1e3b69050bf093"
+    },
+    {
+      "path": "vectors/invalid/blocked-obligation-eligible.manifest.json",
+      "sha256": "1eca5db8aa8e9021fe2dbecb036dca02099bfa768ebc64c8c55c307ebce9774e"
+    },
+    {
+      "path": "vectors/invalid/confidence-scalar.manifest.json",
+      "sha256": "a7da0695c8fd4f1423c079c50700589e4712ea89cbb89cefb07e1f8fe409385d"
+    },
+    {
+      "path": "vectors/invalid/dimension-quantifier-mismatch.manifest.json",
+      "sha256": "3f5675217b77ccdcd3861166b41b0046685ecd0b8cc93b2fdc3a5e53cff9ea27"
+    },
+    {
+      "path": "vectors/invalid/dropped-contradiction.manifest.json",
+      "sha256": "78e0de0c9d7fd50de946ad3b444a8e073375043eb58943bcd8c719d9f66c8573"
+    },
+    {
+      "path": "vectors/invalid/merged-dimension.manifest.json",
+      "sha256": "fa1613b0624931c2254ec9fd89cf35cce11ae4969f5c3e8d1e1c51fec7c949b2"
+    },
+    {
+      "path": "vectors/invalid/missing-coordinate.manifest.json",
+      "sha256": "82d24d8a5f5d2b27f960a32907d2f213eddc9541bd506e1735876df9bcf515d9"
+    },
+    {
+      "path": "vectors/invalid/missing-dimension.manifest.json",
+      "sha256": "f626da09daa8b96e03be345231a4120a4fa45d6bbebd8b5489682085b36e5951"
+    },
+    {
+      "path": "vectors/invalid/modality-mismatch.manifest.json",
+      "sha256": "023e2fe6fb4c277b6ad8c76442ba7a441d603b3cd4555a4b58eae332bc8cdf64"
+    },
+    {
+      "path": "vectors/invalid/native-observation-proof.manifest.json",
+      "sha256": "6f6b1daf3aebd472850f41c4ed2739fcf39becde0106a9414b32426b64dc826a"
+    },
+    {
+      "path": "vectors/invalid/universal-claim.manifest.json",
+      "sha256": "501a30f871ca9295600c34b32f4fae5c68249c58b60cba39633a87f970402581"
+    },
+    {
+      "path": "vectors/invalid/unknown-premise-eligible.manifest.json",
+      "sha256": "fd1490b7ab747cfe8cf7d150a120d138eda38725411ddce72ce6acdb29634a53"
+    },
+    {
+      "path": "vectors/invalid/wrong-schema.manifest.json",
+      "sha256": "e010de3adeea8c69f8666d7ff3d7c26982f387ee8daa6202f09d717de4338274"
+    },
+    {
+      "path": "vectors/valid/claim.json",
+      "sha256": "c074d11a61614e247f29f2ffc4fcd93ab46d09c28c32b7f79ae8363bc292d1a3"
+    },
+    {
+      "path": "vectors/valid/manifest.json",
+      "sha256": "9c3bf9f2814a95f4068de9424f5bfbefe9b4fd0bc5571be5e4c3fba3b678c93d"
+    },
+    {
+      "path": "vectors/valid/obligation-inventory.json",
+      "sha256": "5330f9137d7ca0042e9bde4f8df238a8cca8bf28537114e8b35117df501c7930"
+    },
+    {
+      "path": "vectors/valid/status-dimensions.json",
+      "sha256": "422f19b9e885e02451e5bcfe4a4606b1f257c3a0eb24f082116ab4b39b6c42c4"
+    }
+  ]
+}

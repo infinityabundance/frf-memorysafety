@@ -192,7 +192,7 @@ fn registry_digests_match_and_cover_every_schema_and_vector() {
     ] {
         assert!(schema_ids.iter().any(|value| value == id), "missing {id}");
     }
-    assert_eq!(schema_ids.len(), 29);
+    assert_eq!(schema_ids.len(), 30);
 
     let freeze = registry["freeze"].as_object().expect("freeze");
     let freeze_path = root()
