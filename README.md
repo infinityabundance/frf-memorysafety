@@ -379,6 +379,23 @@ common-failure preservation, and candidate-specific-failure detection. Fresh
 runs go to `target/etp-interop-run/`; committed evidence under
 `evaluation/earned-trust/interop/`; repeated runs must not dirty the tree.
 
+Phase 13.2 applies the four-way matrix to the real OpenSSL-RS candidate and the
+pinned reference authority. `ci/etp-tls-matrix-gate.sh` runs in
+`python:3.11-slim` with hard OOM caps, compiles
+`tests/fixtures/tls/tls_echo_{server,client}.c` against the pinned candidate
+prefix (`artifacts/phase2/install`) and reference prefix
+(`forensics/authorities/prefix/openssl-3.6.4-production`), and runs the matrix
+for `tls13_echo` and `wrong_ca`. Measured: `tls13_echo` passes in all four cells;
+`wrong_ca` rejects in all four (preserved common failure); no
+candidate-specific failure and no unresolved cell. Per-process identity
+distinguishes reference `libcrypto`/`libssl` (`59d9c2e4…`/`c25b910e…`) from the
+candidate (`ed012b13…`/`5e5ebc79…`); the candidate also loads `libgcc_s.so.1`.
+`accepted` is `true`. This is one local TLS fixture, one host, and two pinned
+prefixes; it does not establish general TLS interoperability, OpenSSL-RS
+compatibility, deployment security, or `SAFE_COMPATIBLE`. Fresh runs go to
+`target/etp-tls-matrix-run/`; committed evidence under
+`evaluation/earned-trust/tls-matrix/`.
+
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
 (0.9.0), and Phase 9 (1.0.0) are in [`CHANGELOG.md`](CHANGELOG.md).
