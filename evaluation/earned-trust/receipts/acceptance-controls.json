@@ -1,0 +1,732 @@
+{
+  "claim_ceiling": "This receipt is the output of an independent executable conformance oracle for a finite abstract acceptance model. It is not a Coq proof, not verification of the Rust crate or any native execution, not memory-safety evidence, and not certification. It establishes only that, for the sixteen control instances recorded here, this executable model admits the fully valid instance and refuses each mutated instance, and that each primary refusal is reversed when only the mutated field is restored. It says nothing about whether the Coq model, the Rust implementation or any real campaign agrees with this model.",
+  "controls": [
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "no_support_available"
+      ],
+      "family": "primary",
+      "id": "p01_no_unsupported_support",
+      "invariant": "no_unsupported_or_cyclic_admission",
+      "mutation": "Set the support universe of the evaluated claim to empty: no finite derivation is available. Policy and state are unchanged.",
+      "mutation_fields": [
+        "supports(c2)"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "no_support_available"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "supports(c2)"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": []
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "required_premise_absent:pD"
+      ],
+      "family": "primary",
+      "id": "p02_missing_mandatory_premise",
+      "invariant": "missing_mandatory_evidence_blocks",
+      "mutation": "Add pD to policy.required_premises and mark pD absent. pD is not a leaf of any c2 derivation, so only the required-premise clause fires.",
+      "mutation_fields": [
+        "policy.required_premises",
+        "state.present.pD"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "required_premise_absent:pD"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "policy.required_premises",
+          "state.present.pD"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "candidate_mismatch"
+      ],
+      "family": "primary",
+      "id": "p03_candidate_substitution",
+      "invariant": "candidate_substitution_invalidates",
+      "mutation": "Bind the state to candidate 8 while the policy names candidate 7.",
+      "mutation_fields": [
+        "state.bound_candidate"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "candidate_mismatch"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.bound_candidate"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "premise_absent:pA",
+        "premise_absent:pC"
+      ],
+      "family": "primary",
+      "id": "p04_authenticated_but_unsupported",
+      "invariant": "authentication_is_not_semantic_support",
+      "mutation": "Keep authenticated = true, move required_premises to pB and pD, and remove the c0 leaf premises pA and pC. No c2 derivation is supported.",
+      "mutation_fields": [
+        "policy.required_premises",
+        "state.present.pA",
+        "state.present.pC"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "no_admissible_support",
+        "premise_absent:pA",
+        "premise_absent:pC"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "policy.required_premises",
+          "state.present.pA",
+          "state.present.pC"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [
+            "premise_absent:pA"
+          ],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [
+            "premise_absent:pC"
+          ],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "reported_claim_mismatch"
+      ],
+      "family": "primary",
+      "id": "p05_unrelated_proof",
+      "invariant": "unrelated_proof_does_not_satisfy",
+      "mutation": "Report claim c0 while the evaluated claim is c2.",
+      "mutation_fields": [
+        "state.reported_claim"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "reported_claim_mismatch"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.reported_claim"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "premise_challenged:pB"
+      ],
+      "family": "primary",
+      "id": "p06_challenged_premise",
+      "invariant": "challenged_premise_blocks",
+      "mutation": "Challenge pB, which occurs in every finite derivation of c2.",
+      "mutation_fields": [
+        "state.challenged.pB"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "no_admissible_support",
+        "premise_challenged:pB"
+      ],
+      "premise_occurs_in_every_derivation_of_c2": true,
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.challenged.pB"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [
+            "premise_challenged:pB"
+          ],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [
+            "premise_challenged:pB"
+          ],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "premise_revoked:pB"
+      ],
+      "family": "primary",
+      "id": "p07_revoked_premise",
+      "invariant": "revoked_premise_invalidates",
+      "mutation": "Revoke pB, which occurs in every finite derivation of c2.",
+      "mutation_fields": [
+        "state.revoked.pB"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "no_admissible_support",
+        "premise_revoked:pB"
+      ],
+      "premise_occurs_in_every_derivation_of_c2": true,
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.revoked.pB"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [
+            "premise_revoked:pB"
+          ],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [
+            "premise_revoked:pB"
+          ],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "campaign_not_closed"
+      ],
+      "family": "primary",
+      "id": "p08_incomplete_campaign",
+      "invariant": "incomplete_campaign_blocks",
+      "mutation": "Open the campaign while the policy requires it to be closed.",
+      "mutation_fields": [
+        "state.campaign_closed"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "campaign_not_closed"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.campaign_closed"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "insufficient_independent_actors"
+      ],
+      "family": "primary",
+      "id": "p09_duplicate_credentials",
+      "invariant": "duplicate_credentials_do_not_satisfy_independence",
+      "mutation": "Count one independent actor: duplicated credentials sit below the declared threshold of two.",
+      "mutation_fields": [
+        "state.independent_actors"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "insufficient_independent_actors"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.independent_actors"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "stale_transparency"
+      ],
+      "family": "primary",
+      "id": "p10_stale_transparency",
+      "invariant": "stale_transparency_blocks",
+      "mutation": "Mark transparency stale while the policy requires freshness.",
+      "mutation_fields": [
+        "state.transparency_fresh"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "stale_transparency"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.transparency_fresh"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "archive_missing"
+      ],
+      "family": "primary",
+      "id": "p11_missing_archive",
+      "invariant": "missing_archive_blocks_reconstruction",
+      "mutation": "Remove the archive while the policy requires it.",
+      "mutation_fields": [
+        "state.archive_present"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "archive_missing"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "state.archive_present"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "policy_version_mismatch"
+      ],
+      "family": "primary",
+      "id": "p12_policy_version_substitution",
+      "invariant": "policy_substitution_blocks",
+      "mutation": "Declare policy version 2 while the state observed version 1.",
+      "mutation_fields": [
+        "policy.policy_version"
+      ],
+      "observed": "refused",
+      "observed_reasons": [
+        "policy_version_mismatch"
+      ],
+      "restoration": {
+        "exactly_base_after_restoration": true,
+        "expected": "admitted",
+        "mutation": "Restore only the mutated field(s) to the valid value.",
+        "observed": "admitted",
+        "observed_reasons": [],
+        "restored_fields": [
+          "policy.policy_version"
+        ],
+        "status": "PASS"
+      },
+      "status": "PASS",
+      "supports_considered": [
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pA), (c1, pB))"
+        },
+        {
+          "reasons": [],
+          "support": "(c2, (c0, pC), (c1, pB))"
+        }
+      ]
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "empty_support"
+      ],
+      "family": "structural",
+      "grammar_minimum_leaf_count": 1,
+      "id": "s01_empty_leaf_set",
+      "mutation": "Offer the support object ('c2',) with no child derivations.",
+      "observed": "refused",
+      "observed_reasons": [
+        "empty_support:binary node with no child derivations"
+      ],
+      "purpose": "A support object whose leaf set is empty cannot be admitted. The declared grammar has no zero-leaf constructor; an injected empty binary node is refused by well-formedness.",
+      "restoration": {
+        "expected": "admitted",
+        "mutation": "Offer the finite well-typed c2 derivation instead.",
+        "observed": "admitted",
+        "status": "PASS"
+      },
+      "status": "PASS"
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "cyclic_marker_not_finite"
+      ],
+      "family": "structural",
+      "id": "s02_cyclic_support_marker",
+      "mutation": "Offer ('cycle', 'c0'); then offer ('c2', ('c0', 'pA'), x) where the list x contains itself.",
+      "observed_marker": [
+        "cyclic_marker_not_finite:explicit cycle marker"
+      ],
+      "observed_self_referential": {
+        "reasons": [
+          "cyclic_marker_not_finite:self-referential support object"
+        ],
+        "support": "(c2, (c0, pA), [<cycle>])"
+      },
+      "purpose": "A claim whose only support is self-referential is refused as not a finite derivation. Both an explicit ('cycle', 'c0') marker and a finitely sized self-referential list are refused; no infinite object is constructed.",
+      "restoration": {
+        "expected": "admitted",
+        "mutation": "Offer the finite well-typed c2 derivation instead.",
+        "observed": "admitted",
+        "status": "PASS"
+      },
+      "status": "PASS"
+    },
+    {
+      "expected": "refused",
+      "expected_reasons": [
+        "claim_index_mismatch",
+        "ill_typed_child"
+      ],
+      "family": "structural",
+      "id": "s03_claim_index_mismatch",
+      "mutation": "Offer ('c1', 'pB') for claim c2; then offer ('c2', ('c1', 'pB'), ('c0', 'pA')).",
+      "observed_other_claim": [
+        "claim_index_mismatch:c1_as_c2"
+      ],
+      "observed_swapped_children": [
+        "ill_typed_child:left child derives c1, expected c0"
+      ],
+      "purpose": "The claim index is part of the support type: a c1 derivation offered for c2, or a binary node with swapped children, is not a derivation of the evaluated claim.",
+      "restoration": {
+        "expected": "admitted",
+        "mutation": "Offer the finite well-typed c2 derivation instead.",
+        "observed": "admitted",
+        "status": "PASS"
+      },
+      "status": "PASS"
+    },
+    {
+      "expected": "admitted",
+      "expected_inverse": "refused",
+      "family": "structural",
+      "id": "s04_alternative_support",
+      "mutation": "Required premises [pB,pC]; pA absent, pC present; then pC also absent.",
+      "observed_admitted_support": "(c2, (c0, pC), (c1, pB))",
+      "observed_alternative_support_status": "PASS",
+      "observed_inverse_reasons": [
+        "no_admissible_support",
+        "premise_absent:pA",
+        "premise_absent:pC",
+        "required_premise_absent:pC"
+      ],
+      "observed_inverse_status": "PASS",
+      "purpose": "Acceptance is existential: a claim with one admissible finite derivation is admitted even though another derivation of the same claim is rejected. With pA absent and pC present, c2 is admitted via the c0-from-pC support; removing pC as well refuses.",
+      "restoration": {
+        "expected": "admitted",
+        "mutation": "Restore pA and pC and the base required premises.",
+        "observed": "admitted",
+        "status": "PASS"
+      },
+      "status": "PASS"
+    }
+  ],
+  "evidence_kind": "EXECUTED_MODEL",
+  "model": {
+    "acceptance_rule": "policy_satisfied(policy, state) AND state.reported_claim == claim AND the offered/enumerated finite derivation of claim exists and every premise of it is present, unchallenged and unrevoked. Authentication is not a condition.",
+    "claim_ids": [
+      "c0",
+      "c1",
+      "c2"
+    ],
+    "derivation_grammar": [
+      "(\"c0\", \"pA\")   c0 from pA",
+      "(\"c1\", \"pB\")   c1 from pB",
+      "(\"c0\", \"pC\")   c0 from pC",
+      "(\"c2\", d0, d1) c2 from a c0 derivation and a c1 derivation"
+    ],
+    "derivation_universe": [
+      {
+        "claim": "c0",
+        "leaves": [
+          "pA"
+        ],
+        "size": 1,
+        "support": "(c0, pA)"
+      },
+      {
+        "claim": "c0",
+        "leaves": [
+          "pC"
+        ],
+        "size": 1,
+        "support": "(c0, pC)"
+      },
+      {
+        "claim": "c1",
+        "leaves": [
+          "pB"
+        ],
+        "size": 1,
+        "support": "(c1, pB)"
+      },
+      {
+        "claim": "c2",
+        "leaves": [
+          "pA",
+          "pB"
+        ],
+        "size": 3,
+        "support": "(c2, (c0, pA), (c1, pB))"
+      },
+      {
+        "claim": "c2",
+        "leaves": [
+          "pC",
+          "pB"
+        ],
+        "size": 3,
+        "support": "(c2, (c0, pC), (c1, pB))"
+      }
+    ],
+    "derivation_universe_size": 5,
+    "description": "Independent executable model of the finite ETP acceptance predicate. Premises pA,pB,pC,pD; claims c0,c1,c2; derivations are finite nested tuples built from the four declared rules; support is enumerated per claim.",
+    "evaluated_claim": "c2",
+    "premise_ids": [
+      "pA",
+      "pB",
+      "pC",
+      "pD"
+    ]
+  },
+  "non_claims": [
+    "Not a proof: no theorem is stated or checked here; these are executed assertions about one finite model.",
+    "Not Rust verification: no Rust source, binary or test was read, built or run.",
+    "Not memory safety evidence: the subject is an abstract acceptance predicate, not program memory.",
+    "Not refinement: no correspondence between this model and tests/proof/coq/etp_acceptance.v or the Rust crate is established.",
+    "Not independent confirmation: the same agent authored the Phase 16.1a model and this oracle.",
+    "Not certification, qualification or authorization to deploy.",
+    "Not completeness: the controls are a declared finite set, not an exhaustive analysis of the policy space."
+  ],
+  "phase": "16.1b",
+  "positive_control": {
+    "derivation": "(c2, (c0, pA), (c1, pB))",
+    "derivation_leaves": [
+      "pA",
+      "pB"
+    ],
+    "expected": "admitted",
+    "family": "positive",
+    "id": "valid_policy_state_derivation",
+    "observed": "admitted",
+    "observed_reasons": [],
+    "policy": {
+      "archive_required": true,
+      "campaign_required": true,
+      "candidate_id": 7,
+      "freshness_required": true,
+      "policy_version": 1,
+      "required_actors": 2,
+      "required_premises": [
+        "pA",
+        "pB"
+      ]
+    },
+    "purpose": "One fully valid policy, state and finite derivation must be admitted, so the negative controls constrain a non-vacuous predicate. authenticated is true and plays no role in the decision.",
+    "state": {
+      "archive_present": true,
+      "authenticated": true,
+      "bound_candidate": 7,
+      "campaign_closed": true,
+      "challenged": {
+        "pA": false,
+        "pB": false,
+        "pC": false,
+        "pD": false
+      },
+      "independent_actors": 2,
+      "observed_policy_version": 1,
+      "present": {
+        "pA": true,
+        "pB": true,
+        "pC": true,
+        "pD": true
+      },
+      "reported_claim": "c2",
+      "revoked": {
+        "pA": false,
+        "pB": false,
+        "pC": false,
+        "pD": false
+      },
+      "transparency_fresh": true
+    },
+    "status": "PASS"
+  },
+  "schema": "frf-etp-acceptance-controls.v1",
+  "totals": {
+    "checks": 36,
+    "controls": 17,
+    "failed": 0,
+    "passed": 36,
+    "positive_admissions": 1,
+    "primary_controls": 12,
+    "primary_refusals": 12,
+    "primary_restorations": 12,
+    "structural_admissions": 1,
+    "structural_controls": 4,
+    "structural_refusals": 6,
+    "structural_restorations": 4
+  }
+}
