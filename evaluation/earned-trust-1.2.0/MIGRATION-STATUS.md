@@ -125,34 +125,28 @@ All runs used Docker with `--memory=2g --memory-swap=2g --pids-limit=512
 | `ci/etp-comparative-gate.sh` | PASS (historical) | development 6 cases, 5/6 decision accuracy, 0 wrongful acceptance, 1 wrongful refusal (`c01-positive-campaign-closure` observed refuse); the gate exits 0 on a completed harness run. The promoted 1.1.0-bound files were restored, see §5 |
 | `ci/etp-comparative-reconstruction-gate.sh` | PASS (historical) | development 6/6, held-out 11/12, 0 wrongful acceptance, 1 wrongful refusal, 6 restoration failures |
 
-## 5. Comparative evaluation: NOT_REBOUND
+## 5. Comparative evaluation: 1.2.0 replication
 
-The Phase 17 comparative corpus under `evaluation/earned-trust-comparative/`
-binds the 1.1.0 candidate and closure `d26e19bd...`. It was executed against the
-committed 1.1.0 receipts with the 1.2.0 binary and reported the counts above.
-With the 1.2.0 binary the development replay refused `c01-positive-campaign-closure`
-(`FAIL c01-positive-campaign-closure expected=accept observed=refuse`), giving
-5/6 decision accuracy and one wrongful refusal by the corpus's 1.1.0-bound
-expectation. That refusal is the candidate-binding mismatch, not a defect newly
-introduced here, and it is retained rather than erased. It is **not** rebound to
-1.2.0: a rebind needs fresh mutated copies of every
-comparative case, the cross-property reports, and a new opening freeze. Those
-were not produced. The gate's promoted outputs were discarded and the committed
-1.1.0-bound comparative bytes were restored unchanged. No result in this section
-applies to the 1.2.0 candidate.
+The 1.1.0 corpus under `evaluation/earned-trust-comparative/` remains historical.
+The 1.2.0 replication is under `evaluation/earned-trust-comparative-1.2.0/` and
+reuses the same 18 cases, mutations and expectations: development 6/6,
+held-out 12/12, 0 wrongful acceptance, 0 wrongful refusal, 4 restoration
+failures (`c08`, `c09`, `c11`, `c17`) and 0 reconstruction discrepancies.
+It is a replication over an already-exposed population, not a new held-out
+discovery and not external verification. The earlier 1.1.0 numbers (11/12,
+one wrongful refusal) are retained only in that historical corpus.
 
 ## 6. Remaining NOT_RUN
 
 - **Complete candidate-bound 1.2.0 re-freeze:** performed, and the crate was
   published as 1.2.0. This is not external review or administrative
   independence.
-- **`ci/etp-release-gate.sh`:** not run as one wrapper invocation. Its
-  individual gates were run and passed in hardened containers, including the
-  gates that remain candidate-independent (`information-flow`, `timing`,
-  `cross-property`, `interop`, `tls-matrix`, `witness`). Running the wrapper
-  would overwrite
-  historical evidence that this task forbids changing.
-- **Comparative evaluation for 1.2.0:** NOT_REBOUND (see §5).
+- **`ci/etp-release-gate.sh`:** run at commit `524bf8f` as one wrapper
+  invocation; all 25 gates passed. The individual gate results above are the
+  same gates. A gate result is not certification.
+- **Comparative evaluation for 1.2.0:** replicated under
+  `evaluation/earned-trust-comparative-1.2.0/`: development 6/6, held-out 12/12,
+  0 wrongful acceptance, 0 wrongful refusal, four restoration failures retained.
 - **External trusted time, public transparency, external witnessing, external
   review:** NOT_RUN. The token is from a local test TSA and the log is a local
   tessera log. No external trust is established.

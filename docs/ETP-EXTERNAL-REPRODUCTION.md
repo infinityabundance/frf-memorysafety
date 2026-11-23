@@ -58,12 +58,12 @@ gate under `target/release-gate/`, and prints a `GATE <name> PASS|FAIL` line
 for each. It exits nonzero if any gate fails. The expected inventory is:
 
 ```text
-fmt clippy test test-release
-native mir detector proof bridge conversion eval reconstruction
-etp eth-auth eth-time eth-transparency eth-integrity eth-witness
-eth-information-flow eth-timing eth-cross-property eth-interop eth-tls-matrix
-eth-phase14 eth-phase15 eth-formal-acceptance eth-comparative-development
-eth-comparative-reconstruction
+base (fmt clippy test test-release)
+native mir detector proof bridge conversion evaluation reconstruction
+etp-campaign etp-auth etp-time etp-transparency etp-integrity etp-witness
+etp-information-flow etp-timing etp-cross-property etp-interop etp-tls-matrix
+etp-phase14 etp-phase15 etp-formal-acceptance
+etp-comparative-1.2.0-development etp-comparative-1.2.0-reconstruction
 ```
 
 Gate names in the script are the actual `ci/*.sh` names; the list above is
@@ -80,19 +80,19 @@ sha256sum evaluation/earned-trust-1.2.0/opening.sha256
 sha256sum evaluation/earned-trust-1.2.0/MANIFEST.json   # ece999b4...
 ./ci/etp-gate.sh
 
-# 1.1.0 historical comparative opening (NOT_REBOUND to 1.2.0)
-sha256sum -c evaluation/earned-trust-comparative/OPENING.sha256
-sha256sum -c evaluation/earned-trust-comparative/HELD-OUT-OPENING.sha256
+# 1.2.0 comparative replication opening
+sha256sum -c evaluation/earned-trust-comparative-1.2.0/OPENING.sha256
+sha256sum -c evaluation/earned-trust-comparative-1.2.0/HELD-OUT-OPENING.sha256
 
-# Independent reconstruction of the comparative analysis
-docker run --rm --memory=1g --memory-swap=1g --pids-limit=128 --cpus=1 \
-  --ulimit nofile=512:512 --oom-score-adj=500 --cap-drop ALL \
+# Independent reconstruction of the 1.2.0 comparative analysis
+docker run --rm --memory=2g --memory-swap=2g --pids-limit=512 --cpus=2 \
+  --ulimit nofile=1024:1024 --oom-score-adj=500 --cap-drop ALL \
   --cap-add DAC_OVERRIDE --cap-add CHOWN --cap-add FOWNER \
   --security-opt no-new-privileges --network=none \
   -v "$PWD":/src:ro -v "$PWD/target":/src/target -w /src \
   python:3.11-slim python3 \
-  evaluation/earned-trust-comparative/reconstruct_analysis.py \
-  --out /src/target/analysis-reconstruction.json
+  evaluation/earned-trust-comparative-1.2.0/reconstruct_analysis.py \
+  --out /src/target/analysis-reconstruction-1.2.0.json
 ```
 
 Expected results (1.2.0 items were rerun in hardened containers; items marked
@@ -101,15 +101,16 @@ historical are 1.1.0 records that were not rerun for 1.2.0):
 - `etp-campaign`: 13 cases, 13 receipts, 25 raw evidence files; SARIF valid
   with 18 results and 11 rules, 0 suppressed, 42988 bytes; independent
   reconstruction reports opening `180e5031...` and closure `ece999b4...`.
-- Comparative reconstruction: `development` 6/6, `held-out` 11/12,
-  0 wrongful acceptance, 1 wrongful refusal (`c18`), 6 restoration failures,
-  0 bookkeeping discrepancies. This corpus binds 1.1.0 and is NOT_REBOUND.
-  Replaying it with the 1.2.0 binary refuses `c01-positive-campaign-closure`
-  (5/6 development decisions), which is the candidate-binding mismatch and is
-  retained, not relabelled as a pass.
+- Comparative reconstruction: `development` 6/6, `held-out` 12/12,
+  0 wrongful acceptance, 0 wrongful refusal, 4 restoration failures (`c08`,
+  `c09`, `c11`, `c17`), 0 bookkeeping discrepancies. This is a replication
+  over an already-exposed population, not a new held-out discovery. The 1.1.0
+  corpus under `evaluation/earned-trust-comparative/` remains historical and
+  is not used for the 1.2.0 result.
 - Proof gate: 8 live seal cases and 6 live proof tests; 15 Coq theorems report
-  `Closed under the global context`. These are 1.1.0 records and were not rerun
-  for 1.2.0.
+  `Closed under the global context`. Re-run against the 1.2.0 tree.
+- Release wrapper: `./ci/etp-release-gate.sh` passed all 25 gates in a single
+  invocation at commit `524bf8f`.
 - Formal acceptance gate: 17 controls, 36 checks, 36 passed; 1.2.0 receipt
   `6cf8b0f5...`.
 - Integrity gate: two byte-identical 1.2.0 release builds
@@ -126,9 +127,10 @@ These are expected, not environmental accidents:
   archived verifiers run from the archive root. It still excludes undeclared
   source, container images, and toolchain network state; it is not a complete
   independent re-execution package and not a certification.
-- The Phase 17 comparative corpus (`evaluation/earned-trust-comparative/`)
-  binds the 1.1.0 candidate and closure `d26e19bd...`. It was replayed with the
-  1.2.0 binary but is NOT_REBOUND; no comparative result applies to 1.2.0.
+- The 1.1.0 comparative corpus under `evaluation/earned-trust-comparative/`
+  binds the 1.1.0 candidate and remains historical. The 1.2.0 replication is
+  under `evaluation/earned-trust-comparative-1.2.0/`; it is a replication, not
+  external verification.
 - The Rust SARIF verifier denies `suppression_id` while the independent SARIF
   verifier requires it. The `c13` control refuses, but not with the declared
   diagnostic.

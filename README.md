@@ -19,8 +19,10 @@ attestation 13/13, transparency 20/20, time 6/6, revocation 6/6, policy metadata
 18/18, SARIF 18/18; archive 106/106 objects with `reconstruct.py` and
 `verify_sarif.py` running from the archive root; integrity two byte-identical
 release builds; formal acceptance 36/36 checks. The 1.1.0 evidence remains
-unchanged under `evaluation/earned-trust/`. The Phase 17 comparative corpus is
-1.1.0-bound and was **not rebound** to 1.2.0. No package was published and no
+unchanged under `evaluation/earned-trust/`. The 1.2.0 comparative replication
+under `evaluation/earned-trust-comparative-1.2.0/` reports development 6/6 and
+held-out 12/12 with 0 wrongful acceptance and 0 wrongful refusal; four
+restoration failures remain recorded. The crate was published as 1.2.0. No
 external review or external trust exists. See
 [`evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md`](evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md)
 and [`docs/ETP-STATUS-MATRIX.md`](docs/ETP-STATUS-MATRIX.md).
@@ -237,11 +239,12 @@ a pinned 1.1.0 time, and still refuses `issued_after_now`. The archive includes
 the declared candidate and instrument source so `reconstruct.py` and
 `verify_sarif.py` run from the archive root.
 
-The Phase 17 comparative evaluation remains bound to the 1.1.0 candidate and
-closure `d26e19bd…`. It was replayed with the 1.2.0 binary but is
-**NOT_REBOUND**; no comparative result applies to 1.2.0. External trusted time,
-public transparency, external witnessing, external review, and the full
-`ci/etp-release-gate.sh` inventory remain `NOT_RUN` for 1.2.0.
+The Phase 17 comparative evaluation is replicated for the 1.2.0 candidate under
+`evaluation/earned-trust-comparative-1.2.0/`: development 6/6, held-out 12/12,
+0 wrongful acceptance, 0 wrongful refusal, four restoration failures retained.
+The 1.1.0 corpus remains historical. `./ci/etp-release-gate.sh` passed all 25
+gates in one invocation. External trusted time, public transparency, external
+witnessing and external review remain `NOT_RUN`.
 
 ### Authenticated evidence (Phase 10.3)
 

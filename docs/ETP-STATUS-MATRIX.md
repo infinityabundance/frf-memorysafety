@@ -50,19 +50,23 @@ external independence.
 | Cross-property transformation | EXECUTED | 1.1.0 faulty/fixed traces, bounded analysis | Declared properties only; not re-run for 1.2.0 |
 | Formal acceptance core | MODELED | Coq 8.16.1, 15 closed theorems, 8/8 seal cases | Finite abstract model; no Rust refinement |
 | Adversarial acceptance controls | MODELED | 17 controls, 36/36 checks; 1.2.0 receipt `6cf8b0f5…` | Same-author executable oracle |
-| Comparative evaluation | HISTORICAL / NOT_REBOUND | 1.1.0-bound 18 cases; independent reconstruction 6/6 and 11/12 | Does not apply to the 1.2.0 candidate |
+| Comparative evaluation | EXECUTED | 1.2.0 replication: 18 cases, 18 receipts; development 6/6, held-out 12/12; 0 wrongful acceptance; 0 wrongful refusal; 4 restoration failures retained; reconstruction 0 discrepancies | Replication over an exposed population; no external independence |
 
-## 2. Comparative evaluation results (historical 1.1.0, NOT_REBOUND)
-
-> These results bind the 1.1.0 candidate and closure `d26e19bd…`. The 1.2.0
-> binary replays the committed 1.1.0 corpus, but the corpus was **not rebound**
-> to the 1.2.0 candidate. No row in this table applies to 1.2.0.
+## 2. Comparative evaluation results (1.2.0 replication)
 
 | Partition | Cases | Matched | Wrongful acceptance | Wrongful refusal | Unresolved | Restoration failures |
 |---|---:|---:|---:|---:|---:|---:|
 | Development | 6 | 6 | 0 | 0 | 0 | 0 |
-| Held-out | 12 | 11 | 0 | 1 (`c18`) | 0 | 6 |
-| Total | 18 | 17 | 0 | 1 | 0 | 6 |
+| Held-out | 12 | 12 | 0 | 0 | 0 | 4 |
+| Total | 18 | 18 | 0 | 0 | 0 | 4 |
+
+The 1.1.0 comparative corpus remains historical under
+`evaluation/earned-trust-comparative/`. The 1.2.0 replication is under
+`evaluation/earned-trust-comparative-1.2.0/` and reuses the same cases,
+mutations and expectations. It is a replication over an already-exposed
+population, not a new held-out discovery and not external verification. The
+four restoration failures (`c08`, `c09`, `c11`, `c17`) and wrong-code
+diagnostics (`c06`, `c13`, `c17`) are retained.
 
 The foundation surface is a modeled baseline over committed Phase 9 labels; it
 accepted 18/18 by definition and is not an execution of the 1.0.0 binary. The
@@ -79,7 +83,7 @@ of two executed systems.
 | Proof manifest-only verification | Exit 6 `checker_unavailable` without `--live` | Manifest validation is not proof checking; live Coq is the proof gate |
 | Transparency restoration commands | Independent verifier output not JSON; checkpoint reports `consistency_not_checked` at exit 0 | Restoration classification unresolved/refused; commands need revision |
 | Claim-level restoration | `c11` has no artifact mutation and the intact claim remains withheld | Restoration expectation is not achievable; recorded failure |
-| Comparative evaluation is 1.1.0-bound | The 1.2.0 binary replays the committed 1.1.0 comparative corpus | The 18-case comparative result does not apply to the 1.2.0 candidate until rebound |
+| Comparative evaluation path | The 1.1.0 comparative corpus remains historical; the 1.2.0 replication is separate | Neither corpus applies to a different candidate identity |
 
 These are recorded so that no reader mistakes a green end-to-end run for
 complete instrument agreement.
@@ -103,8 +107,13 @@ complete instrument agreement.
 ## 5. Release gates
 
 The release gate runs the declared gate inventory in sequence and records each
-result. A gate result is not certification. A typed NOT_RUN is not a pass. See
-`docs/ETP-EXTERNAL-REPRODUCTION.md` for exact commands. The 1.2.0 migration gate
+result. At commit `524bf8f` the single wrapper invocation passed all 25 gates:
+base, native, mir, detector, proof, bridge, conversion, evaluation,
+reconstruction, campaign, auth, time, transparency, integrity, witness,
+information-flow, timing, cross-property, interop, TLS matrix, Phase 14,
+Phase 15, formal acceptance, 1.2.0 comparative development and 1.2.0
+reconstruction. A gate result is not certification. A typed NOT_RUN is not a
+pass. See `docs/ETP-EXTERNAL-REPRODUCTION.md` for exact commands. The 1.2.0 migration gate
 results are recorded exactly in
 `evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md`; the full
 `ci/etp-release-gate.sh` inventory was not run for 1.2.0 because its remaining
