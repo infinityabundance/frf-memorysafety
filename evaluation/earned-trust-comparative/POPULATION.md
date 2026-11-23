@@ -266,7 +266,7 @@ path and digest. The `timing/`, `integrity/`, `information-flow/`, and
 | `tls_matrix_report` | `evaluation/earned-trust/tls-matrix/report.json` | `4061be5522d2d82bb48200bc935031b5da8cfbed6a7e5027b4004e20be668f6a` |
 | `proof_manifest` | `tests/proof/coq/manifest-acceptance.json` | `1faf8997e193fa93b6c6ea87651fd7a19c1a6bab272863a9025a72f283e0d861` |
 | `proof_file` | `tests/proof/coq/etp_acceptance.v` | `b0db6791d67db799a3c73f177e6da5e3adfccda1b6879be5457b030d51dfb8ab` |
-| `acceptance_controls` | `evaluation/earned-trust/receipts/acceptance-controls.json` | `6cf8b0f51a3fdd85f25f84e02e569d9fa8253573148486c8b2d1113ad2528ad9` |
+| `acceptance_controls` | `evaluation/earned-trust/acceptance-controls/receipt.json` | `6cf8b0f51a3fdd85f25f84e02e569d9fa8253573148486c8b2d1113ad2528ad9` |
 | `integrity_receipt` | `evaluation/earned-trust/integrity/integrity-receipt.json` | `bd31bcf7a27cb58a26ee3eeef0fc022f6289bfa56467315e6a7dd5ae7f6d2e66` |
 | `integrity_report` | `evaluation/earned-trust/integrity/integrity-report.json` | `068a4a1d9e5276ae7b7a7a0c9cd8db845a16900ebcd71e1ed76372a3de66bc57` |
 | `timing_branch` | `evaluation/earned-trust/timing/report-branch.json` | `1fd3e5adab60e7efc1f577acc78b0379411fa30e8b4058dc32b0551d2731a7fa` |
@@ -345,7 +345,7 @@ give the rationale and the exact command lines. `{bin}` is
 | `c04` | dev | truncated population | `manifest`, `opening_manifest`, `opening_digest`, `receipt_nondet`, `raw_nondet_*` | remove case and raw files; make counts consistent at 12 | `etp campaign verify`; `reconstruct.py` | refuse | accept | refuse |
 | `c05` | held | duplicate row | `manifest`, `opening_manifest`, `opening_digest`, `receipt_uaf_c`, `raw_uaf_*` | duplicate the use-after-free-c closure row; receipt_count 14 | `etp campaign verify`; `reconstruct.py` | refuse | accept | refuse |
 | `c06` | held | DSSE payload substitution | `attestation_envelope`, `attestation_statement`, `trust_policy`, `manifest`, `attestation_pubkey` | change one payload digit; keep signature | `etp attest verify`; `verify_attestations.py --controls` | refuse | accept | refuse |
-| `c07` | dev | signer role | `attestation_envelope`, `attestation_statement`, `trust_policy`, `manifest` | move producer key to correction_authority | `etp attest verify`; `verify_attestations.py --controls` | refuse | accept | refuse |
+| `c07` | dev | signer role | `attestation_envelope`, `attestation_statement`, `trust_policy`, `manifest` | move producer key to correction_authority in both policy copies | `etp attest verify`; `verify_attestations.py --controls` | refuse | accept | refuse |
 | `c08` | held | transparency inclusion | `transparency_proof`, `transparency_checkpoint_3`, `transparency_policy`, `transparency_log_key`, `transparency_entry`, `witness_state` | swap the audit-path siblings | `etp transparency verify`; `verify_transparency.py` | refuse | accept | refuse |
 | `c09` | held | stale checkpoint | `transparency_proof`, `transparency_checkpoint_3`, `transparency_checkpoint_1`, `transparency_policy` | advance known horizon to size 4 | `etp checkpoint verify`; `etp transparency verify`; `verify_transparency.py` | refuse | accept | refuse |
 | `c10` | dev | wrong imprint | `time_token`, `time_request`, `time_imprint`, `tsa_cert`, `tsa_ca`, `time_report`, `stamp_report`, `manifest` | use `--imprint` of 64 zeroes | `etp time verify`; `verify_time.py` | refuse | accept | refuse |

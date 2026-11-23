@@ -1,7 +1,7 @@
 {
   "schema": "frf-etp.comparative-claims.v1",
   "spec": "frf-etp-comparative-v1",
-  "protocol_version": "phase17.1-v1",
+  "protocol_version": "phase17.2-amendment-001",
   "frozen_protocol": "protocol.json",
   "freeze_sidecar": "OPENING.sha256",
   "status": "pending",
@@ -149,5 +149,11 @@
     "No claim that reproducibility is correctness, reference parity is security, or a historical verdict is present authorization.",
     "No claim that an FRF receipt, an FRF-Fuzz finding, a Gemel GCE object, or a GID is emitted by this evaluation.",
     "No claim that the evaluation modifies, strengthens, or retroactively reinterprets the frozen 1.0.0 baseline."
-  ]
+  ],
+  "amendment": {
+    "id": "A001",
+    "path": "AMENDMENT-001.md",
+    "applied_before_held_out": true,
+    "expectations_changed": false
+  }
 }

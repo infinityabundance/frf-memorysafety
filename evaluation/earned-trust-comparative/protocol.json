@@ -1,8 +1,8 @@
 {
   "schema": "frf-etp.comparative-evaluation-protocol.v1",
   "spec": "frf-etp-comparative-v1",
-  "protocol_version": "phase17.1-v1",
-  "phase": "17.1",
+  "protocol_version": "phase17.2-amendment-001",
+  "phase": "17.2",
   "frozen": true,
   "frozen_at_commit": "f5a61efe0a3b0cdafa2e9e2e4f5a01f0967163f7",
   "frozen_baseline": {
@@ -644,7 +644,7 @@
     },
     {
       "id": "acceptance_controls",
-      "path": "evaluation/earned-trust/receipts/acceptance-controls.json",
+      "path": "evaluation/earned-trust/acceptance-controls/receipt.json",
       "sha256": "6cf8b0f51a3fdd85f25f84e02e569d9fa8253573148486c8b2d1113ad2528ad9",
       "role": "executable_model_controls",
       "used_by": [
@@ -829,6 +829,15 @@
       "role": "raw_evidence",
       "used_by": [
         "c13-sarif-unjustified-suppression"
+      ]
+    },
+    {
+      "id": "attestation_policy",
+      "path": "evaluation/earned-trust/attestations/trust-policy.json",
+      "sha256": "7f1ae23d198474dc3f77a6af4183141a8ead3b26477bf753062690f66d165ac4",
+      "role": "attestation_policy_copy",
+      "used_by": [
+        "c07-signer-role-unauthorized"
       ]
     }
   ],
@@ -1590,8 +1599,8 @@
       ],
       "mutation": {
         "kind": "role_reassignment",
-        "target": "{work}/evaluation/earned-trust/trust-policy.json",
-        "operation": "Remove the key object with keyid frf-etp-test-ephemeral-2026-11-22 from the keys array of the evidence_producer role. Append that same key object to the keys array of the correction_authority role. Leave the envelope, the statement, and every other policy field unchanged.",
+        "target": "{work}/evaluation/earned-trust/trust-policy.json and {work}/evaluation/earned-trust/attestations/trust-policy.json",
+        "operation": "Apply the same role reassignment to both policy copies. In each copy, remove the key object with keyid frf-etp-test-ephemeral-2026-11-22 from the keys array of the evidence_producer role and append that same key object to the keys array of the correction_authority role. The two copies must remain byte-identical to each other. Leave the envelope, the statement, and every other policy field unchanged.",
         "deterministic": true,
         "does_not_modify_repository": true,
         "expected_effect": "the envelope signature remains valid under the same key, but no key in the required evidence_producer role satisfies the campaign-closure predicate"
@@ -2997,5 +3006,22 @@
     "No claim about artifact families, versions, or paths not bound in protocol.json.",
     "No claim that the wall-clock or bytes-read measurements are comparable across hosts, images, or runs; they are per-run resource accounting only."
   ],
-  "claim_ceiling": "This protocol specifies a finite comparative control evaluation of two decision surfaces over 18 declared cases. It establishes only what the executed receipts show for those cases, within the declared mutations, the declared local instruments, and the declared ground truth. It does not establish that the foundation binary behaves as modeled, that the augmented chain is complete or sound, that any verifier is independent in an administrative sense, that a refusal is correct beyond the declared document semantics, that a positive control generalizes, or that any result is a certification, a review, or an authorization to deploy. A refusal is not a pass. A NOT_RUN is not a pass. A digest is not authentication. A gate result is not an authorization."
+  "claim_ceiling": "This protocol specifies a finite comparative control evaluation of two decision surfaces over 18 declared cases. It establishes only what the executed receipts show for those cases, within the declared mutations, the declared local instruments, and the declared ground truth. It does not establish that the foundation binary behaves as modeled, that the augmented chain is complete or sound, that any verifier is independent in an administrative sense, that a refusal is correct beyond the declared document semantics, that a positive control generalizes, or that any result is a certification, a review, or an authorization to deploy. A refusal is not a pass. A NOT_RUN is not a pass. A digest is not authentication. A gate result is not an authorization.",
+  "amendments": [
+    {
+      "id": "A001",
+      "path": "AMENDMENT-001.md",
+      "applied_before_held_out": true,
+      "held_out_executed_before_amendment": false,
+      "protocol_version_after": "phase17.2-amendment-001",
+      "expectations_changed": false,
+      "population_changed": false,
+      "partitions_changed": false,
+      "changes": [
+        "artifact_bindings[acceptance_controls].path moved to the non-campaign receipt directory",
+        "artifact_bindings[attestation_policy] added for the attestation policy copy",
+        "c07 mutation updates both policy copies so the role check is reached"
+      ]
+    }
+  ]
 }
