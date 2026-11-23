@@ -24,7 +24,7 @@ LOGS="$ROOT/target/gate-logs"
 VERIFIER_REL="evaluation/earned-trust/verify_acceptance_model.py"
 VERIFIER="$ROOT/$VERIFIER_REL"
 RECEIPT_SRC="$LOGS/acceptance-controls.json"
-RECEIPT_DST="$ROOT/evaluation/earned-trust/receipts/acceptance-controls.json"
+RECEIPT_DST="$ROOT/evaluation/earned-trust/acceptance-controls/receipt.json"
 LOG="$LOGS/acceptance-controls.log"
 STDOUT_LOG="$LOGS/acceptance-controls.stdout.json"
 
@@ -69,7 +69,7 @@ then
         && grep -q '"evidence_kind": "EXECUTED_MODEL"' "$RECEIPT_SRC"; then
         cp "$RECEIPT_SRC" "$RECEIPT_DST"
         RECEIPT_SHA=$(sha256sum "$RECEIPT_DST" | cut -d' ' -f1)
-        echo "receipt: evaluation/earned-trust/receipts/acceptance-controls.json sha256=$RECEIPT_SHA"
+        echo "receipt: evaluation/earned-trust/acceptance-controls/receipt.json sha256=$RECEIPT_SHA"
         echo "PASS etp-formal-acceptance-gate"
     else
         echo "FAIL etp-formal-acceptance-gate (receipt missing or reports failures)"

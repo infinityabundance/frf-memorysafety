@@ -3,7 +3,7 @@
 **Subphase:** Phase 16.1b.
 **Artifacts:** `evaluation/earned-trust/verify_acceptance_model.py`,
 `ci/etp-formal-acceptance-gate.sh`, and the generated receipt
-`evaluation/earned-trust/receipts/acceptance-controls.json`.
+`evaluation/earned-trust/acceptance-controls/receipt.json`.
 **Companion model:** `tests/proof/coq/etp_acceptance.v` (Phase 16.1a).
 **Frozen baseline:** FRF-MemorySafety 1.0.0 at commit
 `02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab`. This subphase changes no frozen
