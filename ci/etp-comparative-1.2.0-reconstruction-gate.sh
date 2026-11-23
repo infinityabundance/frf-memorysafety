@@ -32,15 +32,15 @@ if timeout 900 docker run --rm \
     -w /src "$PYTHON_IMAGE" \
     python3 evaluation/earned-trust-comparative-1.2.0/reconstruct_analysis.py \
         --out /src/target/analysis-reconstruction-1.2.0.json \
-    >"$LOGS/etp-comparative-1.2.0-reconstruction.log" 2>&1
+    >"$LOGS/recon-1.2.0.log" 2>&1
 then
-    cat "$LOGS/etp-comparative-1.2.0-reconstruction.log"
+    cat "$LOGS/recon-1.2.0.log"
     cp -f "$TMP_OUT" "$OUT/analysis-reconstruction.json"
     echo "PASS etp-comparative-1.2.0-reconstruction"
     echo "NOTE reconstruction checks bookkeeping only; it is not certification."
 else
     status=$?
-    tail -n 120 "$LOGS/etp-comparative-1.2.0-reconstruction.log" || true
+    tail -n 120 "$LOGS/recon-1.2.0.log" || true
     echo "FAIL etp-comparative-1.2.0-reconstruction (exit $status)"
     exit "$status"
 fi
