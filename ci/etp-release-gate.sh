@@ -62,8 +62,11 @@ run etp-tls-matrix ci/etp-tls-matrix-gate.sh
 run etp-phase14 ci/etp-phase14-gate.sh
 run etp-phase15 ci/etp-phase15-gate.sh
 run etp-formal-acceptance ci/etp-formal-acceptance-gate.sh
-run etp-comparative-development ci/etp-comparative-gate.sh
-run etp-comparative-reconstruction ci/etp-comparative-reconstruction-gate.sh
+# The historical 1.1.0 comparative gates (ci/etp-comparative-gate.sh and
+# ci/etp-comparative-reconstruction-gate.sh) remain on disk with their original
+# 1.1.0-bound evidence. The release path uses the labeled 1.2.0 replication.
+run etp-comparative-1.2.0-development ci/etp-comparative-1.2.0-gate.sh
+run etp-comparative-1.2.0-reconstruction ci/etp-comparative-1.2.0-reconstruction-gate.sh
 
 echo
 echo "== release gate summary =="

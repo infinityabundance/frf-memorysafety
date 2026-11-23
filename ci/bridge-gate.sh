@@ -92,7 +92,7 @@ if ! run_container "frf-ms-bg-b-$$" \
     -v "$WORK":/work \
     -v "$CARGO_VOLUME":/cargo \
     -v "$RUSTUP_VOLUME":/usr/local/rustup \
-    -e CARGO_HOME=/cargo -e CARGO_TARGET_DIR=/work/frf-build \
+    -e CARGO_HOME=/cargo -e RUSTUP_HOME=/usr/local/rustup -e CARGO_TARGET_DIR=/work/frf-build \
     -w /src "$IMAGE_198" sh -c '
         set -eu
         rustup toolchain list | grep -q "'"$NIGHTLY"'" || rustup toolchain install "'"$NIGHTLY"'" --profile minimal
