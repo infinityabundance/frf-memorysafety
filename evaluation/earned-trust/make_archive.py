@@ -309,6 +309,8 @@ def main() -> int:
         "verify_time.py",
         "verify_revocation.py",
         "verify_transparency.py",
+        "verify_sarif.py",
+        "verify_policy_metadata.py",
     ]:
         copy(
             base / name,
@@ -318,6 +320,23 @@ def main() -> int:
             True,
             "independent offline verifier",
         )
+
+    copy(
+        base / "suppression-review.json",
+        f"{EDGE}/suppression-review.json",
+        "suppression_review",
+        "frf-etp.suppression-review.v1",
+        True,
+        "linked independent review record for SARIF suppressions",
+    )
+    copy(
+        base / "policy-metadata.json",
+        f"{EDGE}/policy-metadata.json",
+        "policy_metadata",
+        "frf-etp.policy-metadata.v1",
+        True,
+        "TUF-inspired policy version, expiry, delegation, rotation, and rollback state",
+    )
 
     transparency_dir = base / "transparency"
     for name, category, schema, applicability in [

@@ -1,0 +1,125 @@
+{
+  "schema": "frf-etp.policy-metadata.v1",
+  "spec": "frf-etp-v1",
+  "version": 1,
+  "issued_at_unix": 1795336442,
+  "expires_at_unix": 1826841600,
+  "policy_id": "frf-etp-policy-metadata-v1",
+  "claim_ceiling": "This policy metadata is test-only and does not establish production key custody, external trust, or deployment authorization. It models TUF-style role separation, key rotation state, and freeze/anti-rollback state for the finite ETP campaign. No production rotation process exists.",
+  "roles": [
+    {
+      "id": "evidence_producer",
+      "description": "Produces closure, consumer-closure, and findings predicates",
+      "predicate_scopes": [
+        "https://frf.dev/etp/campaign-closure/v1",
+        "https://frf.dev/etp/consumer-closure/v1",
+        "https://frf.dev/etp/security-findings/v1"
+      ],
+      "distinct_actor_threshold": 1,
+      "independent": false,
+      "keys": [
+        {
+          "keyid": "ephemeral-test-key-1",
+          "algorithm": "ed25519",
+          "public_key_base64": "yGWmlFhOHIbZigq6tL+HOGTUjLlByerM4qkYRAXgaWE=",
+          "actor": "test-only-evidence-producer",
+          "valid_from_unix": 1795336442,
+          "valid_until_unix": 1826841600
+        }
+      ]
+    },
+    {
+      "id": "instrument_qualifier",
+      "description": "Qualifies an instrument and records reproduction",
+      "predicate_scopes": [
+        "https://frf.dev/etp/instrument-qualification/v1",
+        "https://frf.dev/etp/reproduction/v1"
+      ],
+      "distinct_actor_threshold": 1,
+      "independent": false,
+      "keys": []
+    },
+    {
+      "id": "adjudicator",
+      "description": "Admits proofs and, when the policy declares it independent, reviews",
+      "predicate_scopes": [
+        "https://frf.dev/etp/proof-admission/v1"
+      ],
+      "distinct_actor_threshold": 1,
+      "independent": true,
+      "keys": []
+    },
+    {
+      "id": "release_authority",
+      "description": "Records release adjudication",
+      "predicate_scopes": [
+        "https://frf.dev/etp/release-adjudication/v1"
+      ],
+      "distinct_actor_threshold": 1,
+      "independent": false,
+      "keys": []
+    },
+    {
+      "id": "correction_authority",
+      "description": "Records correction and revocation decisions",
+      "predicate_scopes": [],
+      "distinct_actor_threshold": 1,
+      "independent": false,
+      "keys": [
+        {
+          "keyid": "correction-test-key-1",
+          "algorithm": "ed25519",
+          "public_key_base64": "test-correction-key-placeholder",
+          "actor": "test-only-correction-authority",
+          "valid_from_unix": 1795336442,
+          "valid_until_unix": 1826841600
+        }
+      ]
+    }
+  ],
+  "delegations": [
+    {
+      "role": "evidence_producer",
+      "delegated_to": "test-only-evidence-producer",
+      "valid_from_unix": 1795336442,
+      "valid_until_unix": 1826841600,
+      "authorized_predicates": [
+        "https://frf.dev/etp/campaign-closure/v1"
+      ]
+    }
+  ],
+  "key_rotation_state": {
+    "current_version": 1,
+    "previous_versions": [],
+    "rotation_policy": "A new attestation requires a new policy version and a new key entry. No production rotation process exists.",
+    "last_rotation_unix": null,
+    "next_rotation_due_unix": null
+  },
+  "rollback_counter": {
+    "current": 1,
+    "minimum_acceptable": 1,
+    "monotonic": true,
+    "description": "Rollback counter must be monotonically non-decreasing. A decrease indicates a rollback attempt."
+  },
+  "freeze_state": {
+    "frozen": false,
+    "frozen_at_unix": null,
+    "freeze_reason": null,
+    "unfreeze_authority": "repository-owner",
+    "description": "Freeze state prevents new attestations from being accepted. The repository owner can freeze/unfreeze."
+  },
+  "correction_authority": {
+    "registry_path": "evaluation/earned-trust/revocations/registry.json",
+    "support_model_path": "evaluation/earned-trust/revocations/support-model.json",
+    "historical_verdict_path": "evaluation/earned-trust/revocations/historical-verdict.json",
+    "plan_path": "evaluation/earned-trust/revocations/plan.json",
+    "description": "Correction and revocation authority is declared in the trust policy and exercised through the append-only registry."
+  },
+  "non_claims": [
+    "This policy metadata is test-only and does not establish production key custody.",
+    "No production key rotation process exists.",
+    "No external trust, transparency, or witnessing is established.",
+    "A valid policy metadata does not establish truth, completeness, or deployment authorization.",
+    "The freeze state is administrative, not technical assurance."
+  ]
+}

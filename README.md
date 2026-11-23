@@ -975,6 +975,20 @@ native-manifest/predicate mismatch) and a non-source location control.
 authoritative independent-review requirement. The Rust projection is unchanged
 and no campaign re-freeze was performed.
 
+### Phase 15.1 local transparency, time, correction, and archive closure
+
+`ci/etp-phase15-gate.sh` rebuilds a 76-object durable archive offline and
+verifies every object digest, then runs the independent policy-metadata (18
+controls), transparency (20), timestamp (6), revocation (6), attestation (13),
+and SARIF (18) verifiers from the archive root. The TUF-inspired policy metadata
+records version, expiry, roles, delegations, rotation state, rollback counter,
+and freeze state; it is test-only and does not establish production key custody
+or a TUF repository. The archive now includes the Phase 14 suppression review
+and the independent SARIF/policy verifiers. Public Rekor v2, public-good
+transparency, external witnessing, and external trusted time remain `NOT_RUN`;
+the local tessera profile and local test TSA are local-only. See
+[`docs/ETP-PHASE15-AUDIT.md`](docs/ETP-PHASE15-AUDIT.md).
+
 ### NOT_RUN in this build
 
 - Live detectors over arbitrary or caller-supplied input (only the closed
