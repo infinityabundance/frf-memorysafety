@@ -1,7 +1,18 @@
 # ETP implementation status matrix
 
-**Release target:** FRF-MemorySafety 1.2.0.
+**Release target:** FRF-MemorySafety 1.1.0 (crate version unchanged).
+**Evidence release:** `etp-evidence-v1`.
 **Frozen 1.0.0 baseline:** `02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab`.
+
+> **1.2.0 publish is NOT_RUN.** A version bump changes `Cargo.toml`, which is
+> bound into the campaign candidate identity. The campaign verifier correctly
+> refused with `candidate file Cargo.toml changed`, and the attestation tests
+> correctly refused with `CampaignNotClosed`. Publishing 1.2.0 therefore
+> requires a new candidate-bound campaign: fresh receipts, SARIF, DSSE
+> attestations, transparency entry, timestamp imprint, revocation record and
+> archive, followed by a declared re-freeze. None of those were fabricated or
+> relabelled. The additive documentation, formal model, controls and
+> comparative evaluation ship under the unchanged 1.1.0 crate version.
 **Purpose:** state, per capability, what exists, what actually ran, and what is
 not established. A capability is not complete because it is documented.
 

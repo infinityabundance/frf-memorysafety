@@ -5,6 +5,19 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
+**Evidence release `etp-evidence-v1` (crate 1.1.0).** This tree adds Phases 11-18:
+execution witnessing, information-flow and cross-property evidence, reusable and
+real TLS interoperability matrices, SARIF/DSSE/role verification, local
+transparency/time/correction/archive evidence, a 15-theorem finite Coq
+acceptance model with 17 executable controls, and an 18-case preregistered
+comparative evaluation with independent reconstruction. Measured at this tree:
+base gate 509/509 debug and 509/509 release; proof gate 8/8 seal cases and 6/6
+live tests; formal acceptance 17 controls / 36 of 36 checks; comparative
+held-out 11/12 decisions with 0 wrongful acceptance and one wrongful refusal.
+No 1.2.0 package was published: bumping `Cargo.toml` changes the candidate-bound
+campaign identity, and the campaign and attestation gates correctly refused.
+See [`docs/ETP-STATUS-MATRIX.md`](docs/ETP-STATUS-MATRIX.md).
+
 Version 1.1.0 releases the FRF Earned Trust Protocol (ETP, Phases 10.1-10.4b)
 without changing the 1.0.0 evidence or claim ceilings: a claim algebra with
 twenty coordinates and ten separate status dimensions, a frozen finite 13-case

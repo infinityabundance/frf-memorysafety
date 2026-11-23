@@ -9,6 +9,45 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - evidence release `etp-evidence-v1`
+
+Additive evidence, formal-model, control and evaluation work over the unchanged
+1.1.0 crate source. No 1.2.0 package was published: bumping `Cargo.toml` changes
+the candidate-bound campaign identity, and the campaign and attestation gates
+correctly refused (`candidate file Cargo.toml changed`, `CampaignNotClosed`).
+A new candidate-bound campaign and re-freeze are required before a new version
+can be published.
+
+### Added
+
+- Phase 11 execution witnessing, artifact/DSO binding and source-to-binary
+  correspondence evidence.
+- Phase 12 bounded information-flow profile and cross-property transformation
+  evidence.
+- Phase 13 reusable and real TLS four-way interoperability matrices.
+- Phase 14 SARIF reconciliation, DSSE authentication, signer roles and the
+  independent verifier.
+- Phase 15 local transparency, trusted-time, campaign closure, correction,
+  anti-rollback and offline-archive evidence.
+- Phase 16 finite Coq acceptance model: 15 theorems, all closed under the
+  global context; 17 executable adversarial controls, 36/36 checks.
+- Phase 17 preregistered 18-case comparative evaluation with independent
+  reconstruction. Held-out: 11/12 decisions, 0 wrongful acceptance, 1 wrongful
+  refusal, 6 restoration failures. Four preregistered claims are refuted and
+  retained.
+- Phase 18 status matrix, external reproduction instructions and release gate.
+
+### Known gaps
+
+- The 76-object archive is evidence-only; it does not contain the source tree
+  that `reconstruct.py` requires, so offline reconstruction from the archive
+  alone fails while `etp archive verify` reports `verified`.
+- The independent revocation verifier accepts a claim the Rust verifier
+  withholds.
+- The Rust and independent SARIF verifiers disagree on `suppression_id`.
+- External witnessing, public transparency, public trusted time and external
+  review remain NOT_RUN.
+
 ## [1.1.0] - 2026-11-22
 
 Phase 10 release: the FRF Earned Trust Protocol (ETP). This is a version,

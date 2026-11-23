@@ -1,7 +1,11 @@
 # External reproduction instructions
 
-**Release:** FRF-MemorySafety 1.2.0.
+**Release:** FRF-MemorySafety 1.1.0 crate, evidence tag `etp-evidence-v1`.
 **Frozen 1.0.0 baseline:** `02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab`.
+
+> The crate version is unchanged at 1.1.0. A 1.2.0 bump would change
+> `Cargo.toml`, which is part of the candidate-bound campaign identity, and the
+> frozen campaign would correctly refuse. No new crates.io publish was made.
 **Scope:** reproduce the declared evidence and gate results from a clean export.
 This document does not certify the software and does not claim that reproduction
 is correctness.
@@ -29,7 +33,7 @@ is correctness.
 ```sh
 git clone https://github.com/infinityabundance/frf-memorysafety.git
 cd frf-memorysafety
-git checkout v1.2.0
+git checkout etp-evidence-v1
 git status --porcelain   # must be empty
 ```
 
