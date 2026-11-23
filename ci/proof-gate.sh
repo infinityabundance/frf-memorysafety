@@ -24,6 +24,7 @@ if timeout 5400 docker run --rm \
     --security-opt no-new-privileges \
     -v "$ROOT":/src:ro -v "$ROOT/target":/src/target \
     -v frf-cargo:/cargo -e CARGO_HOME=/cargo \
+    -e CARGO_BUILD_JOBS=1 -e CARGO_INCREMENTAL=0 \
     -w /src \
     "$IMAGE" sh -c '
         set -eu
@@ -80,6 +81,7 @@ if timeout 5400 docker run --rm \
         check_case unrelated /src/tests/proof/coq/manifest-unrelated.json 4 rejected_unrelated
         check_case unchecked /src/tests/proof/coq/manifest-unchecked.json 4 rejected_unchecked_implementation
         check_case missing_transition /src/tests/proof/coq/manifest-missing-transition.json 4 rejected_missing_transition
+        check_case acceptance /src/tests/proof/coq/manifest-acceptance.json 0 accepted_within_scope
 
         if [ "$failed" -ne 0 ]; then
             echo "proof-gate: at least one live seal case failed"

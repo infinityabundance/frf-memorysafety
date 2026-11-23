@@ -1,0 +1,294 @@
+{
+  "admission": {
+    "checker_kind": "coq",
+    "checker_version": "8.16.1",
+    "classification": "accepted_within_scope",
+    "exit_code": 0,
+    "origin": "authentic_checker_run",
+    "proof_digests": [
+      {
+        "file_id": "etp_acceptance",
+        "sha256": "b0db6791d67db799a3c73f177e6da5e3adfccda1b6879be5457b030d51dfb8ab"
+      }
+    ],
+    "theorems": [
+      {
+        "name": "no_unsupported_or_cyclic_admission",
+        "status": "proved"
+      },
+      {
+        "name": "missing_mandatory_evidence_blocks",
+        "status": "proved"
+      },
+      {
+        "name": "candidate_substitution_invalidates",
+        "status": "proved"
+      },
+      {
+        "name": "authentication_is_not_semantic_support",
+        "status": "proved"
+      },
+      {
+        "name": "unrelated_proof_does_not_satisfy",
+        "status": "proved"
+      },
+      {
+        "name": "challenged_premise_blocks",
+        "status": "proved"
+      },
+      {
+        "name": "revoked_premise_invalidates",
+        "status": "proved"
+      },
+      {
+        "name": "incomplete_campaign_blocks",
+        "status": "proved"
+      },
+      {
+        "name": "duplicate_credentials_do_not_satisfy_independence",
+        "status": "proved"
+      },
+      {
+        "name": "stale_transparency_blocks",
+        "status": "proved"
+      },
+      {
+        "name": "missing_archive_blocks_reconstruction",
+        "status": "proved"
+      },
+      {
+        "name": "policy_substitution_blocks",
+        "status": "proved"
+      },
+      {
+        "name": "every_derivation_is_finite",
+        "status": "proved"
+      },
+      {
+        "name": "acceptance_core_inhabited",
+        "status": "proved"
+      },
+      {
+        "name": "acceptance_core_sound",
+        "status": "proved"
+      }
+    ]
+  },
+  "assumptions": [],
+  "checker": {
+    "executable": "coqc",
+    "kind": "coq",
+    "version": "8.16.1"
+  },
+  "claim_ceiling": "Manifest validation is not proof checking. A well-formed manifest establishes only that the declared theorem, assumption closure, proof-file digests, and implementation binding are structurally consistent and mutually bound. It does not establish that a checker ran, that the proof compiles, that the theorem is true, that the dependency graph is complete, or that the implementation correspondence is semantically sound. No universal soundness or SAFE_COMPATIBLE claim is made.",
+  "closure": {
+    "local_dependencies": [
+      {
+        "depends_on": [
+          "no_unsupported_or_cyclic_admission",
+          "missing_mandatory_evidence_blocks",
+          "candidate_substitution_invalidates",
+          "authentication_is_not_semantic_support",
+          "unrelated_proof_does_not_satisfy",
+          "challenged_premise_blocks",
+          "revoked_premise_invalidates",
+          "incomplete_campaign_blocks",
+          "duplicate_credentials_do_not_satisfy_independence",
+          "stale_transparency_blocks",
+          "missing_archive_blocks_reconstruction",
+          "policy_substitution_blocks",
+          "every_derivation_is_finite",
+          "acceptance_core_inhabited"
+        ],
+        "theorem": "acceptance_core_sound"
+      }
+    ],
+    "stdlib_allowlist": [
+      "Coq.Bool.*",
+      "Coq.Init.*",
+      "Coq.Lists.*",
+      "Lia"
+    ],
+    "theorems": [
+      "no_unsupported_or_cyclic_admission",
+      "missing_mandatory_evidence_blocks",
+      "candidate_substitution_invalidates",
+      "authentication_is_not_semantic_support",
+      "unrelated_proof_does_not_satisfy",
+      "challenged_premise_blocks",
+      "revoked_premise_invalidates",
+      "incomplete_campaign_blocks",
+      "duplicate_credentials_do_not_satisfy_independence",
+      "stale_transparency_blocks",
+      "missing_archive_blocks_reconstruction",
+      "policy_substitution_blocks",
+      "every_derivation_is_finite",
+      "acceptance_core_inhabited",
+      "acceptance_core_sound"
+    ]
+  },
+  "implementation_binding": {
+    "binding_evidence": [
+      {
+        "detail": "exact FFI declaration and wrapper call site",
+        "path": "src/lib.rs",
+        "sha256": "aabfba55d3c8015d608b62072cd5b3e56260fb14a0a12e6b5bf815166632aabf",
+        "symbol": "frf_foreign_create"
+      },
+      {
+        "detail": "exact callback definition",
+        "path": "src/lib.rs",
+        "sha256": "aabfba55d3c8015d608b62072cd5b3e56260fb14a0a12e6b5bf815166632aabf",
+        "symbol": "frf_wrapper_callback"
+      }
+    ],
+    "correspondence_evidence": [
+      {
+        "detail": "checked wrapper",
+        "id": "ev-wrapper",
+        "kind": "refinement",
+        "path": "correspondence/ev-wrapper.txt",
+        "sha256": "52e9f12edf59acf4b8d216024629bf65eb996cb6641cdd0c205e8ee17f53c6bd"
+      },
+      {
+        "detail": "lifecycle",
+        "id": "ev-lifecycle",
+        "kind": "transition_enumeration",
+        "path": "correspondence/ev-lifecycle.txt",
+        "sha256": "63dcab4fe6714ba9012fe79137e1e1e16f332cd05d765e4409eb82422eaba068"
+      },
+      {
+        "detail": "transfer",
+        "id": "ev-transfer",
+        "kind": "transition_enumeration",
+        "path": "correspondence/ev-transfer.txt",
+        "sha256": "c408828bf78ca70a1c55c2b998e2466ca84d59273b6ab9618f89ce0269c5a0d2"
+      },
+      {
+        "detail": "free",
+        "id": "ev-free",
+        "kind": "transition_enumeration",
+        "path": "correspondence/ev-free.txt",
+        "sha256": "2ecc2efd5aa501f217c279998b3dcd4072d6e1c6d10cd05f9f5e58c9d7233d02"
+      },
+      {
+        "detail": "reentrant callback",
+        "id": "ev-callback",
+        "kind": "transition_enumeration",
+        "path": "correspondence/ev-callback.txt",
+        "sha256": "7dda0b5a791f42c3ded31a136c203782abcca93a1c45a4a34f81cbf3ffc54970"
+      }
+    ],
+    "required_transitions": [
+      "lifecycle",
+      "transfer",
+      "free",
+      "reentrant_callback"
+    ],
+    "rust_symbols": [
+      {
+        "ffi": {
+          "declaration": "extern \"C\" { pub fn frf_foreign_create(value: c_int) -> *mut c_int; }",
+          "wrapper_checked": true,
+          "wrapper_evidence": "ev-wrapper",
+          "wrapper_symbol": "frf_safe_create"
+        },
+        "kind": "ffi_declaration",
+        "source_path": "src/lib.rs",
+        "source_sha256": "aabfba55d3c8015d608b62072cd5b3e56260fb14a0a12e6b5bf815166632aabf",
+        "symbol": "frf_foreign_create"
+      },
+      {
+        "kind": "callback",
+        "source_path": "src/lib.rs",
+        "source_sha256": "aabfba55d3c8015d608b62072cd5b3e56260fb14a0a12e6b5bf815166632aabf",
+        "symbol": "frf_wrapper_callback"
+      }
+    ],
+    "source_inventory": null,
+    "statement": "frf_safe_create is the declared implementation under study. The finite acceptance model shares this FFI/callback binding and its enumerated transitions, but the model does not prove the implementation or its correspondence; that correspondence remains the separate Phase 6.2 obligation.",
+    "transitions": [
+      {
+        "description": "allocate and initialize",
+        "evidence": "ev-lifecycle",
+        "id": "t-create",
+        "kind": "lifecycle"
+      },
+      {
+        "description": "transfer ownership",
+        "evidence": "ev-transfer",
+        "id": "t-transfer",
+        "kind": "transfer"
+      },
+      {
+        "description": "release the transferred pointer",
+        "evidence": "ev-free",
+        "id": "t-free",
+        "kind": "free"
+      },
+      {
+        "description": "reentrant callback may mutate live state",
+        "evidence": "ev-callback",
+        "id": "t-callback",
+        "kind": "reentrant_callback"
+      }
+    ]
+  },
+  "proof_files": [
+    {
+      "id": "etp_acceptance",
+      "imports": [
+        "Coq.Init.Nat",
+        "Coq.Lists.List",
+        "Lia"
+      ],
+      "language": "coq",
+      "path": "etp_acceptance.v",
+      "role": "theorem",
+      "sha256": "b0db6791d67db799a3c73f177e6da5e3adfccda1b6879be5457b030d51dfb8ab",
+      "theorems": [
+        "no_unsupported_or_cyclic_admission",
+        "missing_mandatory_evidence_blocks",
+        "candidate_substitution_invalidates",
+        "authentication_is_not_semantic_support",
+        "unrelated_proof_does_not_satisfy",
+        "challenged_premise_blocks",
+        "revoked_premise_invalidates",
+        "incomplete_campaign_blocks",
+        "duplicate_credentials_do_not_satisfy_independence",
+        "stale_transparency_blocks",
+        "missing_archive_blocks_reconstruction",
+        "policy_substitution_blocks",
+        "every_derivation_is_finite",
+        "acceptance_core_inhabited",
+        "acceptance_core_sound"
+      ]
+    }
+  ],
+  "provenance": {
+    "detail": "live Coq run recorded by the Phase 6.2 proof adapter",
+    "origin": "authentic_checker_run",
+    "run_id": "phase16.1a-live-proof-gate"
+  },
+  "schema": "frf-memorysafety.proof-manifest.v1",
+  "scope": {
+    "claim_ids": [
+      "claim-acceptance-core"
+    ],
+    "finite_domain": "four premises (pA,pB,pC,pD), three claims (c0,c1,c2), and four derivation constructors",
+    "not_proved": [
+      "universal Rust soundness",
+      "that the Rust acceptance implementation refines this finite model",
+      "native execution of the foreign implementation",
+      "completeness of the declared dependency graph"
+    ],
+    "proved": "The composite theorem acceptance_core_sound conjoins every declared priority invariant: admission yields a finite derivation whose premises are present, unchallenged and unrevoked; each of the twelve policy invariants refuses its mutated policy or observed state; every derivation is finite; and the acceptance rule is inhabited."
+  },
+  "spec": "frf-memorysafety-spec-v1",
+  "theorem": {
+    "claim_ids": [
+      "claim-acceptance-core"
+    ],
+    "name": "acceptance_core_sound"
+  }
+}
