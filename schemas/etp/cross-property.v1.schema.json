@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frf.example/schemas/etp/cross-property.v1.schema.json",
+  "title": "ETP Cross-Property Profile Model v1",
+  "description": "Model describing an ETP bounded cross-property allocation/ownership repair profile for a single C fixture under valgrind memcheck measurement.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "spec",
+    "accepted",
+    "outcome",
+    "claim_ceiling",
+    "refusal_code",
+    "refusal_detail",
+    "metadata"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "frf-etp.cross-property.v1"
+    },
+    "spec": {
+      "type": "string",
+      "const": "frf-etp-cross-property-v1"
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "observed_erasure_violation",
+        "observed_uninitialized_read",
+        "observed_leak",
+        "no_violation_within_bounded_trace",
+        "not_run",
+        "unresolved",
+        "wrong_dispatch",
+        "stale_binary"
+      ]
+    },
+    "claim_ceiling": {
+      "type": "string",
+      "minLength": 1
+    },
+    "refusal_code": {
+      "type": ["string", "null"],
+      "enum": [
+        "not_run",
+        "unresolved",
+        "wrong_dispatch",
+        "stale_binary",
+        "missing_required_property",
+        "instrument_dead_or_empty"
+      ]
+    },
+    "refusal_detail": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_source",
+        "source_sha256",
+        "binary_sha256",
+        "gcc_version",
+        "ld_version",
+        "valgrind_version",
+        "mode",
+        "input_classes",
+        "compile_command",
+        "valgrind_command",
+        "results",
+        "trace_lines"
+      ],
+      "properties": {
+        "fixture_source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "binary_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "gcc_version": {
+          "type": "string"
+        },
+        "ld_version": {
+          "type": "string"
+        },
+        "valgrind_version": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["faulty", "fixed"]
+        },
+        "input_classes": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "compile_command": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3
+        },
+        "valgrind_command": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 5
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "value", "fail_inject", "trace", "valgrind_output"],
+            "properties": {
+              "label": { "type": "string" },
+              "value": { "type": "string" },
+              "fail_inject": { "type": "integer" },
+              "trace": { "type": ["string", "null"] },
+              "valgrind_output": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "trace_lines": {
+          "type": "array",
+          "items": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "spec",
+    "accepted",
+    "outcome",
+    "claim_ceiling",
+    "refusal_code",
+    "refusal_detail",
+    "metadata"
+  ]
+}

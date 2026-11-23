@@ -1,0 +1,83 @@
+{
+  "accepted": true,
+  "claim_ceiling": "This cross-property profile records an observed execution of one fixture on one host inside one hardened container. It does not establish general confidentiality, erasure, or memory safety.",
+  "metadata": {
+    "binary_sha256": "8e5463d1e56654fb144bf5910e51d2bc94faf0af5950335d7e7ed152a87d94fe",
+    "compile_command": [
+      "gcc",
+      "-O1",
+      "-fno-inline",
+      "-fno-builtin",
+      "-g",
+      "tests/fixtures/cross_property/secret_buffer.c",
+      "-o",
+      "secret_buffer"
+    ],
+    "fixture_source": "tests/fixtures/cross_property/secret_buffer.c",
+    "gcc_version": "gcc (Debian 14.2.0-19) 14.2.0",
+    "input_classes": [
+      [
+        "normal",
+        "100",
+        "0"
+      ],
+      [
+        "alloc_fail_initial",
+        "100",
+        "1"
+      ],
+      [
+        "alloc_fail_relocation",
+        "100",
+        "2"
+      ]
+    ],
+    "ld_version": "GNU ld (GNU Binutils for Debian) 2.44",
+    "mode": "fixed",
+    "results": [
+      {
+        "fail_inject": "0",
+        "label": "normal",
+        "trace": "ALLOC\nINIT\nUSE\nRELOCATE\nCLEANSE\nFREE",
+        "valgrind_output": "==621== Memcheck, a memory error detector\n==621== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.\n==621== Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info\n==621== Command: /tmp/etp-cross-property-work/secret_buffer fixed 100 0\n==621== Parent PID: 612\n==621== \n==621== \n==621== HEAP SUMMARY:\n==621==     in use at exit: 0 bytes in 0 blocks\n==621==   total heap usage: 3 allocs, 3 frees, 4,296 bytes allocated\n==621== \n==621== All heap blocks were freed -- no leaks are possible\n==621== \n==621== For lists of detected and suppressed errors, rerun with: -s\n==621== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)\n",
+        "value": "100"
+      },
+      {
+        "fail_inject": "1",
+        "label": "alloc_fail_initial",
+        "trace": "ALLOC_FAIL",
+        "valgrind_output": "==622== Memcheck, a memory error detector\n==622== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.\n==622== Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info\n==622== Command: /tmp/etp-cross-property-work/secret_buffer fixed 100 1\n==622== Parent PID: 612\n==622== \n==622== \n==622== HEAP SUMMARY:\n==622==     in use at exit: 0 bytes in 0 blocks\n==622==   total heap usage: 1 allocs, 1 frees, 4,096 bytes allocated\n==622== \n==622== All heap blocks were freed -- no leaks are possible\n==622== \n==622== For lists of detected and suppressed errors, rerun with: -s\n==622== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)\n",
+        "value": "100"
+      },
+      {
+        "fail_inject": "2",
+        "label": "alloc_fail_relocation",
+        "trace": "ALLOC\nINIT\nUSE\nALLOC_FAIL\nCLEANSE\nFREE",
+        "valgrind_output": "==623== Memcheck, a memory error detector\n==623== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.\n==623== Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info\n==623== Command: /tmp/etp-cross-property-work/secret_buffer fixed 100 2\n==623== Parent PID: 612\n==623== \n==623== \n==623== HEAP SUMMARY:\n==623==     in use at exit: 0 bytes in 0 blocks\n==623==   total heap usage: 2 allocs, 2 frees, 4,196 bytes allocated\n==623== \n==623== All heap blocks were freed -- no leaks are possible\n==623== \n==623== For lists of detected and suppressed errors, rerun with: -s\n==623== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)\n",
+        "value": "100"
+      }
+    ],
+    "source_sha256": "be4faa5bed32b4d692fc69bab2745508c72bda5a06f6e722e25de8adec8ba37f",
+    "trace_lines": [
+      "ALLOC\nINIT\nUSE\nRELOCATE\nCLEANSE\nFREE",
+      "ALLOC_FAIL",
+      "ALLOC\nINIT\nUSE\nALLOC_FAIL\nCLEANSE\nFREE"
+    ],
+    "valgrind_command": [
+      "valgrind",
+      "--tool=memcheck",
+      "--error-exitcode=99",
+      "--log-file=<out>",
+      "/tmp/etp-cross-property-work/secret_buffer",
+      "fixed",
+      "<value>",
+      "<fail_inject>"
+    ],
+    "valgrind_version": "valgrind-3.24.0"
+  },
+  "outcome": "no_violation_within_bounded_trace",
+  "refusal_code": null,
+  "refusal_detail": "",
+  "schema": "frf-etp.cross-property.v1",
+  "spec": "frf-etp-cross-property-v1"
+}

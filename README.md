@@ -327,12 +327,12 @@ Phase 12.2 adds a bounded live timing/execution-path profile.
 caps, pid/cpu/nofile limits, dropped capabilities, and `no-new-privileges`; it
 installs only gcc, binutils, valgrind, and libc6-dev. It compiles the C fixture
 `tests/fixtures/timing/timing_probe.c` with `gcc -O1 -fno-inline -fno-builtin
--g` and runs the branch, ct, and length modes under `valgrind --tool=callgrind`,
+g` and runs the branch, ct, and length modes under `valgrind --tool=callgrind`,
 parsing per-function instruction counts with `callgrind_annotate`. The committed
 per-mode reports are
 `evaluation/earned-trust/timing/report-{branch,ct,length}.json`. Measured:
 `secret_branch` 8/14 Ir (`observed_secret_dependent_divergence`);
-`constant_time` 24/24 Ir (`no_divergence_within_bounded_trace`, not a proof);
+`constant_time` 24/24 Ir (`no_divergence_within_bounded_trace`, not a proof);`
 `length_sensitive_fixed` 222/236 Ir
 (`observed_representation_length_divergence`). The self-test refuses eight
 controls, including a real wrong-dispatch check and stale-binary detection.
@@ -340,6 +340,25 @@ Fresh runs go to `target/etp-timing-run/` and stable fields are compared to the
 committed reports. This is a deterministic instruction-count model, not
 wall-clock timing and not a constant-time proof. See
 [`docs/ETP-TIMING-PROFILE.md`](docs/ETP-TIMING-PROFILE.md).
+
+Phase 12.3a adds a cross-property allocation/ownership repair profile.
+`ci/etp-cross-property-gate.sh` runs inside `python:3.11-slim` with hard memory/swap
+caps, pid/cpu/nofile limits, dropped capabilities, and `no-new-privileges`; it
+installs only gcc, binutils, valgrind, and libc6-dev. It compiles the C fixture
+`tests/fixtures/cross_property/secret_buffer.c` with `gcc -O1 -fno-inline -fno-builtin
+g` and runs the faulty and fixed variants with and without forced allocation failure
+under `valgrind --tool=memcheck --error-exitcode=99`, parsing event traces
+(ALLOC, ALLOC_FAIL, INIT, USE, TRANSFER_FAIL, RELOCATE, CLEANSE, FREE). The
+committed per-mode reports are
+`evaluation/earned-trust/cross-property/report-{faulty,fixed}.json`. Measured:
+faulty+allocation-failure -> observed erasure violation;
+fixed+allocation-failure -> no erasure violation;
+fixed normal path -> clean;
+missing cleanse on relocation -> violation;
+uninitialized read -> valgrind-detected;
+leak -> valgrind-detected;
+missing/empty valgrind output -> not_run;
+scalar confidence/assurance score -> refusal. At least 7 controls.
 
 Release notes for Phase 1 (0.2.0), Phase 2 (0.3.0), Phase 3 (0.4.0),
 Phase 4 (0.5.0), Phase 5 (0.6.0), Phase 6 (0.7.0), Phase 7 (0.8.0), Phase 8
