@@ -4,8 +4,8 @@
   "protocol_version": "phase17.2-amendment-001",
   "frozen_protocol": "protocol.json",
   "freeze_sidecar": "OPENING.sha256",
-  "status": "pending",
-  "pending_reason": "The execution subphase has not run. No observed field in this file is a result. Every evidence pointer is a path that the execution and analysis subphases will create.",
+  "status": "executed_and_reconstructed",
+  "pending_reason": "Execution and independent reconstruction completed. Observed fields record the actual results; failed expectations are retained and summarised in RESULTS.md.",
   "pointer_expansion": "The token <case> in an evidence pointer expands to each of the 18 frozen case ids in protocol.json.partitions.development and protocol.json.partitions.held_out. The directory evaluation/earned-trust-comparative/receipts/ will contain one file per expansion. A pointer is not a result; every pointer is pending.",
   "claim_ceiling": "These claims are preregistered expectations for a finite 18-case comparative control evaluation. They are not results and must not be cited as results. After execution, a claim is supported only if the named evidence pointer exists, its canonical bytes are verified, and its observed fields equal the claim's expectation. The evaluation does not establish external independence, review, certification, universal effectiveness, population-level accuracy, public transparency, external trusted time, global revocation, or deployment security. A refusal is not a pass. A NOT_RUN is not a pass. A digest is not authentication.",
   "claims": [
@@ -14,124 +14,134 @@
       "kind": "preregistered_population",
       "statement": "The evaluation population is exactly 18 cases, with 6 in development and 12 in held-out, no case in both, and every case bound to a real repository path and a SHA-256 of each base artifact.",
       "expectation": "The harness recomputes 18 cases, a 6/12 partition, a disjoint union, and a complete artifact binding before running any command.",
-      "observed": null,
+      "observed": "18 receipts, 6 development and 12 held-out, disjoint; independent reconstruction found 0 bookkeeping discrepancies.",
       "evidence_pointers": [
         "protocol.json",
         "POPULATION.md",
         "evaluation/earned-trust-comparative/receipts/c01-positive-campaign-closure.foundation.json",
         "evaluation/earned-trust-comparative/analysis.json"
       ],
-      "pending": true
+      "pending": false,
+      "status": "supported"
     },
     {
       "id": "Q2",
       "kind": "preregistered_surface",
       "statement": "The foundation surface is a modeled baseline over committed decision labels, with no candidate binding, chain-integrity, freshness, correction, authorization, or archive gate. It is not an execution of the 1.0.0 binary.",
       "expectation": "Every foundation receipt records the committed anchor, the label pass, and a decision of accept, without any ETP gate.",
-      "observed": null,
+      "observed": "The modeled foundation accepted all 18 committed anchors, as its definition predicts; it was not executed as the 1.0.0 binary.",
       "evidence_pointers": [
         "protocol.json",
         "POPULATION.md",
         "evaluation/earned-trust-comparative/receipts/<case>.foundation.json",
         "evaluation/earned-trust-comparative/analysis.json"
       ],
-      "pending": true
+      "pending": false,
+      "status": "supported"
     },
     {
       "id": "Q3",
       "kind": "preregistered_discrimination",
       "statement": "The augmented chain is preregistered to refuse each of the 16 negative controls and accept each of the 2 positive controls, while the foundation is preregistered to accept all 18.",
       "expectation": "The analysis reports the per-case augmented and foundation decisions and the exact agreement or disagreement for all 18 cases.",
-      "observed": null,
+      "observed": "All 16 negative controls were refused, but only 1 of 2 positive controls was accepted (c18 was wrongfully refused).",
       "evidence_pointers": [
         "evaluation/earned-trust-comparative/receipts/<case>.augmented.json",
         "evaluation/earned-trust-comparative/receipts/<case>.foundation.json",
         "evaluation/earned-trust-comparative/analysis.json"
       ],
-      "pending": true
+      "pending": false,
+      "status": "refuted"
     },
     {
       "id": "Q4",
       "kind": "preregistered_acceptance_criteria",
       "statement": "The held-out acceptance criteria are zero wrongful acceptance, zero unresolved, every declared positive control accepted, and every declared negative control refused with a declared documented code.",
       "expectation": "The analysis reports the held-out criteria exactly, including every failure and every negative finding, even if the criteria fail.",
-      "observed": null,
+      "observed": "Held-out: 0 wrongful acceptance, 1 wrongful refusal (c18), 0 unresolved, 0 instrument errors, 6 restoration failures.",
       "evidence_pointers": [
         "evaluation/earned-trust-comparative/analysis.json",
         "evaluation/earned-trust-comparative/ANALYSIS.md"
       ],
-      "pending": true
+      "pending": false,
+      "status": "refuted"
     },
     {
       "id": "Q5",
       "kind": "preregistered_specificity",
       "statement": "Each negative case's refusal is attributable to its declared mutation or withdrawal, and the restoration control returns the documented accepting outcome, or, for the revocation case, the documented historically-valid and present-withheld outcome.",
       "expectation": "The restoration receipts and the observed refusal codes are reported for every negative case; an undeclared code or a failed restoration is a negative finding, not a correct refusal.",
-      "observed": null,
+      "observed": "Six restoration controls did not return the documented accepting outcome; three refusals used a diagnostic other than the declared one.",
       "evidence_pointers": [
         "evaluation/earned-trust-comparative/receipts/<case>.restoration.json",
         "evaluation/earned-trust-comparative/analysis.json"
       ],
-      "pending": true
+      "pending": false,
+      "status": "refuted"
     },
     {
       "id": "Q6",
       "kind": "preregistered_corroboration",
       "statement": "Where an independent verifier is declared, it is preregistered to agree with the Rust CLI on the accept or refuse decision for the declared case.",
       "expectation": "The analysis reports every agreement and every disagreement; a disagreement is a negative finding and is not averaged away.",
-      "observed": null,
+      "observed": "c11: Rust claim-level refusal vs independent acceptance; c17: proof refusal vs executable-model acceptance and checker_unavailable on restore; c18: archive verify unresolved vs reconstruction refusal.",
       "evidence_pointers": [
         "evaluation/earned-trust-comparative/receipts/<case>.augmented.json",
         "evaluation/earned-trust-comparative/analysis.json"
       ],
-      "pending": true
+      "pending": false,
+      "status": "refuted"
     },
     {
       "id": "Q7",
       "kind": "preregistered_accounting",
       "statement": "No refusal is counted as a pass, no NOT_RUN is counted as a pass, no instrument error is counted as a correct refusal, and no wrong-code refusal is counted as a correct refusal.",
       "expectation": "The analysis reports the typed exit mapping, the instrument-error count, the wrong-code-refusal count, and the unresolved count separately.",
-      "observed": null,
+      "observed": "Refusals, NOT_RUN, instrument errors and wrong-code refusals are separately counted; no NOT_RUN or wrong-code refusal was counted as a pass.",
       "evidence_pointers": [
         "evaluation/earned-trust-comparative/analysis.json"
       ],
-      "pending": true
+      "pending": false,
+      "status": "supported"
     },
     {
       "id": "Q8",
       "kind": "preregistered_cost",
       "statement": "The evaluation measures verification wall-clock cost and bytes read per case, and independent reconstruction wall-clock cost and bytes, as declared in the protocol.",
       "expectation": "The cost receipts record the exact command, the parent-measured monotonic elapsed time, the bytes-read method, and the build or startup cost separately when a command performs a rebuild.",
-      "observed": null,
+      "observed": "Verification cost measured: development 405 ms / 312578 bytes; held-out 746 ms / 462412 bytes. Independent reconstruction wall-clock cost was not separately measured.",
       "evidence_pointers": [
         "evaluation/earned-trust-comparative/receipts/<case>.costs.json",
         "evaluation/earned-trust-comparative/analysis.json"
       ],
-      "pending": true
+      "pending": false,
+      "status": "partially_supported"
     },
     {
       "id": "Q9",
       "kind": "preregistered_reporting",
       "statement": "Every failure, every negative finding, every wrong-code refusal, every restoration failure, every instrument error, every independent-verifier disagreement, and every unresolved case is reported even if the held-out criteria fail.",
       "expectation": "The analysis and human report contain a complete negative-finding table with exact evidence pointers; contradictory observations are retained and classified.",
-      "observed": null,
+      "observed": "All one wrongful refusal, six restoration failures and the wrong-code refusals are recorded in RESULTS.md and the receipts.",
       "evidence_pointers": [
         "evaluation/earned-trust-comparative/analysis.json",
         "evaluation/earned-trust-comparative/ANALYSIS.md"
       ],
-      "pending": true
+      "pending": false,
+      "status": "supported"
     },
     {
       "id": "Q10",
       "kind": "preregistered_non_generalization",
       "statement": "The evaluation makes no universal-effectiveness, completeness, soundness, population-level, certification, or deployment-authorization claim from a passing set of controls.",
       "expectation": "A passing result is reported as support within the 18 declared controls only, with the limitations retained.",
-      "observed": null,
+      "observed": "No universal-effectiveness, completeness, soundness, population-level, certification or deployment claim is made.",
       "evidence_pointers": [
         "LIMITATIONS.md",
         "evaluation/earned-trust-comparative/ANALYSIS.md"
       ],
-      "pending": true
+      "pending": false,
+      "status": "supported"
     }
   ],
   "non_claims": [
@@ -155,5 +165,7 @@
     "path": "AMENDMENT-001.md",
     "applied_before_held_out": true,
     "expectations_changed": false
-  }
+  },
+  "results_pointer": "RESULTS.md",
+  "reconstruction_pointer": "analysis-reconstruction.json"
 }
