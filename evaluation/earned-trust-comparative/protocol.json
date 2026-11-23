@@ -1,0 +1,3001 @@
+{
+  "schema": "frf-etp.comparative-evaluation-protocol.v1",
+  "spec": "frf-etp-comparative-v1",
+  "protocol_version": "phase17.1-v1",
+  "phase": "17.1",
+  "frozen": true,
+  "frozen_at_commit": "f5a61efe0a3b0cdafa2e9e2e4f5a01f0967163f7",
+  "frozen_baseline": {
+    "name": "FRF-MemorySafety 1.0.0",
+    "commit": "02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab",
+    "relation": "Existing evidence keeps its original meaning. This protocol adds a new comparative evaluation and does not change any 1.0.0 artifact, schema meaning, case population, or claim ceiling."
+  },
+  "branch": "staging",
+  "subphase_scope": "Design and freeze only. No verifier, gate, cargo, coqc, python verification script, or test is executed in this subphase. No result, outcome count, or measured number is produced.",
+  "opening_digest": {
+    "file": "OPENING.sha256",
+    "algorithm": "sha256",
+    "scope": "protocol.json only",
+    "note": "The sidecar freezes the exact protocol bytes. It detects accidental or silent change and is not authentication."
+  },
+  "path_conventions": {
+    "repository_root": "{repo}",
+    "work_root": "{work}",
+    "binary": "{bin}",
+    "binary_definition": "{repo}/target/debug/frf-memorysafety",
+    "mutated_copy_rule": "For non-archive cases, the harness copies the full repository tree from {repo} into {work} with the repository read-only, preserving repository-relative paths, and then applies the declared mutation only inside {work}. The full copy preserves the candidate and instrument paths that the campaign, attestation, and SARIF verifiers resolve through the copied protocol.json and Cargo.toml. For archive cases, the archive root is copied to {work}/archive. The harness never writes to {repo}.",
+    "working_directory_rule": "Each command declares its working directory. Commands that resolve relative paths, including the SARIF verifier, run from the copied tree.",
+    "placeholders": [
+      "{repo}",
+      "{work}",
+      "{bin}",
+      "{mutated}"
+    ]
+  },
+  "decision_surfaces": {
+    "A_foundation": {
+      "name": "pre-ETP foundation decision surface",
+      "definition": "For each case, the foundation anchor is the committed baseline artifact named by the case: a per-case native receipt or the campaign closure. The foundation accepts the case if and only if the anchor's Phase 9 campaign decision label is pass. For a native receipt the label is the value of adjudication.decision. For the campaign closure the label is the single entry in decisions with label pass. The foundation performs no candidate binding, no chain-integrity check, no freshness check, no correction or revocation check, no authorization check, and no archive check. It reads the committed baseline, not the mutated copy in {work}.",
+      "anchor_kinds": {
+        "native_receipt": {
+          "path": "evaluation/earned-trust/receipts/<case>.json",
+          "field": "adjudication.decision",
+          "accept_value": "pass"
+        },
+        "campaign_decision": {
+          "path": "evaluation/earned-trust/MANIFEST.json",
+          "field": "decisions",
+          "accept_value": "exactly one entry with label pass"
+        }
+      },
+      "modeled_baseline": true,
+      "independent_execution_of_1_0_0": false,
+      "gates": {
+        "candidate_binding": false,
+        "chain_integrity": false,
+        "freshness": false,
+        "correction": false,
+        "authorization": false,
+        "archive": false
+      },
+      "note": "This is a modeled baseline over committed evidence. It is not an execution of the 1.0.0 binary in this subphase, and it does not claim that the 1.0.0 binary would accept the mutated evidence."
+    },
+    "B_augmented": {
+      "name": "augmented ETP evidence-chain decision surface",
+      "definition": "For each case, the harness copies the full repository tree, or the archive root for archive cases, into {work}, applies the declared mutation or identity copy, and runs every declared decisive verifier command over the mutated evidence in the declared working directory. The case is accept if and only if every decisive command exits 0 and reports its documented accepting outcome. The case is refuse if any decisive command exits nonzero or reports a documented refusal. The case is unresolved if a declared instrument is unavailable or returns a typed NOT_RUN. A refusal is never counted as a pass. A NOT_RUN is never counted as a pass. A claim-level refusal, such as present_admissible false for a withdrawn claim, is a refusal of the present decision even when the registry status is verified.",
+      "combine_rule": {
+        "accept": "all decisive commands exit 0 and report the documented accepting outcome",
+        "refuse": "any decisive command exits nonzero or reports a documented refusal",
+        "unresolved": "a declared instrument is unavailable or returns a typed NOT_RUN"
+      },
+      "typed_exit_mapping": {
+        "0": "command completed; acceptance depends on the declared accepting outcome",
+        "2": "usage or instrument error; the case is refuse at the surface, recorded as an instrument error, and never counted as a correct refusal",
+        "3": "integrity failure; refusal",
+        "4": "refused; refusal",
+        "5": "detector failure; refusal",
+        "6": "typed NOT_RUN; unresolved and never a pass",
+        "7": "internal harness error; the case is refuse at the surface, recorded as an instrument error, and never counted as a correct refusal"
+      },
+      "non_deciding_commands": "Commands marked decisive false in a case are recorded for context and cost only. They do not change the case decision. A context-only command that returns NOT_RUN is expected and is not a pass."
+    }
+  },
+  "instrument": {
+    "binary": "{repo}/target/debug/frf-memorysafety",
+    "crate": "frf-memorysafety",
+    "crate_version": "1.1.0",
+    "built_from_commit": "f5a61efe0a3b0cdafa2e9e2e4f5a01f0967163f7",
+    "build_rule": "Build only through ci/gate.sh or a hardened minimal container with the declared resource and isolation caps. Never on the host. The binary is an instrument, not a base artifact.",
+    "required_tools": [
+      "python3",
+      "openssl",
+      "sha256sum",
+      "gcc and binutils only if a declared harness check rebuilds a fixture",
+      "valgrind only if a declared harness check rebuilds the cross-property fixture",
+      "coqc only for the optional proof verify --live corroboration"
+    ],
+    "container_envelope": {
+      "memory_mb": 2048,
+      "swap_mb": 2048,
+      "pids_limit": 512,
+      "cpus": 2,
+      "nofile": 1024,
+      "oom_score_adj": 500,
+      "timeout_seconds": 1800,
+      "cap_drop": "ALL",
+      "no_new_privileges": true,
+      "repository_mounted_read_only_for_verification": true,
+      "writable_paths": [
+        "{work}",
+        "target/"
+      ]
+    },
+    "hostname_recorded": false,
+    "timestamp_recorded": false,
+    "note": "The execution subphase runs the declared commands in-container. This subphase runs none of them."
+  },
+  "instrument_bindings": [
+    {
+      "id": "verify_attestations",
+      "path": "evaluation/earned-trust/verify_attestations.py",
+      "sha256": "2f0cbdd9c85bce0ae641723ca997a931481382733c979f9b90de059632edbc16",
+      "role": "independent_verifier"
+    },
+    {
+      "id": "verify_sarif",
+      "path": "evaluation/earned-trust/verify_sarif.py",
+      "sha256": "bf9d69f51719c66da9138c62245b966b7b5603bb73148a3555180fab74719319",
+      "role": "independent_verifier"
+    },
+    {
+      "id": "verify_policy_metadata",
+      "path": "evaluation/earned-trust/verify_policy_metadata.py",
+      "sha256": "191fdc310080e148da8cc06e85f7b5f746a2a7e634241e0950b5dd6085ed8f94",
+      "role": "independent_verifier"
+    },
+    {
+      "id": "verify_transparency",
+      "path": "evaluation/earned-trust/verify_transparency.py",
+      "sha256": "376ee1ac39dfb4a5fd3b38d34b9127d76a37d6dbdc1f4705ac0ee6f50355879e",
+      "role": "independent_verifier"
+    },
+    {
+      "id": "verify_time",
+      "path": "evaluation/earned-trust/verify_time.py",
+      "sha256": "36b4685ab34d03c679a48f189659008478ccb060d7a6aaaf5ae7281d003dd8b8",
+      "role": "independent_verifier"
+    },
+    {
+      "id": "verify_revocation",
+      "path": "evaluation/earned-trust/verify_revocation.py",
+      "sha256": "55a3d3e9faa69a18ea327ad34585e4d0579d3e291a84337c22f04911077f7dcf",
+      "role": "independent_verifier"
+    },
+    {
+      "id": "reconstruct",
+      "path": "evaluation/earned-trust/reconstruct.py",
+      "sha256": "45912e75b259dac0b4f5aa4abbbe5781a167426a6c0e2f4ca11c72a195a2ea29",
+      "role": "independent_reconstruction"
+    },
+    {
+      "id": "verify_acceptance_model",
+      "path": "evaluation/earned-trust/verify_acceptance_model.py",
+      "sha256": "49deb173eac685e42b86f50c6e5fdb0795db5929f54cb4fd4614c6faa66abb10",
+      "role": "executable_model_oracle"
+    },
+    {
+      "id": "interop_matrix",
+      "path": "evaluation/earned-trust/interop_matrix.py",
+      "sha256": "76eb7957eb93b7beb55bfa7721beb04c67be5266733af44547f0360669829e6d",
+      "role": "harness_check"
+    },
+    {
+      "id": "tls_matrix",
+      "path": "evaluation/earned-trust/tls_matrix.py",
+      "sha256": "881f20179515663c0ce344b9067657bc6740bf689de537419c8f8bf6f9746b1c",
+      "role": "harness_check"
+    },
+    {
+      "id": "cross_property",
+      "path": "evaluation/earned-trust/cross_property.py",
+      "sha256": "f17f0acabb37eaf2c90b21f81e9476f0f4c16fc17c71d5720fdf2c257b438bd4",
+      "role": "harness_check"
+    },
+    {
+      "id": "gate",
+      "path": "ci/gate.sh",
+      "sha256": "b171ae90a19d1d595d8780c482d1a5852df2ec8afcf605f36caea4c57dbab818",
+      "role": "build_gate"
+    }
+  ],
+  "artifact_bindings": [
+    {
+      "id": "manifest",
+      "path": "evaluation/earned-trust/MANIFEST.json",
+      "sha256": "d26e19bdf4515d1302ad724119eb2f4ff8f4f6d7a2544d949be0a6470613ee59",
+      "role": "campaign_closure",
+      "used_by": [
+        "c01-positive-campaign-closure",
+        "c02-candidate-substitution",
+        "c03-completeness-deletion",
+        "c04-truncated-population",
+        "c05-duplicate-population-row",
+        "c06-dsse-payload-substitution",
+        "c07-signer-role-unauthorized",
+        "c10-time-wrong-imprint",
+        "c11-revocation-withdrawn-claim",
+        "c13-sarif-unjustified-suppression"
+      ]
+    },
+    {
+      "id": "opening_manifest",
+      "path": "evaluation/earned-trust/protocol.json",
+      "sha256": "1380703f34d88bcbcbba5dde694e616274ff427557aa6e596db0953efcd1304c",
+      "role": "opening_manifest",
+      "used_by": [
+        "c01-positive-campaign-closure",
+        "c02-candidate-substitution",
+        "c03-completeness-deletion",
+        "c04-truncated-population",
+        "c05-duplicate-population-row"
+      ]
+    },
+    {
+      "id": "opening_digest",
+      "path": "evaluation/earned-trust/opening.sha256",
+      "sha256": "730257a9e78d60bb3dcd07c266afd21246208127de21fbc6b1c97d23ac2d6d67",
+      "role": "opening_digest",
+      "used_by": [
+        "c01-positive-campaign-closure",
+        "c02-candidate-substitution",
+        "c03-completeness-deletion",
+        "c04-truncated-population",
+        "c05-duplicate-population-row"
+      ]
+    },
+    {
+      "id": "claims",
+      "path": "evaluation/earned-trust/CLAIMS.json",
+      "sha256": "5e22edb7695c366bcff01c083c1af04521db01a267aa36d0cb24dce0383f90fc",
+      "role": "campaign_claims",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "policy_metadata",
+      "path": "evaluation/earned-trust/policy-metadata.json",
+      "sha256": "2af9781ada243323c562c5d93c372d8fbd3ed40d8afa24c64d464220c8a6a089",
+      "role": "policy_metadata",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "suppression_review",
+      "path": "evaluation/earned-trust/suppression-review.json",
+      "sha256": "b2477a834be749ac1fa39fcdb0a8128f15054bef3b37ce526f571365d6675c1e",
+      "role": "suppression_review",
+      "used_by": [
+        "c13-sarif-unjustified-suppression"
+      ]
+    },
+    {
+      "id": "sarif",
+      "path": "evaluation/earned-trust/campaign.sarif",
+      "sha256": "e64168e1fb16a154dccad6646d4dc17d129f9d513aee582078200d58d345551e",
+      "role": "sarif_projection",
+      "used_by": [
+        "c01-positive-campaign-closure",
+        "c13-sarif-unjustified-suppression"
+      ]
+    },
+    {
+      "id": "attestation_envelope",
+      "path": "evaluation/earned-trust/attestations/campaign-closure.envelope.json",
+      "sha256": "a68a35cdacc3e43c405e85cc8ee24dc2edf855054952246b33e225659156ca26",
+      "role": "dsse_envelope",
+      "used_by": [
+        "c06-dsse-payload-substitution",
+        "c07-signer-role-unauthorized"
+      ]
+    },
+    {
+      "id": "attestation_statement",
+      "path": "evaluation/earned-trust/attestations/campaign-closure.statement.json",
+      "sha256": "c3170ebdc2989fc597ec51f6a376c4732afc6ffb727b9ad6a0ae34990ed27f9e",
+      "role": "in_toto_statement",
+      "used_by": [
+        "c06-dsse-payload-substitution",
+        "c07-signer-role-unauthorized",
+        "c13-sarif-unjustified-suppression"
+      ]
+    },
+    {
+      "id": "attestation_pubkey",
+      "path": "evaluation/earned-trust/attestations/campaign-closure.public.pem",
+      "sha256": "fcf26cc67e61f08b59117dfdb5fcf4fc3b8189ed660bd6c76db58a62f3777db8",
+      "role": "attestation_public_key",
+      "used_by": [
+        "c06-dsse-payload-substitution",
+        "c07-signer-role-unauthorized"
+      ]
+    },
+    {
+      "id": "trust_policy",
+      "path": "evaluation/earned-trust/trust-policy.json",
+      "sha256": "7f1ae23d198474dc3f77a6af4183141a8ead3b26477bf753062690f66d165ac4",
+      "role": "trust_policy",
+      "used_by": [
+        "c06-dsse-payload-substitution",
+        "c07-signer-role-unauthorized",
+        "c11-revocation-withdrawn-claim"
+      ]
+    },
+    {
+      "id": "transparency_proof",
+      "path": "evaluation/earned-trust/transparency/proof.json",
+      "sha256": "5059ed70025fd757317e7a9d1f2b14743c49444ef744eb89cc951143bcd904f7",
+      "role": "transparency_proof",
+      "used_by": [
+        "c08-transparency-inclusion-sibling",
+        "c09-transparency-stale-checkpoint"
+      ]
+    },
+    {
+      "id": "transparency_checkpoint_3",
+      "path": "evaluation/earned-trust/transparency/checkpoint-size-3.txt",
+      "sha256": "4d1f2fea7c87b9bdc94ab88b0a203d1301154f960ea8f129a9a35b280ca67af5",
+      "role": "transparency_checkpoint",
+      "used_by": [
+        "c08-transparency-inclusion-sibling",
+        "c09-transparency-stale-checkpoint"
+      ]
+    },
+    {
+      "id": "transparency_checkpoint_1",
+      "path": "evaluation/earned-trust/transparency/checkpoint-size-1.txt",
+      "sha256": "62baf9ab79856b039516e0487c6e0a3c1baa329e807559777e61232b502f947c",
+      "role": "transparency_checkpoint_horizon",
+      "used_by": [
+        "c09-transparency-stale-checkpoint"
+      ]
+    },
+    {
+      "id": "transparency_policy",
+      "path": "evaluation/earned-trust/transparency/policy.json",
+      "sha256": "26123dbe9d7945829d16c9f0143c5e20d964c6642cf1b677ed9ed65c84e5b561",
+      "role": "transparency_policy",
+      "used_by": [
+        "c08-transparency-inclusion-sibling",
+        "c09-transparency-stale-checkpoint"
+      ]
+    },
+    {
+      "id": "transparency_log_key",
+      "path": "evaluation/earned-trust/transparency/log-key.pub",
+      "sha256": "4b2f7c3f24abae23fad1d1f43af2c1e0986c58e3081cf2aa86bb5452ce4e9e9e",
+      "role": "transparency_log_key",
+      "used_by": [
+        "c08-transparency-inclusion-sibling"
+      ]
+    },
+    {
+      "id": "transparency_entry",
+      "path": "evaluation/earned-trust/transparency/attestation-entry.bin",
+      "sha256": "b80888683d282e20784e7e13663cbd4a1142806fc01f2e15de195d87cf296e52",
+      "role": "transparency_leaf_entry",
+      "used_by": [
+        "c08-transparency-inclusion-sibling"
+      ]
+    },
+    {
+      "id": "witness_state",
+      "path": "evaluation/earned-trust/transparency/witness-state.json",
+      "sha256": "0f03b710a47bd9c0a2cbded6ef14da418ffa7098d10390b58cd3709ae3c6d783",
+      "role": "witness_state",
+      "used_by": [
+        "c08-transparency-inclusion-sibling"
+      ]
+    },
+    {
+      "id": "time_token",
+      "path": "evaluation/earned-trust/time/token.tsr",
+      "sha256": "a2676c8f1ca82ce892cc632585e8e614f6e305c9174b86d586409ca4b48555e0",
+      "role": "rfc3161_token",
+      "used_by": [
+        "c10-time-wrong-imprint"
+      ]
+    },
+    {
+      "id": "time_request",
+      "path": "evaluation/earned-trust/time/request.tsq",
+      "sha256": "a47473588bd724a4721ca51cb1c514d6bffe61f325945d1090834a8b6b0de50a",
+      "role": "rfc3161_request",
+      "used_by": [
+        "c10-time-wrong-imprint"
+      ]
+    },
+    {
+      "id": "time_imprint",
+      "path": "evaluation/earned-trust/time/evidence-imprint.txt",
+      "sha256": "a1ddcea1ec43773da6c271a332d38b57543c442d781e19391fbd25cee470375a",
+      "role": "evidence_imprint",
+      "used_by": [
+        "c10-time-wrong-imprint"
+      ]
+    },
+    {
+      "id": "tsa_cert",
+      "path": "evaluation/earned-trust/time/tsa-cert.pem",
+      "sha256": "e3278bbad4ff9fb0b6b48febd5443d4f6d3a90dad6482c54053a188166ca4c6b",
+      "role": "tsa_signer_certificate",
+      "used_by": [
+        "c10-time-wrong-imprint"
+      ]
+    },
+    {
+      "id": "tsa_ca",
+      "path": "evaluation/earned-trust/time/tsa-ca.pem",
+      "sha256": "2d392a20e76385c769ccdf9447bb55be7c49e22d0520748cdae7dbc3b33e2332",
+      "role": "tsa_trust_anchor",
+      "used_by": [
+        "c10-time-wrong-imprint"
+      ]
+    },
+    {
+      "id": "time_report",
+      "path": "evaluation/earned-trust/time/time-report.json",
+      "sha256": "e229407ebb07acd554280de3971c5dcea8ae864632701f38ca5cf52b90d5dcc4",
+      "role": "committed_time_report",
+      "used_by": [
+        "c10-time-wrong-imprint"
+      ]
+    },
+    {
+      "id": "stamp_report",
+      "path": "evaluation/earned-trust/time/stamp-report.json",
+      "sha256": "71c88235514cbbecfa0e85d7f444b32476a93031b34c01faf4cc8281bc72f338",
+      "role": "committed_stamp_report",
+      "used_by": [
+        "c10-time-wrong-imprint"
+      ]
+    },
+    {
+      "id": "revocation_registry",
+      "path": "evaluation/earned-trust/revocations/registry.json",
+      "sha256": "31283759e874954910dca6d6f9ed277d4c667f3652b842b18bea9070d6bdc31d",
+      "role": "revocation_registry",
+      "used_by": [
+        "c11-revocation-withdrawn-claim"
+      ]
+    },
+    {
+      "id": "revocation_support",
+      "path": "evaluation/earned-trust/revocations/support-model.json",
+      "sha256": "b5a14ad46f12e45bb7d55aa660a3e535a4886356e5d6041adea9910c163a28fd",
+      "role": "support_model",
+      "used_by": [
+        "c11-revocation-withdrawn-claim"
+      ]
+    },
+    {
+      "id": "revocation_history",
+      "path": "evaluation/earned-trust/revocations/historical-verdict.json",
+      "sha256": "7942d2da9d7c7e13caef9c59e864c856046d788e7f1f5c2a15811f5afe5ec1ce",
+      "role": "historical_verdict",
+      "used_by": [
+        "c11-revocation-withdrawn-claim"
+      ]
+    },
+    {
+      "id": "revocation_report",
+      "path": "evaluation/earned-trust/revocations/revocation-report.json",
+      "sha256": "99425be7893ae24502b88d82558db42ca4007ef99eb68d0912a2b49c305dafc5",
+      "role": "committed_revocation_report",
+      "used_by": [
+        "c11-revocation-withdrawn-claim"
+      ]
+    },
+    {
+      "id": "revocation_plan",
+      "path": "evaluation/earned-trust/revocations/plan.json",
+      "sha256": "b98776606b240adfda9943944166e92916d403d152f622978d73efdad9ac8e65",
+      "role": "revocation_plan",
+      "used_by": [
+        "c11-revocation-withdrawn-claim"
+      ]
+    },
+    {
+      "id": "revocation_correction_pub",
+      "path": "evaluation/earned-trust/revocations/correction.pem",
+      "sha256": "a0c78e2827f4ea019460bfda64774f7c8631d8dd793dc5e8a5c096c207d3e561",
+      "role": "correction_public_key",
+      "used_by": [
+        "c11-revocation-withdrawn-claim"
+      ]
+    },
+    {
+      "id": "archive_manifest",
+      "path": "evaluation/earned-trust/archive/manifest.json",
+      "sha256": "01359a2ce3d2368f03e50b44e02cfbeceeeabc68ce3c03d9988e7ac909f2f7f1",
+      "role": "archive_manifest",
+      "used_by": [
+        "c12-archive-missing-object",
+        "c18-positive-archive-reconstruction"
+      ]
+    },
+    {
+      "id": "archive_envelope",
+      "path": "evaluation/earned-trust/archive/evaluation/earned-trust/attestations/campaign-closure.envelope.json",
+      "sha256": "a68a35cdacc3e43c405e85cc8ee24dc2edf855054952246b33e225659156ca26",
+      "role": "archived_attestation_envelope",
+      "used_by": [
+        "c12-archive-missing-object"
+      ]
+    },
+    {
+      "id": "archive_reconstruct",
+      "path": "evaluation/earned-trust/archive/evaluation/earned-trust/reconstruct.py",
+      "sha256": "45912e75b259dac0b4f5aa4abbbe5781a167426a6c0e2f4ca11c72a195a2ea29",
+      "role": "archived_reconstruction_script",
+      "used_by": [
+        "c18-positive-archive-reconstruction"
+      ]
+    },
+    {
+      "id": "archive_reconstruction_md",
+      "path": "evaluation/earned-trust/archive/evaluation/earned-trust/RECONSTRUCTION.md",
+      "sha256": "8cacfe2d2d870896a3813ba69b78aab610db9db58a6d1787d958ae9b1b6af7d9",
+      "role": "archived_reconstruction_instructions",
+      "used_by": [
+        "c18-positive-archive-reconstruction"
+      ]
+    },
+    {
+      "id": "cross_property_faulty",
+      "path": "evaluation/earned-trust/cross-property/report-faulty.json",
+      "sha256": "9c0c0a79e8dbf869a0b973124a40d277db2ead11195ea628268026273935d423",
+      "role": "cross_property_faulty_report",
+      "used_by": [
+        "c14-cross-property-regression"
+      ]
+    },
+    {
+      "id": "cross_property_fixed",
+      "path": "evaluation/earned-trust/cross-property/report-fixed.json",
+      "sha256": "d09494571515ed9ea0adb55282fd24b7f958107e55fde880cd7e196fc37ec5ac",
+      "role": "cross_property_fixed_report",
+      "used_by": [
+        "c14-cross-property-regression"
+      ]
+    },
+    {
+      "id": "interop_report",
+      "path": "evaluation/earned-trust/interop/report.json",
+      "sha256": "92a9ce7a015b55201ef143cf8b4e857a738b467bb0690805058f4e569f67320c",
+      "role": "interop_matrix_report",
+      "used_by": [
+        "c15-interop-collapsed-cell"
+      ]
+    },
+    {
+      "id": "tls_matrix_report",
+      "path": "evaluation/earned-trust/tls-matrix/report.json",
+      "sha256": "4061be5522d2d82bb48200bc935031b5da8cfbed6a7e5027b4004e20be668f6a",
+      "role": "tls_matrix_report",
+      "used_by": [
+        "c16-tls-matrix-collapsed-cell"
+      ]
+    },
+    {
+      "id": "integrity_receipt",
+      "path": "evaluation/earned-trust/integrity/integrity-receipt.json",
+      "sha256": "bd31bcf7a27cb58a26ee3eeef0fc022f6289bfa56467315e6a7dd5ae7f6d2e66",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "integrity_report",
+      "path": "evaluation/earned-trust/integrity/integrity-report.json",
+      "sha256": "068a4a1d9e5276ae7b7a7a0c9cd8db845a16900ebcd71e1ed76372a3de66bc57",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "timing_branch",
+      "path": "evaluation/earned-trust/timing/report-branch.json",
+      "sha256": "1fd3e5adab60e7efc1f577acc78b0379411fa30e8b4058dc32b0551d2731a7fa",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "timing_ct",
+      "path": "evaluation/earned-trust/timing/report-ct.json",
+      "sha256": "f998ddbc6135ab76261ed26142a782dfc42e795ea7f1caa86d8a54474546affc",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "timing_length",
+      "path": "evaluation/earned-trust/timing/report-length.json",
+      "sha256": "0f149072a7409e1ac575608ea235ab61ec1f07fd83ab2376c5ed698be423ee44",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "information_flow_model",
+      "path": "evaluation/earned-trust/information-flow/model.json",
+      "sha256": "537dbafc5ad6cccd239906766edd2bf62721ace9edccd13f149a95cce35df39e",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "information_flow_report",
+      "path": "evaluation/earned-trust/information-flow/report.json",
+      "sha256": "0e1ce08b285178b6cb12abcd609209aad3ea2e5c1d52acd144699d5e7d72e71e",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "witness_execution",
+      "path": "evaluation/earned-trust/witness/frf-etp.execution-witness.v1",
+      "sha256": "4c96ee9fe8281dac14bebfd0bca43d80b535351a216b3bed54d202395f6cce46",
+      "role": "context_only_not_case_bound",
+      "used_by": []
+    },
+    {
+      "id": "proof_manifest",
+      "path": "tests/proof/coq/manifest-acceptance.json",
+      "sha256": "1faf8997e193fa93b6c6ea87651fd7a19c1a6bab272863a9025a72f283e0d861",
+      "role": "formal_acceptance_manifest",
+      "used_by": [
+        "c17-proof-closure-removal"
+      ]
+    },
+    {
+      "id": "proof_file",
+      "path": "tests/proof/coq/etp_acceptance.v",
+      "sha256": "b0db6791d67db799a3c73f177e6da5e3adfccda1b6879be5457b030d51dfb8ab",
+      "role": "formal_acceptance_proof",
+      "used_by": [
+        "c17-proof-closure-removal"
+      ]
+    },
+    {
+      "id": "acceptance_controls",
+      "path": "evaluation/earned-trust/receipts/acceptance-controls.json",
+      "sha256": "6cf8b0f51a3fdd85f25f84e02e569d9fa8253573148486c8b2d1113ad2528ad9",
+      "role": "executable_model_controls",
+      "used_by": [
+        "c17-proof-closure-removal"
+      ]
+    },
+    {
+      "id": "receipt_atomic",
+      "path": "evaluation/earned-trust/receipts/atomic-control-c.json",
+      "sha256": "4e070129e849c0ab67d78d699cfa24809711b30bd928b66fdb0abd36ceaf00d1",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_data_race",
+      "path": "evaluation/earned-trust/receipts/data-race-c.json",
+      "sha256": "791bb512844647f4116f05035848390ce7a044e1939c884b330a68b6c597362c",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure",
+        "c13-sarif-unjustified-suppression"
+      ]
+    },
+    {
+      "id": "receipt_deferred",
+      "path": "evaluation/earned-trust/receipts/deferred-callback-c.json",
+      "sha256": "9d64d5c6b2a642b54714f5ef1e3cc23cea7ac2f2d3489f7b836760144ebf7add",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_legal_c",
+      "path": "evaluation/earned-trust/receipts/legal-transfer-free-c.json",
+      "sha256": "70d17bf361503fc703d89c8fc7ca0d8c8f6941309826ec0711bdcc5fc6f5db26",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_legal_rust",
+      "path": "evaluation/earned-trust/receipts/legal-transfer-free-rust.json",
+      "sha256": "42db18e64c21ef225fa4112cfe153ad1d10cca64eb28178911a80dca23471b97",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_mutable",
+      "path": "evaluation/earned-trust/receipts/mutable-alias-c.json",
+      "sha256": "0a8f01d08bb28a0d880ca31cb560e6d907c5fecc751868d0f11e73b54b7c436a",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_nondet",
+      "path": "evaluation/earned-trust/receipts/nondeterministic-c.json",
+      "sha256": "d02283d999c6db2927567b10628bdddef588314a9b1bb6665e1a52ab2172ebb4",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure",
+        "c04-truncated-population"
+      ]
+    },
+    {
+      "id": "receipt_oversized",
+      "path": "evaluation/earned-trust/receipts/oversized-output-c.json",
+      "sha256": "34fa54bf3486afd56567df90f439e2e95189c78321994f717eb81c252c43c540",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_skipped",
+      "path": "evaluation/earned-trust/receipts/skipped-free-c.json",
+      "sha256": "51399dc1a1cb831b7cdd6376dc04d67bcf78f93d24fe72ee2e4547f6c38e0af6",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_stale",
+      "path": "evaluation/earned-trust/receipts/stale-generation-c.json",
+      "sha256": "25659ce0306cd63c8c9cc0bcd7d23b056c99acd5cc51f7152f9075ce10a0d436",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_sync",
+      "path": "evaluation/earned-trust/receipts/sync-callback-c.json",
+      "sha256": "91fd127d91b825fc786fc896888d7a9f8a8a08701d911019532cf57a91b977ea",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "receipt_uaf_c",
+      "path": "evaluation/earned-trust/receipts/use-after-free-c.json",
+      "sha256": "596bdb3c5e6fc7c3dd5f5266642905d6b1384ddf19e2cedd89677150dff06a0d",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure",
+        "c02-candidate-substitution",
+        "c03-completeness-deletion",
+        "c05-duplicate-population-row"
+      ]
+    },
+    {
+      "id": "receipt_uaf_rust",
+      "path": "evaluation/earned-trust/receipts/use-after-free-rust.json",
+      "sha256": "d5a91ee73140378db69903263dc6a80c664081fd321021a04af8c582c00be0b6",
+      "role": "native_receipt",
+      "used_by": [
+        "c01-positive-campaign-closure"
+      ]
+    },
+    {
+      "id": "raw_uaf_transcript",
+      "path": "evaluation/earned-trust/receipts/raw/use-after-free-c.transcript.json",
+      "sha256": "776f892d2d56c096a11970a06f63092fb61eab540bd694cce01693befdd4314a",
+      "role": "raw_evidence",
+      "used_by": [
+        "c02-candidate-substitution",
+        "c03-completeness-deletion",
+        "c05-duplicate-population-row"
+      ]
+    },
+    {
+      "id": "raw_uaf_court",
+      "path": "evaluation/earned-trust/receipts/raw/use-after-free-c.court.json",
+      "sha256": "f07978ad84991b7e517415da13c872447abf7a78e665b25f1cac958fcc8bd4cd",
+      "role": "raw_evidence",
+      "used_by": [
+        "c02-candidate-substitution",
+        "c03-completeness-deletion",
+        "c05-duplicate-population-row"
+      ]
+    },
+    {
+      "id": "raw_nondet_transcript",
+      "path": "evaluation/earned-trust/receipts/raw/nondeterministic-c.transcript.json",
+      "sha256": "600f49c1976b37f1134ff9ccd6e8eeca12ab3ce8093debb5630fe6c3a15d917a",
+      "role": "raw_evidence",
+      "used_by": [
+        "c04-truncated-population"
+      ]
+    },
+    {
+      "id": "raw_nondet_court",
+      "path": "evaluation/earned-trust/receipts/raw/nondeterministic-c.court.json",
+      "sha256": "ef2be4bedeae102777ba53f544eca47be80414f7d2282ef988b55a8be5b72824",
+      "role": "raw_evidence",
+      "used_by": [
+        "c04-truncated-population"
+      ]
+    },
+    {
+      "id": "raw_data_race_transcript",
+      "path": "evaluation/earned-trust/receipts/raw/data-race-c.transcript.json",
+      "sha256": "2f84c932e1ae49d71f66e3e055e8e75da7f9c229512c6afb60cfc222e7fbb70a",
+      "role": "raw_evidence",
+      "used_by": [
+        "c13-sarif-unjustified-suppression"
+      ]
+    },
+    {
+      "id": "raw_data_race_court",
+      "path": "evaluation/earned-trust/receipts/raw/data-race-c.court.json",
+      "sha256": "6cd5ebfa99561fcc855b2f167c0ea4a6047b06e69d6fedd1c00abcb5e6189817",
+      "role": "raw_evidence",
+      "used_by": [
+        "c13-sarif-unjustified-suppression"
+      ]
+    }
+  ],
+  "partitions": {
+    "development": [
+      "c01-positive-campaign-closure",
+      "c04-truncated-population",
+      "c07-signer-role-unauthorized",
+      "c10-time-wrong-imprint",
+      "c13-sarif-unjustified-suppression",
+      "c16-tls-matrix-collapsed-cell"
+    ],
+    "held_out": [
+      "c02-candidate-substitution",
+      "c03-completeness-deletion",
+      "c05-duplicate-population-row",
+      "c06-dsse-payload-substitution",
+      "c08-transparency-inclusion-sibling",
+      "c09-transparency-stale-checkpoint",
+      "c11-revocation-withdrawn-claim",
+      "c12-archive-missing-object",
+      "c14-cross-property-regression",
+      "c15-interop-collapsed-cell",
+      "c17-proof-closure-removal",
+      "c18-positive-archive-reconstruction"
+    ],
+    "counts": {
+      "development": 6,
+      "held_out": 12,
+      "total": 18
+    },
+    "disjoint": true,
+    "selection_rule_id": "SR1"
+  },
+  "selection_rule": {
+    "id": "SR1",
+    "text": "Sort the 18 case ids lexicographically in ascending byte order. Assign the 0-based index i to development if and only if i mod 3 equals 0. Assign every other index to held_out. With 18 cases this yields exactly 6 development and 12 held_out cases.",
+    "recomputation": "The harness recomputes the partition from the frozen case list and refuses to run if the result differs from the frozen partitions.",
+    "not_a_random_sample": true,
+    "temporal_holdout": false,
+    "note": "The rule is deterministic and frozen before execution. It protects against post-execution reassignment within this population only. It does not undo prior exposure of the artifact families during repository development.",
+    "development_positive_controls": [
+      "c01-positive-campaign-closure"
+    ],
+    "held_out_positive_controls": [
+      "c18-positive-archive-reconstruction"
+    ]
+  },
+  "cases": [
+    {
+      "id": "c01-positive-campaign-closure",
+      "partition": "development",
+      "family": "positive_campaign_closure",
+      "description": "The intact committed finite campaign must be accepted by the augmented chain.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The committed closure records the Phase 9 campaign decision label pass. The foundation has no candidate, chain, freshness, correction, authorization, or archive gate, so it accepts."
+      },
+      "base_artifacts": [
+        "manifest",
+        "opening_manifest",
+        "opening_digest",
+        "claims",
+        "policy_metadata",
+        "sarif",
+        "receipt_atomic",
+        "receipt_data_race",
+        "receipt_deferred",
+        "receipt_legal_c",
+        "receipt_legal_rust",
+        "receipt_mutable",
+        "receipt_nondet",
+        "receipt_oversized",
+        "receipt_skipped",
+        "receipt_stale",
+        "receipt_sync",
+        "receipt_uaf_c",
+        "receipt_uaf_rust"
+      ],
+      "mutation": {
+        "kind": "identity_copy",
+        "target": "the entire declared campaign evidence tree",
+        "operation": "Copy the declared base artifacts byte-for-byte into {work}, preserving repository-relative paths. Do not change any byte.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "none"
+      },
+      "verifier_commands": [
+        {
+          "id": "campaign-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "campaign",
+            "verify",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "accepted",
+            "report_fields": {
+              "closure_status": "closed",
+              "acceptance": "accepted",
+              "refusals": []
+            }
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4,
+              5
+            ],
+            "codes_any_of": [
+              "any documented campaign refusal"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-reconstruction",
+          "kind": "independent_reconstruction",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/reconstruct.py",
+            "--root",
+            "{work}",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_fields": {
+              "closure_sha256": "d26e19bdf4515d1302ad724119eb2f4ff8f4f6d7a2544d949be0a6470613ee59",
+              "case_count": 13
+            }
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "FAIL reconstruction"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "policy-metadata-controls",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_policy_metadata.py",
+            "--policy",
+            "{work}/evaluation/earned-trust/policy-metadata.json",
+            "--controls"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "stdout_contains": "PASS"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              4
+            ],
+            "stdout_contains_any_of": [
+              "FAIL"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "accept",
+      "ground_truth": {
+        "decision": "accept",
+        "rationale": "docs/ETP-CAMPAIGN.md sections 3 and 5: an intact closed campaign with every case matching its pre-registered observation, no failure, and no NOT_RUN is accepted. The independent reconstructor recomputes the same finite bookkeeping."
+      },
+      "restoration_control": {
+        "kind": "identity_copy",
+        "operation": "The case is already the intact base; the identity copy is the restoration.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c02-candidate-substitution",
+      "partition": "held_out",
+      "family": "candidate_identity_substitution",
+      "description": "A receipt that names the wrong candidate identity must be refused even when the closure receipt digest is internally consistent.",
+      "foundation": {
+        "anchor_kind": "native_receipt",
+        "anchor_artifact_id": "receipt_uaf_c",
+        "anchor_path": "evaluation/earned-trust/receipts/use-after-free-c.json",
+        "anchor_field": "adjudication.decision",
+        "expected_decision": "accept",
+        "rationale": "The committed receipt records the Phase 9 decision label pass. The foundation does not bind the candidate identity, so it accepts."
+      },
+      "base_artifacts": [
+        "manifest",
+        "opening_manifest",
+        "opening_digest",
+        "receipt_uaf_c",
+        "raw_uaf_transcript",
+        "raw_uaf_court"
+      ],
+      "mutation": {
+        "kind": "field_substitution",
+        "target": "{work}/evaluation/earned-trust/receipts/use-after-free-c.json",
+        "operation": "Set candidate_identity to the 64-character lowercase hexadecimal string of 64 zeroes. Recompute the SHA-256 of the mutated receipt bytes and set the matching receipts[] entry sha256 in {work}/evaluation/earned-trust/MANIFEST.json to that value. Change no other field.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the receipt names a candidate identity that disagrees with the candidate tree declared in the opening manifest"
+      },
+      "verifier_commands": [
+        {
+          "id": "campaign-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "campaign",
+            "verify",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "accepted"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4,
+              5
+            ],
+            "codes_any_of": [
+              "wrong_candidate",
+              "candidate_file_mismatch",
+              "inconsistent_count"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-reconstruction",
+          "kind": "independent_reconstruction",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/reconstruct.py",
+            "--root",
+            "{work}",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "candidate"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-CAMPAIGN.md section 3 rule 10: the verifier recomputes the candidate identity and does not trust the closure manifest. tests/etp_campaign.rs wrong_candidate_is_refused requires refusal."
+      },
+      "restoration_control": {
+        "kind": "field_restoration",
+        "operation": "Restore candidate_identity to 28fc0a11e07e989fe5105023da09bd2dd207c1166825a409c58f43e8dcc346df and restore the original receipt digest.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c03-completeness-deletion",
+      "partition": "held_out",
+      "family": "completeness_deletion_and_truncated_population",
+      "description": "Deleting a required receipt and its raw evidence while leaving the summary counts at the full population must be refused.",
+      "foundation": {
+        "anchor_kind": "native_receipt",
+        "anchor_artifact_id": "receipt_uaf_c",
+        "anchor_path": "evaluation/earned-trust/receipts/use-after-free-c.json",
+        "anchor_field": "adjudication.decision",
+        "expected_decision": "accept",
+        "rationale": "The committed receipt records pass. The foundation does not check whether the presented evidence still contains the record, so it accepts."
+      },
+      "base_artifacts": [
+        "manifest",
+        "opening_manifest",
+        "opening_digest",
+        "receipt_uaf_c",
+        "raw_uaf_transcript",
+        "raw_uaf_court"
+      ],
+      "mutation": {
+        "kind": "required_record_deletion",
+        "target": "{work}/evaluation/earned-trust/MANIFEST.json and the use-after-free-c receipt and raw files",
+        "operation": "Remove the receipts[] entry for use-after-free-c from MANIFEST.json. Delete {work}/evaluation/earned-trust/receipts/use-after-free-c.json, {work}/evaluation/earned-trust/receipts/raw/use-after-free-c.transcript.json, and {work}/evaluation/earned-trust/receipts/raw/use-after-free-c.court.json. Leave case_count at 13, receipt_count at 13, raw_evidence_count at 25, the decisions count at 13, and the outcomes counts at their full-population values.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the presented population has 12 receipts while the declared counts and the frozen protocol still declare 13 cases"
+      },
+      "verifier_commands": [
+        {
+          "id": "campaign-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "campaign",
+            "verify",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "accepted"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4,
+              5
+            ],
+            "codes_any_of": [
+              "missing_receipt",
+              "missing_raw_evidence",
+              "inconsistent_count",
+              "truncated_population"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-reconstruction",
+          "kind": "independent_reconstruction",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/reconstruct.py",
+            "--root",
+            "{work}",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "FAIL reconstruction"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-CAMPAIGN.md section 3 rules 2, 4, and 5: a missing declared receipt blocks closure; a missing population is not an empty population; a declared count that disagrees is refused. tests/etp_campaign.rs deleted_failed_evidence_is_refused and truncated_population_is_refused require refusal."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the deleted receipt and raw files and the original closure row.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c04-truncated-population",
+      "partition": "development",
+      "family": "completeness_deletion_and_truncated_population",
+      "description": "A population truncated to 12 cases with internally consistent counts must still be refused because the frozen protocol declares 13.",
+      "foundation": {
+        "anchor_kind": "native_receipt",
+        "anchor_artifact_id": "receipt_nondet",
+        "anchor_path": "evaluation/earned-trust/receipts/nondeterministic-c.json",
+        "anchor_field": "adjudication.decision",
+        "expected_decision": "accept",
+        "rationale": "The committed nondeterministic-c receipt records the Phase 9 decision label pass. The foundation does not recompute the declared population, so it accepts."
+      },
+      "base_artifacts": [
+        "manifest",
+        "opening_manifest",
+        "opening_digest",
+        "receipt_nondet",
+        "raw_nondet_transcript",
+        "raw_nondet_court"
+      ],
+      "mutation": {
+        "kind": "population_truncation",
+        "target": "{work}/evaluation/earned-trust/MANIFEST.json and the nondeterministic-c receipt and raw files",
+        "operation": "Remove the receipts[] entry for nondeterministic-c from MANIFEST.json. Delete {work}/evaluation/earned-trust/receipts/nondeterministic-c.json and its two raw files. Set case_count to 12, receipt_count to 12, raw_evidence_count to 23, the decisions count to 12, and decrement the unresolved outcome count from its full-population value by one, so the summary counts are internally consistent with the 12-row population.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the presented population is a consistent truncation that omits a case declared in the frozen opening manifest"
+      },
+      "verifier_commands": [
+        {
+          "id": "campaign-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "campaign",
+            "verify",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "accepted"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4,
+              5
+            ],
+            "codes_any_of": [
+              "truncated_population",
+              "missing_receipt",
+              "invalid_population"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-reconstruction",
+          "kind": "independent_reconstruction",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/reconstruct.py",
+            "--root",
+            "{work}",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "FAIL reconstruction"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-CAMPAIGN.md section 3 rules 1, 3, and 4: the population is declared before measurement; a truncated case blocks closure; counts are recomputed from the complete identified population. tests/etp_campaign.rs truncated_population_is_refused requires refusal."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the removed receipt, raw files, closure row, and full-population counts.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c05-duplicate-population-row",
+      "partition": "held_out",
+      "family": "duplicate_or_conflicting_population_row",
+      "description": "A duplicate receipt row for one declared case must be refused.",
+      "foundation": {
+        "anchor_kind": "native_receipt",
+        "anchor_artifact_id": "receipt_uaf_c",
+        "anchor_path": "evaluation/earned-trust/receipts/use-after-free-c.json",
+        "anchor_field": "adjudication.decision",
+        "expected_decision": "accept",
+        "rationale": "The committed receipt records pass. The foundation does not reconcile row identity, so it accepts."
+      },
+      "base_artifacts": [
+        "manifest",
+        "opening_manifest",
+        "opening_digest",
+        "receipt_uaf_c",
+        "raw_uaf_transcript",
+        "raw_uaf_court"
+      ],
+      "mutation": {
+        "kind": "duplicate_row",
+        "target": "{work}/evaluation/earned-trust/MANIFEST.json",
+        "operation": "Append a second receipts[] entry with the same case_id, path, and sha256 as the use-after-free-c entry. Set receipt_count to 14. Leave case_count at 13 and the decisions and outcomes counts at their full-population values.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the closure lists two receipts for one declared case"
+      },
+      "verifier_commands": [
+        {
+          "id": "campaign-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "campaign",
+            "verify",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "accepted"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4,
+              5
+            ],
+            "codes_any_of": [
+              "duplicate_receipt",
+              "inconsistent_count"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-reconstruction",
+          "kind": "independent_reconstruction",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/reconstruct.py",
+            "--root",
+            "{work}",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "FAIL reconstruction"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-CAMPAIGN.md section 3 rule 2: every declared case has exactly one receipt and exactly one terminal outcome. tests/etp_campaign.rs duplicate_receipt_rows_are_refused requires refusal."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Remove the duplicate row and restore receipt_count to 13.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c06-dsse-payload-substitution",
+      "partition": "held_out",
+      "family": "dsse_payload_substitution",
+      "description": "Changing the DSSE payload bytes while retaining the signature must fail signature verification over the modified bytes.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation does not verify the attestation signature, so it accepts."
+      },
+      "base_artifacts": [
+        "attestation_envelope",
+        "attestation_statement",
+        "trust_policy",
+        "manifest",
+        "attestation_pubkey"
+      ],
+      "mutation": {
+        "kind": "payload_substitution",
+        "target": "{work}/evaluation/earned-trust/attestations/campaign-closure.envelope.json",
+        "operation": "Canonically base64-decode the envelope payload. Change one ASCII digit in the decoded payload without changing its length, for example case_count 13 to 12. Canonically re-encode the modified payload as the envelope payload. Leave payloadType and every signature field unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the signature no longer verifies over the pre-authentication encoding of the modified payload"
+      },
+      "verifier_commands": [
+        {
+          "id": "attest-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "attest",
+            "verify",
+            "{work}/evaluation/earned-trust/attestations/campaign-closure.envelope.json",
+            "--policy",
+            "{work}/evaluation/earned-trust/trust-policy.json",
+            "--campaign",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "accepted"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "invalid_signature"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-attestation-verifier",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_attestations.py",
+            "--attestations",
+            "{work}/evaluation/earned-trust/attestations",
+            "--policy",
+            "{work}/evaluation/earned-trust/trust-policy.json",
+            "--campaign",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--controls"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              4
+            ],
+            "stdout_contains_any_of": [
+              "FAIL",
+              "invalid_signature"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-AUTHENTICATED-EVIDENCE.md sections 2 and 5: PAE is computed over the exact received payload bytes and a signature that does not verify is refused. tests/etp_auth.rs tampered_payload_is_refused requires invalid_signature."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the exact committed envelope payload and signature.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c07-signer-role-unauthorized",
+      "partition": "development",
+      "family": "signer_role_authorization_failure",
+      "description": "A valid signature by a key that is authorized only for a different role must be refused as unauthorized_role.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no signer-role or authorization gate, so it accepts."
+      },
+      "base_artifacts": [
+        "attestation_envelope",
+        "attestation_statement",
+        "trust_policy",
+        "manifest"
+      ],
+      "mutation": {
+        "kind": "role_reassignment",
+        "target": "{work}/evaluation/earned-trust/trust-policy.json",
+        "operation": "Remove the key object with keyid frf-etp-test-ephemeral-2026-11-22 from the keys array of the evidence_producer role. Append that same key object to the keys array of the correction_authority role. Leave the envelope, the statement, and every other policy field unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the envelope signature remains valid under the same key, but no key in the required evidence_producer role satisfies the campaign-closure predicate"
+      },
+      "verifier_commands": [
+        {
+          "id": "attest-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "attest",
+            "verify",
+            "{work}/evaluation/earned-trust/attestations/campaign-closure.envelope.json",
+            "--policy",
+            "{work}/evaluation/earned-trust/trust-policy.json",
+            "--campaign",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "accepted"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              4
+            ],
+            "codes_any_of": [
+              "unauthorized_role"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-attestation-verifier",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_attestations.py",
+            "--attestations",
+            "{work}/evaluation/earned-trust/attestations",
+            "--policy",
+            "{work}/evaluation/earned-trust/trust-policy.json",
+            "--campaign",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--controls"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              4
+            ],
+            "stdout_contains_any_of": [
+              "FAIL",
+              "unauthorized_role"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-AUTHENTICATED-EVIDENCE.md section 4: a signature by a key outside the required role is unauthorized_role, and authorization is decided by the resolved policy role and scope. tests/etp_auth.rs unauthorized_role_is_refused requires refusal."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the committed trust policy with the key in evidence_producer.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c08-transparency-inclusion-sibling",
+      "partition": "held_out",
+      "family": "transparency_bad_inclusion_or_cross_log",
+      "description": "A transparency proof whose audit-path siblings are reordered must fail inclusion against the signed root.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation does not check transparency inclusion, so it accepts."
+      },
+      "base_artifacts": [
+        "transparency_proof",
+        "transparency_checkpoint_3",
+        "transparency_policy",
+        "transparency_log_key",
+        "transparency_entry",
+        "witness_state"
+      ],
+      "mutation": {
+        "kind": "proof_sibling_reorder",
+        "target": "{work}/evaluation/earned-trust/transparency/proof.json",
+        "operation": "Swap the two entries of the audit_path array. Leave leaf_hash, leaf_index, entry_base64, entry_sha256, root_hash, checkpoint_sha256, tree_size, and the consistency object unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the RFC 6962 audit path no longer reaches the signed root, while the entry bytes and the checkpoint remain unchanged"
+      },
+      "verifier_commands": [
+        {
+          "id": "transparency-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "transparency",
+            "verify",
+            "--proof",
+            "{work}/evaluation/earned-trust/transparency/proof.json",
+            "--checkpoint",
+            "{work}/evaluation/earned-trust/transparency/checkpoint-size-3.txt",
+            "--policy",
+            "{work}/evaluation/earned-trust/transparency/policy.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "inclusion_invalid",
+              "root_mismatch"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-transparency-verifier",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_transparency.py",
+            "--proof",
+            "{work}/evaluation/earned-trust/transparency/proof.json",
+            "--checkpoint",
+            "{work}/evaluation/earned-trust/transparency/checkpoint-size-3.txt",
+            "--policy",
+            "{work}/evaluation/earned-trust/transparency/policy.json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "inclusion_invalid",
+              "root_mismatch"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "witness-state-context",
+          "kind": "rust_cli",
+          "decisive": false,
+          "argv": [
+            "{bin}",
+            "etp",
+            "witnesses",
+            "verify",
+            "{work}/evaluation/earned-trust/transparency/witness-state.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "expected_outcome": "not_run",
+          "note": "The committed witness state is not_observed and require_external_witnesses is true. The command is expected to return exit 6. It is context only and is never counted as a pass or as a deciding refusal."
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-TRANSPARENCY.md section 5: inclusion requires the RFC 6962 audit path to reach the signed root. tests/etp_transparency.rs wrong_sibling_order_invalidates_inclusion requires inclusion_invalid."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the committed audit_path order.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c09-transparency-stale-checkpoint",
+      "partition": "held_out",
+      "family": "stale_transparency_or_checkpoint_freshness",
+      "description": "A checkpoint older than the declared known horizon must be refused as a rollback.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no freshness or anti-rollback gate, so it accepts."
+      },
+      "base_artifacts": [
+        "transparency_proof",
+        "transparency_checkpoint_3",
+        "transparency_checkpoint_1",
+        "transparency_policy"
+      ],
+      "mutation": {
+        "kind": "known_horizon_advance",
+        "target": "{work}/evaluation/earned-trust/transparency/policy.json",
+        "operation": "Set anti_rollback.known_horizons[0].tree_size to 4, its root_hash to 64 lowercase hexadecimal zeroes, and its checkpoint_sha256 to 64 lowercase hexadecimal zeroes. Leave the log identity, keys, and every other policy field unchanged. The committed proof and checkpoint remain size 3.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the committed size-3 checkpoint is older than the mutated size-4 known horizon"
+      },
+      "verifier_commands": [
+        {
+          "id": "checkpoint-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "checkpoint",
+            "verify",
+            "{work}/evaluation/earned-trust/transparency/checkpoint-size-3.txt",
+            "--policy",
+            "{work}/evaluation/earned-trust/transparency/policy.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "rollback",
+              "conflicting_checkpoint"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "transparency-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "transparency",
+            "verify",
+            "--proof",
+            "{work}/evaluation/earned-trust/transparency/proof.json",
+            "--checkpoint",
+            "{work}/evaluation/earned-trust/transparency/checkpoint-size-3.txt",
+            "--policy",
+            "{work}/evaluation/earned-trust/transparency/policy.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "rollback",
+              "checkpoint_persistence_mismatch",
+              "conflicting_checkpoint"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-transparency-verifier",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_transparency.py",
+            "--proof",
+            "{work}/evaluation/earned-trust/transparency/proof.json",
+            "--checkpoint",
+            "{work}/evaluation/earned-trust/transparency/checkpoint-size-3.txt",
+            "--policy",
+            "{work}/evaluation/earned-trust/transparency/policy.json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "rollback",
+              "checkpoint_persistence_mismatch",
+              "conflicting_checkpoint"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-TRANSPARENCY.md section 6: the verifier refuses a checkpoint whose size is below the known horizon as rollback. tests/etp_transparency.rs rolled_back_checkpoint_is_refused requires rollback."
+      },
+      "restoration_control": {
+        "kind": "field_restoration",
+        "operation": "Restore the committed known horizon at tree_size 1 with its committed root and checkpoint digest.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c10-time-wrong-imprint",
+      "partition": "development",
+      "family": "trusted_time_wrong_imprint",
+      "description": "An RFC 3161 token verified against an imprint that differs from the token's message imprint must be refused.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no trusted-time or imprint gate, so it accepts."
+      },
+      "base_artifacts": [
+        "time_token",
+        "time_request",
+        "time_imprint",
+        "tsa_cert",
+        "tsa_ca",
+        "time_report",
+        "stamp_report",
+        "manifest"
+      ],
+      "mutation": {
+        "kind": "verifier_input_substitution",
+        "target": "the --imprint argument to the time verifier",
+        "operation": "Run the time verifier with --imprint 0000000000000000000000000000000000000000000000000000000000000000 instead of the committed imprint d26e19bdf4515d1302ad724119eb2f4ff8f4f6d7a2544d949be0a6470613ee59. Do not change the token, the certificate, or any other artifact.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the declared imprint differs from the message imprint inside the token"
+      },
+      "verifier_commands": [
+        {
+          "id": "time-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "time",
+            "verify",
+            "{work}/evaluation/earned-trust/time/token.tsr",
+            "--imprint",
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "--tsa-cert",
+            "{work}/evaluation/earned-trust/time/tsa-ca.pem",
+            "--now-unix",
+            "1795342702",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "imprint_mismatch"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-time-verifier",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_time.py",
+            "--token",
+            "{work}/evaluation/earned-trust/time/token.tsr",
+            "--imprint",
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "--tsa-cert",
+            "{work}/evaluation/earned-trust/time/tsa-ca.pem",
+            "--now",
+            "1795342702"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "imprint_mismatch"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-TRUSTED-TIME.md sections 3 and 8: the token binds a declared message imprint, and a wrong imprint is refused as imprint_mismatch. tests/etp_time.rs wrong_imprint_is_refused requires refusal."
+      },
+      "restoration_control": {
+        "kind": "argument_restoration",
+        "operation": "Run the same command with the committed imprint d26e19bdf4515d1302ad724119eb2f4ff8f4f6d7a2544d949be0a6470613ee59.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c11-revocation-withdrawn-claim",
+      "partition": "held_out",
+      "family": "revocation_or_correction",
+      "description": "A claim whose supporting evidence is withdrawn by the committed revocation must not authorize a present decision, even though its historical replay remains valid.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no correction or revocation gate, so it accepts the present claim."
+      },
+      "base_artifacts": [
+        "revocation_registry",
+        "revocation_support",
+        "revocation_history",
+        "revocation_report",
+        "revocation_plan",
+        "revocation_correction_pub",
+        "trust_policy",
+        "manifest"
+      ],
+      "mutation": {
+        "kind": "claim_selection",
+        "target": "the target claim selected from the verified revocation report",
+        "operation": "Run the revocation verifier on the committed registry, support model, and historical verdict, and select claim.campaign-closure as the present decision target. Do not change any artifact byte.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the selected claim is the one whose evidence.closure is withdrawn by rev-0001"
+      },
+      "verifier_commands": [
+        {
+          "id": "revocation-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "revocation",
+            "verify",
+            "{work}/evaluation/earned-trust/revocations/registry.json",
+            "--policy",
+            "{work}/evaluation/earned-trust/trust-policy.json",
+            "--support",
+            "{work}/evaluation/earned-trust/revocations/support-model.json",
+            "--historical",
+            "{work}/evaluation/earned-trust/revocations/historical-verdict.json",
+            "--now-unix",
+            "1795330364",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified",
+            "claim_field": "support.claims[claim_id=claim.campaign-closure].present_admissible",
+            "claim_value": true
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "claim_field": "support.claims[claim_id=claim.campaign-closure].present_admissible",
+            "claim_value": false,
+            "claim_signal": "present_admissible_false"
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-revocation-verifier",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_revocation.py",
+            "--registry",
+            "{work}/evaluation/earned-trust/revocations/registry.json",
+            "--policy",
+            "{work}/evaluation/earned-trust/trust-policy.json",
+            "--support",
+            "{work}/evaluation/earned-trust/revocations/support-model.json",
+            "--historical",
+            "{work}/evaluation/earned-trust/revocations/historical-verdict.json",
+            "--now",
+            "1795330364"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          },
+          "note": "The independent verifier corroborates registry integrity, chain, signature, authorization, freshness, and historical replay. The claim-level present-admissibility decision is read from the Rust JSON report, which lists every support claim separately."
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-REVOCATION.md section 3: applying rev-0001 leaves claim.campaign-closure historically supported but presently unsupported, with present_admissible false. tests/etp_revocation.rs revoked_but_historically_valid_claim_is_inadmissible_now requires this separation."
+      },
+      "restoration_control": {
+        "kind": "claim_selection_restoration",
+        "operation": "Select claim.campaign-closure-with-mirror, whose alternative support evidence.mirror survives, and require present_admissible true.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c12-archive-missing-object",
+      "partition": "held_out",
+      "family": "missing_archive_object",
+      "description": "Removing a required archived object must cause archive verification to refuse, so offline reconstruction is not certified from an incomplete archive.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no archive gate, so it accepts."
+      },
+      "base_artifacts": [
+        "archive_manifest",
+        "archive_envelope"
+      ],
+      "mutation": {
+        "kind": "required_object_deletion",
+        "target": "{work}/archive/evaluation/earned-trust/attestations/campaign-closure.envelope.json",
+        "operation": "Copy the archive root to {work}/archive. Delete the archived campaign-closure.envelope.json object. Leave manifest.json and every other object unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "a required attestation object listed in the archive manifest is absent"
+      },
+      "verifier_commands": [
+        {
+          "id": "archive-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "archive",
+            "verify",
+            "{work}/archive",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified",
+            "report_fields": {
+              "problems": [],
+              "missing_required_categories": [],
+              "reconstruction": {
+                "complete": true
+              }
+            }
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "missing_object",
+              "missing_required_category",
+              "incomplete_reconstruction"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-ARCHIVE.md sections 3 and 5: a missing declared object is an integrity failure, and an incomplete archive cannot support offline reconstruction. tests/etp_archive.rs missing_archive_object_is_an_integrity_failure requires refusal."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the deleted archived envelope object.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c13-sarif-unjustified-suppression",
+      "partition": "development",
+      "family": "sarif_removed_result_or_unjustified_suppression",
+      "description": "Adding a suppression to a SARIF result without a matching independent review record must be refused, and the suppressed result must remain a finding.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation does not inspect SARIF suppression or review state, so it accepts."
+      },
+      "base_artifacts": [
+        "sarif",
+        "manifest",
+        "suppression_review",
+        "attestation_statement",
+        "receipt_data_race",
+        "raw_data_race_transcript",
+        "raw_data_race_court"
+      ],
+      "mutation": {
+        "kind": "unjustified_suppression",
+        "target": "{work}/evaluation/earned-trust/campaign.sarif",
+        "operation": "In the result whose properties.case_id is data-race-c and properties.occurrence_id is data-race-c::data_race::0, set suppressions to one external suppression carrying a non-empty justification, scope, owner, expiry, invalidation, and suppression_id sup-0001. Increment properties.suppressed_result_count to 1. Leave the result in results and leave result_count at 18. Do not add a matching review entry to suppression-review.json.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the SARIF document claims a suppression that the receipt does not record and the review manifest does not justify"
+      },
+      "verifier_commands": [
+        {
+          "id": "sarif-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "sarif",
+            "verify",
+            "{work}/evaluation/earned-trust/campaign.sarif",
+            "--json"
+          ],
+          "working_directory": "{work}/evaluation/earned-trust",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "valid",
+            "report_fields": {
+              "refusals": []
+            }
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "unauthorized_suppression"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-sarif-verifier",
+          "kind": "independent_verifier",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_sarif.py",
+            "--campaign",
+            "{work}/evaluation/earned-trust/MANIFEST.json",
+            "--sarf",
+            "{work}/evaluation/earned-trust/campaign.sarif",
+            "--review",
+            "{work}/evaluation/earned-trust/suppression-review.json",
+            "--statement",
+            "{work}/evaluation/earned-trust/attestations/campaign-closure.statement.json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "Valid"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ],
+            "codes_any_of": [
+              "missing_suppression_review",
+              "unauthorized_suppression"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-SARIF.md sections 5 and 5.1: a suppression requires every declared field and a matching independent review entry; a missing review is refused and the result remains a finding. tests/sarif.rs suppression_without_fields_is_refused and suppression_does_not_remove_a_finding require refusal."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Remove the added suppression and restore suppressed_result_count to 0.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c14-cross-property-regression",
+      "partition": "held_out",
+      "family": "cross_property_regression",
+      "description": "A report that labels a repair fixed while its relocation failure path omits the cleanse must not be accepted as an improvement.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no cross-property or erasure gate, so it accepts."
+      },
+      "base_artifacts": [
+        "cross_property_faulty",
+        "cross_property_fixed"
+      ],
+      "mutation": {
+        "kind": "cross_property_report_substitution",
+        "target": "{work}/evaluation/earned-trust/cross-property/report-fixed.json",
+        "operation": "Set outcome to observed_erasure_violation. Replace metadata.trace_lines[2] with the exact third trace line from report-faulty.json, which frees without a preceding CLEANSE. Leave metadata.mode as fixed and leave every other field unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the report claims a fixed repair but records the faulty erasure trace on the relocation failure path"
+      },
+      "verifier_commands": [
+        {
+          "id": "cross-property-check",
+          "kind": "harness_check",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "-c",
+            "import json,sys; r=json.load(open(sys.argv[1])); assert r['schema']=='frf-etp.cross-property.v1'; assert r['metadata']['mode']=='fixed'; assert r['outcome']=='no_violation_within_bounded_trace'; lines=r['metadata']['trace_lines']; assert all(('CLEANSE' in line) for line in lines if 'FREE' in line)",
+            "{work}/evaluation/earned-trust/cross-property/report-fixed.json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "AssertionError"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-CROSS-PROPERTY.md sections 1, 2, and 3: secret erasure requires CLEANSE before FREE on every path; a relocation-failure path without the cleanse is an observed erasure violation and is not an improvement. The fixed report's documented outcome is no_violation_within_bounded_trace."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the committed report-fixed.json outcome and trace lines.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c15-interop-collapsed-cell",
+      "partition": "held_out",
+      "family": "interoperability_matrix_collapsed_cell",
+      "description": "A matrix that omits one required client/server cell must not support an interoperability result.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no interoperability matrix gate, so it accepts."
+      },
+      "base_artifacts": [
+        "interop_report"
+      ],
+      "mutation": {
+        "kind": "matrix_cell_deletion",
+        "target": "{work}/evaluation/earned-trust/interop/report.json",
+        "operation": "Remove the cell whose case is max_4096, client_variant is reference, and server_variant is candidate. Leave summary.total_cells at 24 and leave every other cell unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the four-way matrix no longer covers every required client/server combination"
+      },
+      "verifier_commands": [
+        {
+          "id": "interop-matrix-check",
+          "kind": "harness_check",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "-c",
+            "import json,sys; sys.path.insert(0,'{repo}/evaluation/earned-trust'); import interop_matrix as m; r=json.load(open(sys.argv[1])); m.check_population(r['fixture']['cases']); m.check_matrix_cells(r['cells']); s=m.classify_summary(r['fixture']['cases'],r['cells']); assert r['summary']['total_cases']==len(r['fixture']['cases']); assert r['summary']['total_cells']==len(r['cells']); assert r['summary']['common_failures']==s['common_failures']; assert r['summary']['candidate_specific_failures']==s['candidate_specific_failures']",
+            "{work}/evaluation/earned-trust/interop/report.json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "missing_cell",
+              "Refusal"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-INTEROPERABILITY.md sections 2, 5, and 6: every pre-registered case runs all four cells, the harness refuses a missing or duplicate case, and the collapsed-matrix control requires a missing_cell refusal."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the removed cell.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c16-tls-matrix-collapsed-cell",
+      "partition": "development",
+      "family": "interoperability_matrix_collapsed_cell",
+      "description": "A TLS matrix that omits one required client/server cell must not support a TLS interoperability result.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no TLS matrix gate, so it accepts."
+      },
+      "base_artifacts": [
+        "tls_matrix_report"
+      ],
+      "mutation": {
+        "kind": "matrix_cell_deletion",
+        "target": "{work}/evaluation/earned-trust/tls-matrix/report.json",
+        "operation": "Remove the cell whose case is tls13_echo, client_variant is candidate, and server_variant is candidate. Leave summary.total_cells at 8 and leave every other cell unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the TLS four-way matrix no longer covers every required client/server combination for tls13_echo"
+      },
+      "verifier_commands": [
+        {
+          "id": "tls-matrix-check",
+          "kind": "harness_check",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "-c",
+            "import json,sys; sys.path.insert(0,'{repo}/evaluation/earned-trust'); import tls_matrix as m; r=json.load(open(sys.argv[1])); m.check_population(r['fixture']['cases']); m.check_matrix_cells(r['cells']); s=m.classify_summary(r['fixture']['cases'],r['cells']); assert r['summary']['total_cases']==len(r['fixture']['cases']); assert r['summary']['total_cells']==len(r['cells']); assert r['summary']['common_failures']==s['common_failures']; assert r['summary']['candidate_specific_failures']==s['candidate_specific_failures']",
+            "{work}/evaluation/earned-trust/tls-matrix/report.json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "missing_cell",
+              "Refusal"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-TLS-MATRIX.md sections Matrix Cells and Case Population: each of the two cases runs all four cells and the harness validates that all cells are present."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Restore the removed TLS cell.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c17-proof-closure-removal",
+      "partition": "held_out",
+      "family": "formal_acceptance_claim_removal",
+      "description": "Removing a required theorem from the declared closure and admission of a valid proof manifest must be refused, while the intact manifest is accepted by the same command.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation has no proof-closure gate, so it accepts."
+      },
+      "base_artifacts": [
+        "proof_manifest",
+        "proof_file",
+        "acceptance_controls"
+      ],
+      "mutation": {
+        "kind": "required_theorem_removal",
+        "target": "{work}/tests/proof/coq/manifest-acceptance.json",
+        "operation": "Remove stale_transparency_blocks from closure.theorems and from admission.theorems. Leave the theorem name acceptance_core_sound, the closure.local_dependencies entry that names stale_transparency_blocks, and the proof file unchanged.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "the declared closure is smaller than the dependency closure reachable from the manifest's main theorem"
+      },
+      "verifier_commands": [
+        {
+          "id": "proof-verify-manifest",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "proof",
+            "verify",
+            "{work}/tests/proof/coq/manifest-acceptance.json",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_outcome": "accepted_within_scope"
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              4
+            ],
+            "outcomes_any_of": [
+              "rejected_unrelated",
+              "rejected_assumption",
+              "rejected_missing_transition"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "executable-acceptance-model",
+          "kind": "executable_model_oracle",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "{repo}/evaluation/earned-trust/verify_acceptance_model.py",
+            "--out",
+            "{work}/acceptance-controls.receipt.json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_fields": {
+              "totals.failed": 0
+            }
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "report_fields": {
+              "totals.failed": "greater than 0"
+            }
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          },
+          "note": "This oracle verifies the executable finite acceptance model and its control receipt. It does not verify the Coq manifest and does not substitute for the manifest closure check."
+        },
+        {
+          "id": "proof-verify-live-optional",
+          "kind": "rust_cli",
+          "decisive": false,
+          "argv": [
+            "{bin}",
+            "proof",
+            "verify",
+            "{work}/tests/proof/coq/manifest-acceptance.json",
+            "--live",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "expected_outcome": "not_run_or_documented_manifest_outcome",
+          "note": "Optional live corroboration only. If coqc is unavailable it returns a typed NOT_RUN with exit 6. It is never counted as a pass, and it does not change the manifest-only decision."
+        }
+      ],
+      "expected_augmented_decision": "refuse",
+      "ground_truth": {
+        "decision": "refuse",
+        "rationale": "docs/ETP-FORMAL-ACCEPTANCE.md section 2: the manifest declares a real dependency closure and the gate checks that closure.theorems equals the closure reachable from theorem.name. Removing a required theorem must be rejected, as the earlier padded-closure draft was."
+      },
+      "restoration_control": {
+        "kind": "full_restoration",
+        "operation": "Run the same manifest-only command on the intact manifest-acceptance.json and require accepted_within_scope.",
+        "expected": "accept"
+      }
+    },
+    {
+      "id": "c18-positive-archive-reconstruction",
+      "partition": "held_out",
+      "family": "positive_archive_or_independent_reconstruction",
+      "description": "The intact committed archive must verify and reconstruct within its declared knowledge horizon.",
+      "foundation": {
+        "anchor_kind": "campaign_decision",
+        "anchor_artifact_id": "manifest",
+        "anchor_path": "evaluation/earned-trust/MANIFEST.json",
+        "anchor_field": "decisions[0].label",
+        "expected_decision": "accept",
+        "rationale": "The campaign decision label is pass. The foundation accepts; the augmented chain must also accept the intact archive."
+      },
+      "base_artifacts": [
+        "archive_manifest",
+        "archive_reconstruct",
+        "archive_reconstruction_md",
+        "archive_envelope"
+      ],
+      "mutation": {
+        "kind": "identity_copy",
+        "target": "the intact archive tree",
+        "operation": "Copy the archive root byte-for-byte into {work}/archive. Do not change any byte.",
+        "deterministic": true,
+        "does_not_modify_repository": true,
+        "expected_effect": "none"
+      },
+      "verifier_commands": [
+        {
+          "id": "archive-verify",
+          "kind": "rust_cli",
+          "decisive": true,
+          "argv": [
+            "{bin}",
+            "etp",
+            "archive",
+            "verify",
+            "{work}/archive",
+            "--json"
+          ],
+          "working_directory": "{work}",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_status": "verified",
+            "report_fields": {
+              "problems": [],
+              "missing_required_categories": [],
+              "reconstruction": {
+                "complete": true
+              }
+            }
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              3,
+              4
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        },
+        {
+          "id": "independent-archive-reconstruction",
+          "kind": "independent_reconstruction",
+          "decisive": true,
+          "argv": [
+            "python3",
+            "evaluation/earned-trust/reconstruct.py",
+            "--root",
+            ".",
+            "--json"
+          ],
+          "working_directory": "{work}/archive",
+          "accepting_outcome": {
+            "exit_code": 0,
+            "report_fields": {
+              "closure_sha256": "d26e19bdf4515d1302ad724119eb2f4ff8f4f6d7a2544d949be0a6470613ee59",
+              "case_count": 13
+            }
+          },
+          "refusal_outcomes": {
+            "exit_codes": [
+              1
+            ],
+            "stderr_contains_any_of": [
+              "FAIL reconstruction"
+            ]
+          },
+          "not_run_outcomes": {
+            "exit_codes": [
+              6
+            ]
+          }
+        }
+      ],
+      "expected_augmented_decision": "accept",
+      "ground_truth": {
+        "decision": "accept",
+        "rationale": "docs/ETP-ARCHIVE.md sections 3 and 4: an archive whose declared objects are present, regular, digest-matched, within the knowledge horizon, and whose reconstruction inputs are complete verifies and reconstructs offline."
+      },
+      "restoration_control": {
+        "kind": "identity_copy",
+        "operation": "The case is already the intact archive; the identity copy is the restoration.",
+        "expected": "accept"
+      }
+    }
+  ],
+  "metrics": [
+    {
+      "id": "M1",
+      "name": "decision_accuracy_per_case",
+      "unit": "boolean",
+      "definition": "For each case and each decision surface, observed decision equals the declared ground truth.",
+      "aggregation": "per case; no composite score"
+    },
+    {
+      "id": "M2",
+      "name": "wrongful_acceptance",
+      "unit": "case count",
+      "definition": "The decision is accept and the ground truth is refuse.",
+      "aggregation": "per surface, per partition, and total; exact counts"
+    },
+    {
+      "id": "M3",
+      "name": "wrongful_refusal",
+      "unit": "case count",
+      "definition": "The decision is refuse and the ground truth is accept.",
+      "aggregation": "per surface, per partition, and total; exact counts"
+    },
+    {
+      "id": "M4",
+      "name": "unresolved",
+      "unit": "case count",
+      "definition": "The decision is unresolved because a declared instrument is unavailable or returns a typed NOT_RUN. An unresolved case is never a pass.",
+      "aggregation": "per surface, per partition, and total; exact counts"
+    },
+    {
+      "id": "M5",
+      "name": "control_effectiveness_by_family",
+      "unit": "case counts per family",
+      "definition": "For each family, the number of negative cases refused with a declared documented code, the number refused for an undeclared reason, the number accepted, the number unresolved, and the number whose restoration control passed.",
+      "aggregation": "per family; no composite index"
+    },
+    {
+      "id": "M6",
+      "name": "verification_wall_clock_cost",
+      "unit": "milliseconds",
+      "definition": "Parent-measured monotonic elapsed time around each declared command, including its child processes, measured in-container. Reported per command and summed per case. Build or container startup cost is included only if the declared command performs it and is reported separately.",
+      "aggregation": "per case, per command, per partition, and total; resource accounting only"
+    },
+    {
+      "id": "M7",
+      "name": "verification_bytes_read",
+      "unit": "bytes",
+      "definition": "The sum of the exact sizes of the declared input artifacts plus the verifier process-tree rchar delta from /proc, when available. The fallback is the sum of the exact declared input sizes with the fallback label recorded. It is not a measure of information content.",
+      "aggregation": "per case, per command, per partition, and total"
+    },
+    {
+      "id": "M8",
+      "name": "independent_reconstruction_cost",
+      "unit": "milliseconds and bytes",
+      "definition": "Wall-clock and bytes read for the independent reconstruction and independent verifier commands, measured as in M6 and M7 and reported separately from the Rust CLI cost.",
+      "aggregation": "per case and total"
+    },
+    {
+      "id": "M9",
+      "name": "restoration_control_pass",
+      "unit": "boolean",
+      "definition": "For a negative case, the same command on the declared restoration returns the documented accepting outcome, or, for the revocation case, the documented historically-valid and present-withheld outcome. For a positive case, the identity copy is the restoration.",
+      "aggregation": "per case and per family"
+    },
+    {
+      "id": "M10",
+      "name": "instrument_error",
+      "unit": "case count",
+      "definition": "A declared command returns exit 2 or 7, or a harness check fails for a reason other than the declared refusal signal. The case is refuse at the surface, but the outcome is recorded as an instrument error and is never counted as a correct refusal.",
+      "aggregation": "per case and total"
+    },
+    {
+      "id": "M11",
+      "name": "foundation_augmented_agreement",
+      "unit": "boolean per case",
+      "definition": "Whether the foundation and augmented surfaces make the same decision on the case. Agreement on a negative case is a no-discrimination negative finding.",
+      "aggregation": "per case and total"
+    },
+    {
+      "id": "M12",
+      "name": "correct_refusal",
+      "unit": "case count",
+      "definition": "A negative case whose augmented decision is refuse and whose observed refusal code is one of the case's declared documented codes.",
+      "aggregation": "per family and total"
+    },
+    {
+      "id": "M13",
+      "name": "wrong_code_refusal",
+      "unit": "case count",
+      "definition": "A negative case whose augmented decision is refuse but whose observed refusal code is not one of the case's declared documented codes, or whose restoration control fails.",
+      "aggregation": "per case and total; reported as a negative finding"
+    }
+  ],
+  "acceptance_criteria": {
+    "held_out": {
+      "wrongful_acceptance_max": 0,
+      "unresolved_max": 0,
+      "every_declared_positive_control_accepted": true,
+      "positive_controls": [
+        "c01-positive-campaign-closure",
+        "c18-positive-archive-reconstruction"
+      ],
+      "held_out_cases": [
+        "c02-candidate-substitution",
+        "c03-completeness-deletion",
+        "c05-duplicate-population-row",
+        "c06-dsse-payload-substitution",
+        "c08-transparency-inclusion-sibling",
+        "c09-transparency-stale-checkpoint",
+        "c11-revocation-withdrawn-claim",
+        "c12-archive-missing-object",
+        "c14-cross-property-regression",
+        "c15-interop-collapsed-cell",
+        "c17-proof-closure-removal",
+        "c18-positive-archive-reconstruction"
+      ],
+      "reported_even_if_criteria_fail": "Every failure, every wrongful acceptance or refusal, every wrong-code refusal, every restoration failure, every instrument error, every independent-verifier disagreement, and every unresolved case is reported even if the criteria fail."
+    },
+    "additional_control_effectiveness_expectation": {
+      "every_negative_control_refused_with_a_declared_code": true,
+      "note": "This is stricter than the three held-out criteria. It is reported separately. A refusal with an undeclared code is a negative finding, not a correct refusal."
+    }
+  },
+  "stopping_rules": [
+    "Stop and declare the run invalid if any bound base artifact is missing or its sha256 differs from the frozen binding.",
+    "Stop and declare the run invalid if the case population, partition, selection rule result, or case id differs from the frozen table.",
+    "Stop and declare the run invalid if the harness writes to {repo} or if the repository is not restored to its pre-run bytes.",
+    "Stop and declare the run invalid if an expected decision is changed after execution without a versioned amendment.",
+    "Do not stop on a refusal, a failure, a wrong-code refusal, an independent-verifier disagreement, or an unresolved case. Record it, retain it, and continue through the fixed 18-case population.",
+    "If a declared instrument is unavailable, record the case as unresolved. Do not substitute a different instrument and do not mark the case as a pass.",
+    "If a base artifact is unavailable at execution time, record the case as blocked and unresolved. Do not drop it from the population or the denominator.",
+    "If a declared positive control is refused or a declared negative control is accepted, record the failure and continue. The held-out criteria are evaluated after the run."
+  ],
+  "exclusion_rules": [
+    "No case may be excluded after its result is seen.",
+    "No case may be moved between development and held_out after the protocol is frozen.",
+    "No case may be removed from the 18-case population. A blocked case remains in the denominator and is reported.",
+    "An exclusion may be recorded only for a declared missing base artifact or unavailable instrument, with the exact reason, and the case is classified blocked or unresolved rather than passed.",
+    "A case that cannot be bound to a real artifact must be reported as a blocking defect of the pre-registration; it may not be replaced silently."
+  ],
+  "amendment_policy": {
+    "freeze": "The protocol is frozen by OPENING.sha256, which contains the sha256 of protocol.json only. The sidecar detects accidental or silent change; it is not authentication.",
+    "expectation_changes": "Changing an expectation, case population, mutation, metric, threshold, partition, or decision rule after execution requires a versioned amendment recorded separately. The original expectation is retained, and the amendment states the evidence and reason. An amendment must not retroactively strengthen a 1.0.0 claim.",
+    "exploratory_harness_fixes": "Exploratory harness fixes are permitted only if they do not change the declared case population, mutations, or expected decisions. Each fix is an instrument change, recorded separately, with the instrument digest before and after. The run is repeated under the new instrument, and both runs are reported.",
+    "fix_that_changes_an_expectation": "A fix that changes an expected decision is not an exploratory harness fix. It is a protocol amendment and is recorded as such.",
+    "no_retroactive_relabeling": "A refusal may not be relabeled as a pass, a NOT_RUN may not be relabeled as a pass, and a wrong-code refusal may not be relabeled as a correct refusal after the fact."
+  },
+  "negative_finding_policy": {
+    "definition": "A negative finding is any of: a negative case where the foundation and augmented agree, so the augmented chain adds no discrimination; an augmented acceptance of a negative case; an augmented refusal of a positive control; a refusal with an undeclared code; a restoration-control failure; an independent-verifier disagreement on a declared decision; an instrument error; an unresolved case; or a case that could not be bound or executed as declared.",
+    "reporting": "Every negative finding is reported with the case id, the command, the exit status, the observed code or report field, the expected code, and the exact evidence pointer. Contradictory observations are retained and classified; they are not deleted or averaged away.",
+    "effect": "A negative finding does not change the ground truth. It is reported even if the held-out criteria fail. It may falsify a hypothesis, and it may not be converted into support for a stronger claim."
+  },
+  "analysis_artifacts": {
+    "receipts_directory": "evaluation/earned-trust-comparative/receipts/",
+    "per_case_artifacts": [
+      "<case>.foundation.json",
+      "<case>.augmented.json",
+      "<case>.restoration.json",
+      "<case>.costs.json"
+    ],
+    "analysis_report": "evaluation/earned-trust-comparative/analysis.json",
+    "human_report": "evaluation/earned-trust-comparative/ANALYSIS.md",
+    "encoding": "Receipts are canonical JSON with sorted keys and no insignificant whitespace for digesting. The human report is derived and is not authoritative.",
+    "hand_editing": "Prohibited. Receipts are generated by the harness and recomputed by the analysis step. A hand-edited receipt is a finding and invalidates the affected claim.",
+    "status": "All paths listed here are pending until the execution subphase creates them."
+  },
+  "non_claims": [
+    "No claim of external independence, review, adjudication, certification, or universal effectiveness.",
+    "No claim that the foundation surface is an execution of the 1.0.0 binary. It is a modeled baseline over committed decision labels.",
+    "No claim that the augmented chain is complete, sound in general, or effective outside the 18 declared controls.",
+    "No claim of population-level accuracy, detector sensitivity, defect recall, memory safety, functional correctness, or deployment security.",
+    "No claim of public transparency, external trusted time, external witnessing, global non-equivocation, or a public revocation feed.",
+    "No claim that a passing gate is a certification or an authorization to deploy.",
+    "No claim that the ground truth was independently adjudicated or reviewed.",
+    "No claim that documentation and code agree beyond the declared semantics; a mismatch is a finding.",
+    "No claim about artifact families, versions, or paths not bound in protocol.json.",
+    "No claim that the wall-clock or bytes-read measurements are comparable across hosts, images, or runs; they are per-run resource accounting only."
+  ],
+  "claim_ceiling": "This protocol specifies a finite comparative control evaluation of two decision surfaces over 18 declared cases. It establishes only what the executed receipts show for those cases, within the declared mutations, the declared local instruments, and the declared ground truth. It does not establish that the foundation binary behaves as modeled, that the augmented chain is complete or sound, that any verifier is independent in an administrative sense, that a refusal is correct beyond the declared document semantics, that a positive control generalizes, or that any result is a certification, a review, or an authorization to deploy. A refusal is not a pass. A NOT_RUN is not a pass. A digest is not authentication. A gate result is not an authorization."
+}

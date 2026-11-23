@@ -1,0 +1,153 @@
+{
+  "schema": "frf-etp.comparative-claims.v1",
+  "spec": "frf-etp-comparative-v1",
+  "protocol_version": "phase17.1-v1",
+  "frozen_protocol": "protocol.json",
+  "freeze_sidecar": "OPENING.sha256",
+  "status": "pending",
+  "pending_reason": "The execution subphase has not run. No observed field in this file is a result. Every evidence pointer is a path that the execution and analysis subphases will create.",
+  "pointer_expansion": "The token <case> in an evidence pointer expands to each of the 18 frozen case ids in protocol.json.partitions.development and protocol.json.partitions.held_out. The directory evaluation/earned-trust-comparative/receipts/ will contain one file per expansion. A pointer is not a result; every pointer is pending.",
+  "claim_ceiling": "These claims are preregistered expectations for a finite 18-case comparative control evaluation. They are not results and must not be cited as results. After execution, a claim is supported only if the named evidence pointer exists, its canonical bytes are verified, and its observed fields equal the claim's expectation. The evaluation does not establish external independence, review, certification, universal effectiveness, population-level accuracy, public transparency, external trusted time, global revocation, or deployment security. A refusal is not a pass. A NOT_RUN is not a pass. A digest is not authentication.",
+  "claims": [
+    {
+      "id": "Q1",
+      "kind": "preregistered_population",
+      "statement": "The evaluation population is exactly 18 cases, with 6 in development and 12 in held-out, no case in both, and every case bound to a real repository path and a SHA-256 of each base artifact.",
+      "expectation": "The harness recomputes 18 cases, a 6/12 partition, a disjoint union, and a complete artifact binding before running any command.",
+      "observed": null,
+      "evidence_pointers": [
+        "protocol.json",
+        "POPULATION.md",
+        "evaluation/earned-trust-comparative/receipts/c01-positive-campaign-closure.foundation.json",
+        "evaluation/earned-trust-comparative/analysis.json"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q2",
+      "kind": "preregistered_surface",
+      "statement": "The foundation surface is a modeled baseline over committed decision labels, with no candidate binding, chain-integrity, freshness, correction, authorization, or archive gate. It is not an execution of the 1.0.0 binary.",
+      "expectation": "Every foundation receipt records the committed anchor, the label pass, and a decision of accept, without any ETP gate.",
+      "observed": null,
+      "evidence_pointers": [
+        "protocol.json",
+        "POPULATION.md",
+        "evaluation/earned-trust-comparative/receipts/<case>.foundation.json",
+        "evaluation/earned-trust-comparative/analysis.json"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q3",
+      "kind": "preregistered_discrimination",
+      "statement": "The augmented chain is preregistered to refuse each of the 16 negative controls and accept each of the 2 positive controls, while the foundation is preregistered to accept all 18.",
+      "expectation": "The analysis reports the per-case augmented and foundation decisions and the exact agreement or disagreement for all 18 cases.",
+      "observed": null,
+      "evidence_pointers": [
+        "evaluation/earned-trust-comparative/receipts/<case>.augmented.json",
+        "evaluation/earned-trust-comparative/receipts/<case>.foundation.json",
+        "evaluation/earned-trust-comparative/analysis.json"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q4",
+      "kind": "preregistered_acceptance_criteria",
+      "statement": "The held-out acceptance criteria are zero wrongful acceptance, zero unresolved, every declared positive control accepted, and every declared negative control refused with a declared documented code.",
+      "expectation": "The analysis reports the held-out criteria exactly, including every failure and every negative finding, even if the criteria fail.",
+      "observed": null,
+      "evidence_pointers": [
+        "evaluation/earned-trust-comparative/analysis.json",
+        "evaluation/earned-trust-comparative/ANALYSIS.md"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q5",
+      "kind": "preregistered_specificity",
+      "statement": "Each negative case's refusal is attributable to its declared mutation or withdrawal, and the restoration control returns the documented accepting outcome, or, for the revocation case, the documented historically-valid and present-withheld outcome.",
+      "expectation": "The restoration receipts and the observed refusal codes are reported for every negative case; an undeclared code or a failed restoration is a negative finding, not a correct refusal.",
+      "observed": null,
+      "evidence_pointers": [
+        "evaluation/earned-trust-comparative/receipts/<case>.restoration.json",
+        "evaluation/earned-trust-comparative/analysis.json"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q6",
+      "kind": "preregistered_corroboration",
+      "statement": "Where an independent verifier is declared, it is preregistered to agree with the Rust CLI on the accept or refuse decision for the declared case.",
+      "expectation": "The analysis reports every agreement and every disagreement; a disagreement is a negative finding and is not averaged away.",
+      "observed": null,
+      "evidence_pointers": [
+        "evaluation/earned-trust-comparative/receipts/<case>.augmented.json",
+        "evaluation/earned-trust-comparative/analysis.json"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q7",
+      "kind": "preregistered_accounting",
+      "statement": "No refusal is counted as a pass, no NOT_RUN is counted as a pass, no instrument error is counted as a correct refusal, and no wrong-code refusal is counted as a correct refusal.",
+      "expectation": "The analysis reports the typed exit mapping, the instrument-error count, the wrong-code-refusal count, and the unresolved count separately.",
+      "observed": null,
+      "evidence_pointers": [
+        "evaluation/earned-trust-comparative/analysis.json"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q8",
+      "kind": "preregistered_cost",
+      "statement": "The evaluation measures verification wall-clock cost and bytes read per case, and independent reconstruction wall-clock cost and bytes, as declared in the protocol.",
+      "expectation": "The cost receipts record the exact command, the parent-measured monotonic elapsed time, the bytes-read method, and the build or startup cost separately when a command performs a rebuild.",
+      "observed": null,
+      "evidence_pointers": [
+        "evaluation/earned-trust-comparative/receipts/<case>.costs.json",
+        "evaluation/earned-trust-comparative/analysis.json"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q9",
+      "kind": "preregistered_reporting",
+      "statement": "Every failure, every negative finding, every wrong-code refusal, every restoration failure, every instrument error, every independent-verifier disagreement, and every unresolved case is reported even if the held-out criteria fail.",
+      "expectation": "The analysis and human report contain a complete negative-finding table with exact evidence pointers; contradictory observations are retained and classified.",
+      "observed": null,
+      "evidence_pointers": [
+        "evaluation/earned-trust-comparative/analysis.json",
+        "evaluation/earned-trust-comparative/ANALYSIS.md"
+      ],
+      "pending": true
+    },
+    {
+      "id": "Q10",
+      "kind": "preregistered_non_generalization",
+      "statement": "The evaluation makes no universal-effectiveness, completeness, soundness, population-level, certification, or deployment-authorization claim from a passing set of controls.",
+      "expectation": "A passing result is reported as support within the 18 declared controls only, with the limitations retained.",
+      "observed": null,
+      "evidence_pointers": [
+        "LIMITATIONS.md",
+        "evaluation/earned-trust-comparative/ANALYSIS.md"
+      ],
+      "pending": true
+    }
+  ],
+  "non_claims": [
+    "No claim of external independence, review, adjudication, certification, or universal effectiveness.",
+    "No claim that the foundation surface is an execution of the 1.0.0 binary. It is a modeled baseline over committed decision labels.",
+    "No claim that the augmented chain is complete or sound in general, or that it detects every attack outside the 18 declared controls.",
+    "No claim of population-level accuracy, detector sensitivity, defect recall, memory safety, functional correctness, or deployment security.",
+    "No claim of public transparency, external trusted time, external witnessing, global non-equivocation, or a public revocation feed.",
+    "No claim that a passing gate is a certification, a review, an audit, or an authorization to deploy.",
+    "No claim that the ground truth was independently adjudicated or reviewed.",
+    "No claim that documentation and code agree beyond the declared semantics; a mismatch is a finding.",
+    "No claim about artifact families, versions, or paths not bound in protocol.json.",
+    "No claim that wall-clock or bytes-read values are comparable across hosts, images, or runs.",
+    "No claim that a digest is authentication, a signature is truth, a log entry is completeness, or a timestamp is experimental authenticity.",
+    "No claim that reproducibility is correctness, reference parity is security, or a historical verdict is present authorization.",
+    "No claim that an FRF receipt, an FRF-Fuzz finding, a Gemel GCE object, or a GID is emitted by this evaluation.",
+    "No claim that the evaluation modifies, strengthens, or retroactively reinterprets the frozen 1.0.0 baseline."
+  ]
+}
