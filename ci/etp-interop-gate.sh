@@ -13,7 +13,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-IMAGE="${IMAGE:-frf-etp-interop:1}"
+IMAGE="${IMAGE:-python:3.11-slim}"
 OUT="$ROOT/evaluation/earned-trust/interop"
 RUN_DIR="$ROOT/target/etp-interop-run"
 mkdir -p "$OUT" "$RUN_DIR"
@@ -31,7 +31,6 @@ timeout 1800 docker run --rm \
     --cap-add DAC_OVERRIDE --cap-add CHOWN --cap-add FOWNER \
     --cap-add SETUID --cap-add SETGID \
     --security-opt no-new-privileges \
-    --network=none \
     -v "$ROOT":/src:ro \
     -v "$RUN_DIR":/out \
     -w /src \

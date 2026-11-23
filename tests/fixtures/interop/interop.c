@@ -42,20 +42,32 @@
 #define MAX_PAYLOAD 4096
 #define CANDIDATE_TRUNCATE 2048
 
-/* Read a file into a malloc'd NUL-terminated buffer. Returns NULL on failure. */
+/* Read a file into a malloc'd NUL-terminated buffer. Returns NULL on failure.
+   /proc files report st_size == 0, so read in chunks until EOF instead of
+   trusting the reported size. */
 static char *read_file(const char *path, size_t *out_len) {
     int fd = open(path, O_RDONLY);
     if (fd < 0) return NULL;
-    struct stat st;
-    if (fstat(fd, &st) < 0) { close(fd); return NULL; }
-    size_t len = (size_t)st.st_size;
-    char *buf = malloc(len + 1);
+    size_t cap = 4096;
+    size_t len = 0;
+    char *buf = malloc(cap);
     if (!buf) { close(fd); return NULL; }
-    ssize_t n = read(fd, buf, len);
+    for (;;) {
+        if (len + 1 >= cap) {
+            size_t new_cap = cap * 2;
+            char *grown = realloc(buf, new_cap);
+            if (!grown) { free(buf); close(fd); return NULL; }
+            buf = grown;
+            cap = new_cap;
+        }
+        ssize_t n = read(fd, buf + len, cap - len - 1);
+        if (n < 0) { free(buf); close(fd); return NULL; }
+        if (n == 0) break;
+        len += (size_t)n;
+    }
     close(fd);
-    if (n < 0) { free(buf); return NULL; }
-    buf[n] = '\0';
-    if (out_len) *out_len = (size_t)n;
+    buf[len] = '\0';
+    if (out_len) *out_len = len;
     return buf;
 }
 

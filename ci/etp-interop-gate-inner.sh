@@ -8,6 +8,11 @@ export CARGO_PROFILE_RELEASE_DEBUG=0
 export SOURCE_DATE_EPOCH=0
 export RUSTUP_AUTO_INSTALL=0
 
+if ! command -v gcc >/dev/null 2>&1; then
+    apt-get update >/dev/null 2>&1
+    apt-get install -y --no-install-recommends gcc binutils libc6-dev >/dev/null 2>&1
+fi
+
 echo "gcc: $(gcc --version | head -1)"
 echo "ld:  $(ld --version | head -1)"
 

@@ -53,6 +53,12 @@ For each process, the harness records:
 - **loaded DSO paths/digests**: parsed from `/proc/self/maps`, each file-backed DSO hashed.
 - **loader-closure digest**: SHA-256 of the sorted DSO digest list.
 
+The fixture reads `/proc/self/maps` in chunks because procfs reports `st_size = 0`;
+reading only the reported size would silently produce an empty map. In the
+committed run, each process records the executable, `ld-linux-x86-64.so.2`, and
+`libc.so.6`; the reference client/server closure digest is
+`ccee6c1e57de562d2b38adb19a4ef0aacee018ab862ac8872d0d868b7f94b8f7`.
+
 ## 5. Population reconciliation
 
 The case population is:
