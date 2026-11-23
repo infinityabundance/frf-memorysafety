@@ -1,10 +1,11 @@
 #!/bin/sh
-# Phase 17.2 comparative evaluation gate (development partition only).
+# Phase 17 comparative evaluation gate.
 #
 # Builds the frf-memorysafety CLI in a hardened rust:1.85.0-slim container and
-# runs evaluation/earned-trust-comparative/run_comparative.py for
-# --partition development in a hardened python:3.11-slim container. Host
-# builds and host verifier execution are forbidden.
+# runs evaluation/earned-trust-comparative/run_comparative.py for the selected
+# partition in a hardened python:3.11-slim container. Host builds and host
+# verifier execution are forbidden. Set FRF_COMPARATIVE_PARTITION to
+# development (the default), held-out, or all.
 #
 # Fresh runs go to target/comparative-run/. Committed evidence under
 # evaluation/earned-trust-comparative/ is replaced only when the harness exits
@@ -18,6 +19,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 RUST_IMAGE="${RUST_IMAGE:-rust:1.85.0-slim}"
 PYTHON_IMAGE="${PYTHON_IMAGE:-python:3.11-slim}"
+PARTITION="${FRF_COMPARATIVE_PARTITION:-development}"
 RUN_DIR="$ROOT/target/comparative-run"
 OUT="$ROOT/evaluation/earned-trust-comparative"
 BUILD_LOG="$ROOT/target/comparative-build.log"
@@ -48,14 +50,14 @@ then
 else
     status=$?
     tail -n 80 "$BUILD_LOG" || true
-    echo "FAIL etp-comparative-dev (build exit $status)"
+    echo "FAIL etp-comparative-$PARTITION (build exit $status)"
     exit "$status"
 fi
 
 if [ ! -f "$ROOT/target/debug/frf-memorysafety" ]; then
     echo "MISSING binary after build"
     tail -n 40 "$BUILD_LOG" || true
-    echo "FAIL etp-comparative-dev"
+    echo "FAIL etp-comparative-$PARTITION"
     exit 1
 fi
 echo "binary sha256: $(sha256sum "$ROOT/target/debug/frf-memorysafety" | cut -d ' ' -f 1)"
@@ -70,6 +72,7 @@ if timeout 1800 docker run --rm \
     --cap-drop ALL --cap-add DAC_OVERRIDE --cap-add CHOWN --cap-add FOWNER \
     --security-opt no-new-privileges \
     -v "$ROOT":/src:ro -v "$RUN_DIR":/out \
+    -e FRF_COMPARATIVE_PARTITION="$PARTITION" \
     -w /src \
     "$PYTHON_IMAGE" sh -c '
 set -eu
@@ -81,7 +84,7 @@ echo "openssl: $(openssl version)"
 echo "python: $(python3 -V 2>&1)"
 set +e
 python3 /src/evaluation/earned-trust-comparative/run_comparative.py \
-    --partition development --out /out
+    --partition "${FRF_COMPARATIVE_PARTITION:-development}" --out /out
 status=$?
 set -e
 # The container runs as root. Make its outputs removable and replaceable by
@@ -100,13 +103,13 @@ fi
 cat "$HARNESS_LOG"
 
 if [ "$harness_status" -ne 0 ]; then
-    echo "FAIL etp-comparative-dev (harness exit $harness_status)"
+    echo "FAIL etp-comparative-$PARTITION (harness exit $harness_status)"
     exit "$harness_status"
 fi
 
-if [ ! -f "$RUN_DIR/analysis-development.json" ]; then
-    echo "MISSING analysis-development.json from the harness"
-    echo "FAIL etp-comparative-dev"
+if [ ! -f "$RUN_DIR/analysis-$PARTITION.json" ]; then
+    echo "MISSING analysis-$PARTITION.json from the harness"
+    echo "FAIL etp-comparative-$PARTITION"
     exit 1
 fi
 
@@ -115,12 +118,12 @@ fi
 for receipt in "$RUN_DIR"/receipts/*.json; do
     if [ ! -f "$receipt" ]; then
         echo "MISSING case receipt in harness output"
-        echo "FAIL etp-comparative-dev"
+        echo "FAIL etp-comparative-$PARTITION"
         exit 1
     fi
     cp -f "$receipt" "$OUT/receipts/"
 done
-cp -f "$RUN_DIR/analysis-development.json" "$OUT/analysis-development.json"
+cp -f "$RUN_DIR/analysis-$PARTITION.json" "$OUT/analysis-$PARTITION.json"
 
 echo "receipts: $(ls -1 "$OUT"/receipts/*.json | wc -l) committed"
-echo "PASS etp-comparative-dev"
+echo "PASS etp-comparative-$PARTITION"
