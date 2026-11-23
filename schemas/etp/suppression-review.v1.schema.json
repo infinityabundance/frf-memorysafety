@@ -1,0 +1,180 @@
+{
+  "$defs": {
+    "count": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "count"
+      ],
+      "type": "object"
+    },
+    "digest": {
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sha256",
+        "name"
+      ],
+      "type": "object"
+    },
+    "date-time": {
+      "additionalProperties": false,
+      "properties": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "required": [
+        "type"
+      ],
+      "default": "2026-01-01T00:00:00Z"
+    },
+    "email": {
+      "additionalProperties": false,
+      "properties": {
+        "type": "string",
+        "format": "email"
+      },
+      "required": [
+        "type"
+      ],
+      "default": "test@example.com"
+    },
+    "integer": {
+      "additionalProperties": false,
+      "properties": {
+        "type": "integer"
+      },
+      "required": [
+        "type"
+      ],
+      "default": 0
+    },
+    "string": {
+      "additionalProperties": false,
+      "properties": {
+        "type": "string",
+        "maxLength": 8192
+      },
+      "required": [
+        "type"
+      ],
+      "default": ""
+    }
+  },
+  "$id": "https://frf.dev/etp/schemas/etp-suppression-review.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance": {
+      "enum": [
+        "accepted",
+        "withheld"
+      ]
+    },
+    "campaign_id": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "suppression_id": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "result_id": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "justification": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "scope": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "owner": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "reviewer_identity": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "reviewer_role": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "independent_of_producer": {
+      "type": "boolean"
+    },
+    "expiry": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "invalidation": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "evidence_digest": {
+      "type": "digest"
+    },
+    "manifest_digest": {
+      "type": "digest"
+    },
+    "claim_ceiling": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "frf-etp.suppression-review.v1"
+    },
+    "spec": {
+      "const": "frf-etp-v1"
+    }
+  },
+  "required": [
+    "suppression_id",
+    "result_id",
+    "justification",
+    "scope",
+    "owner",
+    "reviewer_identity",
+    "reviewer_role",
+    "independent_of_producer",
+    "expiry",
+    "invalidation",
+    "evidence_digest",
+    "manifest_digest",
+    "claim_ceiling",
+    "schema",
+    "spec"
+  ],
+  "title": "ETP suppression review v1",
+  "type": "object"
+}
