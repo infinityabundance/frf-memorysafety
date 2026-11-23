@@ -1,16 +1,14 @@
 # External reproduction instructions
 
-**Release:** FRF-MemorySafety 1.2.0 candidate in the working tree (not
-published), historical evidence tag `etp-evidence-v1`.
+**Release:** FRF-MemorySafety 1.2.0 (published on crates.io).
 **Frozen 1.0.0 baseline:** `02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab`.
 
 > The 1.2.0 candidate is bound to `Cargo.toml` version `1.2.0`. The campaign
 > closure is `ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a`,
 > the candidate identity is
 > `79e72160a6a1c169093d5e7abb39f426a9f189d07aef7ddc472b3856911bcbb7`, and the
-> evidence lives under `evaluation/earned-trust-1.2.0/`. No crates.io publish
-> was made. The 1.1.0 evidence under `evaluation/earned-trust/` remains
-> historical and unchanged.
+> evidence lives under `evaluation/earned-trust-1.2.0/`. The 1.1.0 evidence
+> under `evaluation/earned-trust/` remains historical and unchanged.
 **Scope:** reproduce the declared evidence and gate results from a clean export.
 This document does not certify the software and does not claim that reproduction
 is correctness.
@@ -39,7 +37,7 @@ is correctness.
 git clone https://github.com/infinityabundance/frf-memorysafety.git
 cd frf-memorysafety
 # Historical 1.1.0 evidence tag
-git checkout etp-evidence-v1
+git checkout v1.2.0
 git status --porcelain   # must be empty
 ```
 

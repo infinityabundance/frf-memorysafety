@@ -5,8 +5,8 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**1.2.0 migration candidate (crate `1.2.0`, not published).** The working tree
-now carries a candidate-bound 1.2.0 evidence tree under
+**Release 1.2.0 (published to crates.io).** The release carries a
+candidate-bound 1.2.0 evidence tree under
 `evaluation/earned-trust-1.2.0/`: candidate
 `79e72160a6a1c169093d5e7abb39f426a9f189d07aef7ddc472b3856911bcbb7`, instrument
 `832be8cdb11fe65a9e602832569942e7e81f15a8755188752e11ee96762bdfd0`, opening

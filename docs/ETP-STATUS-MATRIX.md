@@ -1,21 +1,18 @@
 # ETP implementation status matrix
 
-**Release target:** FRF-MemorySafety 1.2.0 candidate-bound evidence (crate
-version `1.2.0` in the working tree; not published).
-**Evidence release:** `etp-evidence-v1` (1.1.0 historical) plus the
-`evaluation/earned-trust-1.2.0/` migration candidate.
+**Release target:** FRF-MemorySafety 1.2.0 (published on crates.io).
 **Frozen 1.0.0 baseline:** `02c6f2d9d99323a3bd79f97eb70b46f3bfc38aab`.
 
-> **1.2.0 is not published and not an independent re-freeze.** The 1.2.0
-> campaign is bound to candidate
+> **1.2.0 is published and candidate-bound, but not externally reviewed.** The
+> 1.2.0 campaign is bound to candidate
 > `79e72160a6a1c169093d5e7abb39f426a9f189d07aef7ddc472b3856911bcbb7`, instrument
 > `832be8cdb11fe65a9e602832569942e7e81f15a8755188752e11ee96762bdfd0`, opening
 > `180e50318dc045c9ea81168c7e1e958e1d9e108b9a99c662f06081967e8b7f8a` and
 > closure `ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a`.
 > The gates and tests named in `evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md`
-> ran against it in hardened containers. No commit, tag, push, or publish was
-> made, and no external review or external trust exists. The 1.1.0 evidence
-> under `evaluation/earned-trust/` remains historical and unchanged.
+> ran against it in hardened containers. There is no external review, external
+> trust, or administrative independence. The 1.1.0 evidence under
+> `evaluation/earned-trust/` remains historical and unchanged.
 
 **Purpose:** state, per capability, what exists, what actually ran, and what is
 not established. A capability is not complete because it is documented.

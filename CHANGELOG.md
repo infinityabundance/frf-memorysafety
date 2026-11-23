@@ -9,11 +9,11 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
-## [Unreleased] - 1.2.0 candidate-bound evidence migration
+## [1.2.0] - 2026-11-23
 
-This entry records a migration candidate. No commit, tag, push, or package
-publish was performed. The 1.1.0 evidence under `evaluation/earned-trust/` is
-unchanged; all new artifacts are under `evaluation/earned-trust-1.2.0/`.
+Published to crates.io after a real candidate-bound re-freeze. The 1.1.0
+evidence under `evaluation/earned-trust/` is unchanged; all new artifacts are
+under `evaluation/earned-trust-1.2.0/`.
 
 ### Changed
 
@@ -51,11 +51,10 @@ unchanged; all new artifacts are under `evaluation/earned-trust-1.2.0/`.
 ## [Unreleased] - evidence release `etp-evidence-v1`
 
 Additive evidence, formal-model, control and evaluation work over the unchanged
-1.1.0 crate source. No 1.2.0 package was published: bumping `Cargo.toml` changes
-the candidate-bound campaign identity, and the campaign and attestation gates
-correctly refused (`candidate file Cargo.toml changed`, `CampaignNotClosed`).
-A new candidate-bound campaign and re-freeze are required before a new version
-can be published.
+crate source. The first 1.2.0 attempt was refused because bumping `Cargo.toml`
+changes the candidate-bound campaign identity (`candidate file Cargo.toml
+changed`, `CampaignNotClosed`). A new candidate-bound campaign was then
+produced, verified and published as 1.2.0.
 
 ### Added
 

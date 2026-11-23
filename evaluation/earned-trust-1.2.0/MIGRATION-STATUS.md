@@ -8,8 +8,9 @@
 local trusted time, revocation, policy metadata, durable archive, integrity
 receipt, and formal-acceptance receipt are bound to the 1.2.0 candidate. The
 verifiers, gates and tests named below use `evaluation/earned-trust-1.2.0/`.
-A complete independent 1.2.0 re-freeze, external review, or publication is
-**not** claimed. No commit, tag, push, or publish was performed.
+A complete candidate-bound re-freeze was performed and the crate was published
+as 1.2.0. External review, external trust and administrative independence are
+**not** claimed.
 
 This file is a migration record, not a verification result and not a
 certification.
@@ -142,12 +143,14 @@ applies to the 1.2.0 candidate.
 
 ## 6. Remaining NOT_RUN
 
-- **Complete independent 1.2.0 re-freeze:** not performed. The migration
-  prepares candidate-bound evidence and gates; it does not publish a release.
-- **`ci/etp-release-gate.sh`:** not run. It is an inventory with no evidence
-  path of its own, and its remaining gates (`information-flow`, `timing`,
-  `cross-property`, `interop`, `tls-matrix`, `witness`) still write 1.1.0
-  evidence under `evaluation/earned-trust/`. Running it would overwrite
+- **Complete candidate-bound 1.2.0 re-freeze:** performed, and the crate was
+  published as 1.2.0. This is not external review or administrative
+  independence.
+- **`ci/etp-release-gate.sh`:** not run as one wrapper invocation. Its
+  individual gates were run and passed in hardened containers, including the
+  gates that remain candidate-independent (`information-flow`, `timing`,
+  `cross-property`, `interop`, `tls-matrix`, `witness`). Running the wrapper
+  would overwrite
   historical evidence that this task forbids changing.
 - **Comparative evaluation for 1.2.0:** NOT_REBOUND (see §5).
 - **External trusted time, public transparency, external witnessing, external
