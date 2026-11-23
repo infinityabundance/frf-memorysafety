@@ -35,7 +35,7 @@ fn temp_campaign(name: &str) -> PathBuf {
     if destination.exists() {
         fs::remove_dir_all(&destination).expect("remove old test campaign");
     }
-    copy_directory(&repo().join("evaluation/earned-trust"), &destination);
+    copy_directory(&repo().join("evaluation/earned-trust-1.2.0"), &destination);
     destination
 }
 

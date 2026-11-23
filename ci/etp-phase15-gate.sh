@@ -10,7 +10,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 IMAGE="${IMAGE:-python:3.11-slim}"
 RUN="$ROOT/target/etp-phase15-run-$$"
-HORIZON=1795342701
+HORIZON=1795417198
 rm -rf "$RUN" 2>/dev/null || true
 mkdir -p "$RUN"
 
@@ -29,11 +29,11 @@ timeout 1800 docker run --rm \
     -w /src \
     "$IMAGE" sh -c '
         set -eu
-        python3 evaluation/earned-trust/make_archive.py \
+        python3 evaluation/earned-trust-1.2.0/make_archive.py \
             --root /src \
             --out-dir /out/archive \
-            --time-dir /src/evaluation/earned-trust/time \
-            --revocation-dir /src/evaluation/earned-trust/revocations \
+            --time-dir /src/evaluation/earned-trust-1.2.0/time \
+            --revocation-dir /src/evaluation/earned-trust-1.2.0/revocations \
             --horizon-unix '"$HORIZON"'
 
         python3 - <<"PY"
@@ -52,7 +52,7 @@ if not isinstance(objects, list) or not objects:
     sys.exit("archive manifest has no objects")
 for entry in objects:
     relative = entry.get("path", "")
-    if relative.startswith("evaluation/earned-trust/archive/"):
+    if relative.startswith("evaluation/earned-trust-1.2.0/archive/"):
         sys.exit(f"archive recursion detected: {relative}")
     path = root / relative
     if not path.is_file():
@@ -65,35 +65,45 @@ PY
 
         cd /out/archive
 
-        python3 evaluation/earned-trust/verify_policy_metadata.py \
-            --policy evaluation/earned-trust/policy-metadata.json --controls
+        python3 evaluation/earned-trust-1.2.0/reconstruct.py
 
-        python3 evaluation/earned-trust/verify_transparency.py \
-            --dir evaluation/earned-trust/transparency --controls
+        python3 evaluation/earned-trust-1.2.0/verify_policy_metadata.py \
+            --policy evaluation/earned-trust-1.2.0/policy-metadata.json \
+            --now 1795417304 --controls
 
-        closure="$(sha256sum evaluation/earned-trust/MANIFEST.json | cut -d" " -f1)"
-        python3 evaluation/earned-trust/verify_time.py \
-            --token evaluation/earned-trust/time/token.tsr \
+        python3 evaluation/earned-trust-1.2.0/verify_transparency.py \
+            --dir evaluation/earned-trust-1.2.0/transparency --controls
+
+        closure="$(sha256sum evaluation/earned-trust-1.2.0/MANIFEST.json | cut -d" " -f1)"
+        python3 evaluation/earned-trust-1.2.0/verify_time.py \
+            --token evaluation/earned-trust-1.2.0/time/token.tsr \
             --imprint "$closure" \
-            --tsa-cert evaluation/earned-trust/time/tsa-ca.pem \
+            --tsa-cert evaluation/earned-trust-1.2.0/time/tsa-ca.pem \
             --policy-oid 1.3.6.1.4.1.99999.1 --controls
 
-        python3 evaluation/earned-trust/verify_revocation.py \
-            --registry evaluation/earned-trust/revocations/registry.json \
-            --policy evaluation/earned-trust/trust-policy.json \
-            --support evaluation/earned-trust/revocations/support-model.json \
-            --historical evaluation/earned-trust/revocations/historical-verdict.json --controls
+        python3 evaluation/earned-trust-1.2.0/verify_revocation.py \
+            --registry evaluation/earned-trust-1.2.0/revocations/registry.json \
+            --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+            --support evaluation/earned-trust-1.2.0/revocations/support-model.json \
+            --historical evaluation/earned-trust-1.2.0/revocations/historical-verdict.json --controls
 
         mkdir -p target
-        python3 evaluation/earned-trust/verify_attestations.py \
-            --attestations evaluation/earned-trust/attestations \
-            --policy evaluation/earned-trust/trust-policy.json \
-            --campaign evaluation/earned-trust/MANIFEST.json --controls
+        python3 evaluation/earned-trust-1.2.0/verify_attestations.py \
+            --attestations evaluation/earned-trust-1.2.0/attestations \
+            --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+            --campaign evaluation/earned-trust-1.2.0/MANIFEST.json --controls
 
-        python3 evaluation/earned-trust/verify_sarif.py \
-            --campaign evaluation/earned-trust/MANIFEST.json \
-            --sarf evaluation/earned-trust/campaign.sarif \
-            --review evaluation/earned-trust/suppression-review.json \
+        python3 evaluation/earned-trust-1.2.0/verify_sarif.py \
+            --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
+            --sarf evaluation/earned-trust-1.2.0/campaign.sarif \
+            --review evaluation/earned-trust-1.2.0/suppression-review.json \
+            --statement evaluation/earned-trust-1.2.0/attestations/campaign-closure.statement.json
+
+        python3 evaluation/earned-trust-1.2.0/verify_sarif.py \
+            --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
+            --sarf evaluation/earned-trust-1.2.0/campaign.sarif \
+            --review evaluation/earned-trust-1.2.0/suppression-review.json \
+            --statement evaluation/earned-trust-1.2.0/attestations/campaign-closure.statement.json \
             --self-test
     '
 

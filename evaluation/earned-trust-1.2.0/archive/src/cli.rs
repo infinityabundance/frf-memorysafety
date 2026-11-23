@@ -1,0 +1,3909 @@
+//! Manual command-line interface.
+//!
+//! The parser is deliberately hand-written and does not invoke a shell. It
+//! reads only files under the paths supplied by the caller. The explicit
+//! `bridge capture` command is the sole exception: it executes the pinned
+//! provider executables named on its command line to record live evidence.
+
+#![allow(
+    clippy::manual_let_else,
+    clippy::single_match_else,
+    clippy::too_many_lines
+)]
+
+use std::collections::BTreeSet;
+use std::fs;
+use std::io::Write as _;
+use std::path::{Path, PathBuf};
+
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+
+use crate::bridge::{
+    capture_bundle, verify_bundle_bytes, BridgeStatus, CaptureRequest, BRIDGE_BUNDLE_SCHEMA,
+};
+use crate::court::{
+    verify_transcript_json, CourtError, CourtErrorCategory, COURT_REPORT_SCHEMA,
+    NATIVE_EVENT_TRANSCRIPT_SCHEMA,
+};
+#[cfg(unix)]
+use crate::detector::live::{
+    calibrate_live, not_run_json, parse_detector_kind, LiveCalibration, LiveStatus,
+};
+use crate::detector::{
+    evaluate_calibration_json, CalibrationOutcome, CalibrationReport, DetectorErrorCategory,
+    RefusalSeverity,
+};
+use crate::identity::{parse_strict, require_canonical, MsId, MAX_BYTES};
+use crate::mir::{
+    MirAdapter, MirError, MirErrorCategory, MirScanOutcome, MIR_NOT_RUN_SCHEMA,
+    MIR_OBSERVATION_SCHEMA,
+};
+use crate::path_effect::{
+    analyze, analyze_inventory, PathEffectsInput, PathErrorCategory, PATH_EFFECT_INPUT_SCHEMA,
+};
+use crate::profile::{
+    canonical_bundle_bytes, evaluate_profile_json, local_buffer_bundle, local_buffer_records,
+    ProfileEvaluation, ProfileRefusalKind, UNIVERSAL_SOUNDNESS,
+};
+use crate::proof::{
+    verify_manifest_bytes, verify_manifest_bytes_live, CheckerContext, GateStatus,
+    ProofErrorCategory, ProofOutcome, ProofReport, PROOF_MANIFEST_SCHEMA, PROOF_REPORT_SCHEMA,
+};
+use crate::source::{
+    scan_source_default, SourceError, SourceErrorCategory, SourceInventory, SOURCE_INVENTORY_SCHEMA,
+};
+use crate::support::{evaluate, explain, RuleSystem, SupportError, SupportPolicy};
+
+/// Command completed and its declared checks passed.
+pub const EXIT_OK: i32 = 0;
+/// Invalid input or usage.
+pub const EXIT_USAGE: i32 = 2;
+/// Evidence integrity failure.
+pub const EXIT_INTEGRITY: i32 = 3;
+/// Promotion refused or claim blocked.
+pub const EXIT_REFUSED: i32 = 4;
+/// Detector failure or missed control.
+pub const EXIT_DETECTOR: i32 = 5;
+/// External tool or integration unavailable (`NOT_RUN`).
+pub const EXIT_NOT_RUN: i32 = 6;
+/// Internal harness error.
+pub const EXIT_HARNESS: i32 = 7;
+
+const USAGE: &str = "\
+frf-memorysafety <command>
+
+Commands:
+  version [--json]
+  capabilities [--json]
+  profile validate FILE
+  profile enumerate --out DIR
+  support evaluate FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
+  support explain FILE  [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]
+  source scan PATH [--json]
+  path analyze FILE [--json]
+  mir scan FILE [--json] [--toolchain NAME]
+  court verify FILE [--json]
+  proof verify MANIFEST [--live] [--json]
+  bridge verify FILE [--json] [--candidate SHA256]
+  bridge capture OUT --candidate P --finding P --receipt P --gemel P
+      --gemel-evidence P --gemel-repo DIR --frf-root DIR --frf-run ID
+      --frf-bin P --frf-fuzz-bin P --gemel-bin P --frf-map P
+      --frf-fuzz-map P --gemel-map P --probe P [--json]
+  bridge status [--json]
+  detector calibrate FILE [--json]
+  detector calibrate --live --detector KIND [--json]
+  etp validate MANIFEST [--json]
+  etp campaign verify FILE [--json]
+  etp campaign run --protocol FILE --out DIR [--json]
+  etp sarif verify FILE [--json]
+  etp sarif export CAMPAIGN [--out FILE]
+  etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]
+  etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json]
+  etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json]
+  etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json]
+  etp revocation record SUPPORT --out FILE [--json]
+  etp revocation model --out FILE [--json]
+  etp archive verify ARCHIVE [--json]
+  etp transparency verify --proof FILE --checkpoint FILE --policy FILE [--json] [--horizon-out FILE]
+  etp checkpoint verify FILE [--policy FILE] [--json]
+  etp witnesses verify FILE [--json]
+  evidence verify --root DIR
+  report --case FILE --format json|markdown
+
+Live external commands (NOT_RUN, exit 6, unless the instrument is installed
+and FRF_DETECTOR_LIVE=1):
+  detector calibrate --live --detector miri|asan|lsan|tsan|loom|kani|crypto
+  court run ...
+  frf promote ...
+  gemel publish ...
+
+Exit statuses follow SPEC.md §14. A zero status never establishes universal
+soundness; universal soundness is always WITHHELD_NOT_RUN in this build.
+";
+
+/// Run the CLI and return its process exit status.
+///
+/// # Panics
+///
+/// This function does not panic on malformed input. I/O failures that occur
+/// while writing to standard output are reported by the Rust runtime, as with
+/// any console program.
+pub fn run<I, S>(args: I) -> i32
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    let args: Vec<String> = args.into_iter().map(Into::into).collect();
+    match dispatch(&args) {
+        Ok(code) => code,
+        Err(error) => {
+            eprintln!("frf-memorysafety: {error}");
+            EXIT_HARNESS
+        }
+    }
+}
+
+fn dispatch(args: &[String]) -> Result<i32, String> {
+    let Some(command) = args.first().map(String::as_str) else {
+        print!("{USAGE}");
+        return Ok(EXIT_USAGE);
+    };
+    match command {
+        "version" => command_version(&args[1..]),
+        "capabilities" => command_capabilities(&args[1..]),
+        "profile" => command_profile(&args[1..]),
+        "support" => command_support(&args[1..]),
+        "source" => Ok(command_source(&args[1..])),
+        "path" => Ok(command_path(&args[1..])),
+        "mir" => Ok(command_mir(&args[1..])),
+        "evidence" => command_evidence(&args[1..]),
+        "report" => command_report(&args[1..]),
+        "court" => command_court(&args[1..]),
+        "proof" => Ok(command_proof(&args[1..])),
+        "bridge" => Ok(command_bridge(&args[1..])),
+        "detector" => command_detector(&args[1..]),
+        "etp" => Ok(command_etp(&args[1..])),
+        "frf" => command_not_run("frf promote", args),
+        "gemel" => command_not_run("gemel publish", args),
+        "help" | "--help" | "-h" => {
+            print!("{USAGE}");
+            Ok(EXIT_OK)
+        }
+        other => {
+            eprintln!("unknown command: {other}");
+            print!("{USAGE}");
+            Ok(EXIT_USAGE)
+        }
+    }
+}
+
+fn only_flags(rest: &[String], allowed: &[&str]) -> bool {
+    rest.iter().all(|arg| allowed.contains(&arg.as_str()))
+}
+
+fn command_version(rest: &[String]) -> Result<i32, String> {
+    if !only_flags(rest, &["--json"]) {
+        eprintln!("usage: version [--json]");
+        return Ok(EXIT_USAGE);
+    }
+    let json = rest.iter().any(|arg| arg == "--json");
+    if json {
+        emit_json(&serde_json::json!({
+            "name": env!("CARGO_PKG_NAME"),
+            "version": env!("CARGO_PKG_VERSION"),
+            "canonical_schema": crate::CANONICAL_SCHEMA,
+            "profile_schema": crate::profile::PROFILE_SCHEMA,
+            "source_inventory_schema": crate::source::SOURCE_INVENTORY_SCHEMA,
+            "path_effects_input_schema": crate::path_effect::PATH_EFFECT_INPUT_SCHEMA,
+            "path_effects_report_schema": crate::path_effect::PATH_EFFECT_REPORT_SCHEMA,
+            "mir_observation_schema": MIR_OBSERVATION_SCHEMA,
+            "mir_not_run_schema": MIR_NOT_RUN_SCHEMA,
+            "native_event_transcript_schema": NATIVE_EVENT_TRANSCRIPT_SCHEMA,
+            "court_report_schema": COURT_REPORT_SCHEMA,
+            "proof_manifest_schema": PROOF_MANIFEST_SCHEMA,
+            "proof_report_schema": PROOF_REPORT_SCHEMA,
+            "universal_soundness": UNIVERSAL_SOUNDNESS,
+        }))?;
+    } else {
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        println!("canonical schema: {}", crate::CANONICAL_SCHEMA);
+        println!(
+            "source inventory schema: {}",
+            crate::source::SOURCE_INVENTORY_SCHEMA
+        );
+        println!(
+            "path-effects input schema: {}",
+            crate::path_effect::PATH_EFFECT_INPUT_SCHEMA
+        );
+        println!("MIR observation schema: {MIR_OBSERVATION_SCHEMA}");
+        println!("native event transcript schema: {NATIVE_EVENT_TRANSCRIPT_SCHEMA}");
+        println!("court report schema: {COURT_REPORT_SCHEMA}");
+        println!("proof manifest schema: {PROOF_MANIFEST_SCHEMA}");
+        println!("proof report schema: {PROOF_REPORT_SCHEMA}");
+        println!("universal soundness: {UNIVERSAL_SOUNDNESS}");
+    }
+    Ok(EXIT_OK)
+}
+
+fn command_capabilities(rest: &[String]) -> Result<i32, String> {
+    if !only_flags(rest, &["--json"]) {
+        eprintln!("usage: capabilities [--json]");
+        return Ok(EXIT_USAGE);
+    }
+    let capabilities = crate::capabilities();
+    if rest.iter().any(|arg| arg == "--json") {
+        emit_json(&capabilities)?;
+    } else {
+        println!("{} {}", capabilities.version, capabilities.canonical_schema);
+        println!("implemented:");
+        for item in &capabilities.implemented {
+            println!("  - {item}");
+        }
+        println!("not run:");
+        for item in &capabilities.not_run {
+            println!("  - {item}");
+        }
+        println!("detector availability (runtime):");
+        for detector in &capabilities.detectors {
+            println!(
+                "  - {} [{}]: {}",
+                detector.id, detector.status, detector.detail
+            );
+        }
+        println!("proof checker availability (runtime):");
+        for checker in &capabilities.checkers {
+            println!(
+                "  - {} [{}]: {}",
+                checker.id, checker.status, checker.detail
+            );
+        }
+        println!("external authorities:");
+        for item in &capabilities.external_authorities {
+            println!("  - {item}");
+        }
+    }
+    Ok(EXIT_OK)
+}
+
+fn command_profile(rest: &[String]) -> Result<i32, String> {
+    match rest.first().map(String::as_str) {
+        Some("validate") => {
+            let Some(path) = rest.get(1) else {
+                eprintln!("usage: profile validate FILE");
+                return Ok(EXIT_USAGE);
+            };
+            if rest.len() != 2 {
+                eprintln!("usage: profile validate FILE");
+                return Ok(EXIT_USAGE);
+            }
+            let bytes = match read_limited(Path::new(path)) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    eprintln!("{error}");
+                    return Ok(EXIT_USAGE);
+                }
+            };
+            let evaluation = evaluate_profile_json(&bytes);
+            emit_json(&evaluation)?;
+            Ok(evaluation_exit_code(&evaluation))
+        }
+        Some("enumerate") => command_profile_enumerate(&rest[1..]),
+        _ => {
+            eprintln!("usage: profile validate FILE | profile enumerate --out DIR");
+            Ok(EXIT_USAGE)
+        }
+    }
+}
+
+fn command_profile_enumerate(rest: &[String]) -> Result<i32, String> {
+    if rest.len() != 2 || rest[0] != "--out" {
+        eprintln!("usage: profile enumerate --out DIR");
+        return Ok(EXIT_USAGE);
+    }
+    let out = Path::new(&rest[1]);
+    if let Err(error) = fs::create_dir_all(out) {
+        eprintln!("cannot create {}: {error}", out.display());
+        return Ok(EXIT_HARNESS);
+    }
+    let bundle = local_buffer_bundle();
+    let records = local_buffer_records();
+    let bundle_bytes = match canonical_bundle_bytes(&bundle) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("cannot encode bundle: {error}");
+            return Ok(EXIT_HARNESS);
+        }
+    };
+    write_canonical(&out.join("bundle.json"), &bundle_bytes)?;
+    write_json(&out.join("policy.json"), &bundle.policy)?;
+    write_json(&out.join("claims.json"), &bundle.claims)?;
+    write_json(&out.join("cases.json"), &records)?;
+    emit_json(&serde_json::json!({
+        "status": "ENUMERATED",
+        "out": out.display().to_string(),
+        "records": records.len(),
+        "claims": bundle.claims.len(),
+        "universal_soundness": UNIVERSAL_SOUNDNESS,
+    }))?;
+    Ok(EXIT_OK)
+}
+
+fn command_source(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("scan") {
+        eprintln!("usage: source scan PATH [--json]");
+        return EXIT_USAGE;
+    }
+    let mut path = None;
+    let mut json = false;
+    for argument in &rest[1..] {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: source scan PATH [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: source scan PATH [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: source scan PATH [--json]");
+        return EXIT_USAGE;
+    };
+    let inventory = match scan_source_default(path) {
+        Ok(inventory) => inventory,
+        Err(error) => {
+            eprintln!("{error}");
+            return source_error_exit(&error);
+        }
+    };
+    let bytes = match inventory.canonical_bytes() {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    };
+    // `--json` is accepted explicitly; both spellings emit the same canonical
+    // machine form so callers cannot accidentally depend on a lossy pretty form.
+    let _ = json;
+    if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write source inventory: {error}");
+        return EXIT_HARNESS;
+    }
+    EXIT_OK
+}
+
+fn source_error_exit(error: &SourceError) -> i32 {
+    match error.category() {
+        SourceErrorCategory::Usage => EXIT_USAGE,
+        SourceErrorCategory::Integrity => EXIT_INTEGRITY,
+        SourceErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn command_path(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("analyze") {
+        eprintln!("usage: path analyze FILE [--json]");
+        return EXIT_USAGE;
+    }
+    let mut path = None;
+    let mut json = false;
+    for argument in &rest[1..] {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: path analyze FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: path analyze FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: path analyze FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let value = match parse_strict(&bytes) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("invalid path-effects input: {error}");
+            return EXIT_INTEGRITY;
+        }
+    };
+    let schema = value.get("schema").and_then(|item| item.as_str());
+    let report = match schema {
+        Some(PATH_EFFECT_INPUT_SCHEMA) => {
+            let input: PathEffectsInput = match serde_json::from_value(value) {
+                Ok(input) => input,
+                Err(error) => {
+                    eprintln!("invalid path-effects input: {error}");
+                    return EXIT_INTEGRITY;
+                }
+            };
+            analyze(&input)
+        }
+        Some(SOURCE_INVENTORY_SCHEMA) => {
+            let inventory: SourceInventory = match serde_json::from_value(value) {
+                Ok(inventory) => inventory,
+                Err(error) => {
+                    eprintln!("invalid source inventory: {error}");
+                    return EXIT_INTEGRITY;
+                }
+            };
+            analyze_inventory(&inventory)
+        }
+        Some(other) => {
+            eprintln!(
+                "unsupported path-effects input schema: {other}; expected {PATH_EFFECT_INPUT_SCHEMA} or {SOURCE_INVENTORY_SCHEMA}"
+            );
+            return EXIT_INTEGRITY;
+        }
+        None => {
+            eprintln!("path-effects input is missing a schema field");
+            return EXIT_INTEGRITY;
+        }
+    };
+    let report = match report {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return path_error_exit(error.category());
+        }
+    };
+    let bytes = match report.canonical_bytes() {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return path_error_exit(error.category());
+        }
+    };
+    // `--json` is accepted explicitly; both spellings emit the same canonical
+    // machine form so callers cannot accidentally depend on a lossy pretty form.
+    let _ = json;
+    if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write path-effects report: {error}");
+        return EXIT_HARNESS;
+    }
+    EXIT_OK
+}
+
+fn path_error_exit(category: PathErrorCategory) -> i32 {
+    match category {
+        PathErrorCategory::Usage => EXIT_USAGE,
+        PathErrorCategory::Integrity => EXIT_INTEGRITY,
+        PathErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn command_mir(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("scan") {
+        eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+        return EXIT_USAGE;
+    }
+    let mut path = None;
+    let mut json = false;
+    let mut toolchain = None;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--toolchain" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                    return EXIT_USAGE;
+                };
+                if value.is_empty() || value.starts_with("--") {
+                    eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                    return EXIT_USAGE;
+                }
+                toolchain = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value.to_owned());
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("usage: mir scan FILE [--json] [--toolchain NAME]");
+        return EXIT_USAGE;
+    };
+
+    let mut adapter = MirAdapter::new();
+    if let Some(toolchain) = toolchain {
+        adapter = adapter.with_toolchain(toolchain);
+    }
+    let _ = json;
+    match adapter.scan(&path) {
+        Ok(MirScanOutcome::Live(observation)) => {
+            let bytes = match observation.canonical_bytes() {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    eprintln!("{error}");
+                    return mir_error_exit(&error);
+                }
+            };
+            if let Err(error) = std::io::stdout().write_all(&bytes) {
+                eprintln!("cannot write MIR observation: {error}");
+                return EXIT_HARNESS;
+            }
+            EXIT_OK
+        }
+        Ok(MirScanOutcome::NotRun(not_run)) => {
+            eprintln!(
+                "MIR adapter NOT_RUN ({}): {}",
+                not_run.reason.as_str(),
+                not_run.detail
+            );
+            let value = match serde_json::to_value(&not_run) {
+                Ok(value) => value,
+                Err(error) => {
+                    eprintln!("cannot encode MIR NOT_RUN response: {error}");
+                    return EXIT_HARNESS;
+                }
+            };
+            let bytes = match crate::identity::canonical_bytes(&value) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    eprintln!("cannot encode MIR NOT_RUN response: {error}");
+                    return EXIT_HARNESS;
+                }
+            };
+            if let Err(error) = std::io::stdout().write_all(&bytes) {
+                eprintln!("cannot write MIR NOT_RUN response: {error}");
+                return EXIT_HARNESS;
+            }
+            EXIT_NOT_RUN
+        }
+        Err(error) => {
+            eprintln!("{error}");
+            mir_error_exit(&error)
+        }
+    }
+}
+
+fn mir_error_exit(error: &MirError) -> i32 {
+    match error.category() {
+        MirErrorCategory::Usage => EXIT_USAGE,
+        MirErrorCategory::Integrity => EXIT_INTEGRITY,
+        MirErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn command_support(rest: &[String]) -> Result<i32, String> {
+    let action = rest.first().map(String::as_str);
+    if !matches!(action, Some("evaluate" | "explain")) {
+        eprintln!("usage: support evaluate|explain FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]");
+        return Ok(EXIT_USAGE);
+    }
+    let explain_mode = action == Some("explain");
+    let Some(arguments) = parse_support_args(rest) else {
+        eprintln!("usage: support evaluate|explain FILE [--policy POLICY_FILE] [--expect-policy-digest MS1_ID] [--expect-policy-version VERSION]");
+        return Ok(EXIT_USAGE);
+    };
+
+    let file: SupportFile = match read_typed_file(&arguments.path, "support file") {
+        Ok(file) => file,
+        Err(code) => return Ok(code),
+    };
+    if let Err(error) = file.rules.validate() {
+        eprintln!("invalid rule system: {error}");
+        return Ok(EXIT_INTEGRITY);
+    }
+
+    let policy = match bind_policy(&arguments, &file) {
+        Ok(policy) => policy,
+        Err(code) => return Ok(code),
+    };
+    if let Some(policy) = &policy {
+        if let Err((code, error)) = check_policy_expectations(&arguments, policy) {
+            eprintln!("{error}");
+            return Ok(code);
+        }
+    } else if arguments.expect_policy_digest.is_some() || arguments.expect_policy_version.is_some()
+    {
+        eprintln!(
+            "a policy identity is required for --expect-policy-digest or --expect-policy-version"
+        );
+        return Ok(EXIT_USAGE);
+    }
+
+    if explain_mode {
+        let Some(claim) = file.claim.as_deref() else {
+            eprintln!("support explain requires a \"claim\" field");
+            return Ok(EXIT_USAGE);
+        };
+        let explanation = explain(&file.rules, claim, &file.revoked, &file.challenged, 256);
+        emit_json(&explanation)?;
+    } else {
+        let result = evaluate(&file.rules, &file.revoked, &file.challenged);
+        emit_json(&result)?;
+    }
+    Ok(EXIT_OK)
+}
+
+struct SupportArgs {
+    path: String,
+    policy_path: Option<String>,
+    expect_policy_digest: Option<String>,
+    expect_policy_version: Option<String>,
+}
+
+fn parse_support_args(rest: &[String]) -> Option<SupportArgs> {
+    let mut path = None;
+    let mut policy_path = None;
+    let mut expect_policy_digest = None;
+    let mut expect_policy_version = None;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--policy" => {
+                index += 1;
+                if policy_path.is_some() {
+                    return None;
+                }
+                policy_path = Some(rest.get(index)?.clone());
+            }
+            "--expect-policy-digest" => {
+                index += 1;
+                if expect_policy_digest.is_some() {
+                    return None;
+                }
+                expect_policy_digest = Some(rest.get(index)?.clone());
+            }
+            "--expect-policy-version" => {
+                index += 1;
+                if expect_policy_version.is_some() {
+                    return None;
+                }
+                expect_policy_version = Some(rest.get(index)?.clone());
+            }
+            value if value.starts_with("--") => return None,
+            value => {
+                if path.is_some() {
+                    return None;
+                }
+                path = Some(value.to_owned());
+            }
+        }
+        index += 1;
+    }
+    Some(SupportArgs {
+        path: path?,
+        policy_path,
+        expect_policy_digest,
+        expect_policy_version,
+    })
+}
+
+fn bind_policy(arguments: &SupportArgs, file: &SupportFile) -> Result<Option<SupportPolicy>, i32> {
+    let mut identity = file.policy.clone();
+    if let Some(path) = &arguments.policy_path {
+        let policy: PolicyFile = read_typed_file(path, "policy file")?;
+        if let Err(error) = policy.rules.validate() {
+            eprintln!("invalid policy rule system: {error}");
+            return Err(EXIT_INTEGRITY);
+        }
+        if policy.rules != file.rules {
+            eprintln!(
+                "policy rules differ from the support file rules; policy substitution rejected"
+            );
+            return Err(EXIT_INTEGRITY);
+        }
+        if identity
+            .as_ref()
+            .is_some_and(|identity| identity.id != policy.id || identity.version != policy.version)
+        {
+            eprintln!("support file policy identity differs from the policy file");
+            return Err(EXIT_INTEGRITY);
+        }
+        identity = Some(PolicyIdentity {
+            id: policy.id,
+            version: policy.version,
+        });
+    }
+    Ok(identity.map(|identity| SupportPolicy {
+        id: identity.id,
+        version: identity.version,
+        rules: file.rules.clone(),
+    }))
+}
+
+fn check_policy_expectations(
+    arguments: &SupportArgs,
+    policy: &SupportPolicy,
+) -> Result<(), (i32, String)> {
+    let digest = policy.digest().map_err(|error| {
+        (
+            EXIT_INTEGRITY,
+            format!("cannot compute policy digest: {error}"),
+        )
+    })?;
+    if let Some(expected) = &arguments.expect_policy_digest {
+        let expected = MsId::parse(expected.clone()).map_err(|error| {
+            (
+                EXIT_USAGE,
+                format!("invalid expected policy digest: {error}"),
+            )
+        })?;
+        if digest != expected {
+            return Err((
+                EXIT_INTEGRITY,
+                "policy digest differs from the expected digest; policy substitution rejected"
+                    .to_owned(),
+            ));
+        }
+    }
+    if arguments
+        .expect_policy_version
+        .as_ref()
+        .is_some_and(|expected| policy.version != *expected)
+    {
+        return Err((
+            EXIT_INTEGRITY,
+            "policy version differs from the expected version; policy substitution rejected"
+                .to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn read_typed_file<T: DeserializeOwned>(path: &str, label: &str) -> Result<T, i32> {
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return Err(EXIT_USAGE);
+        }
+    };
+    let value = match parse_strict(&bytes) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("invalid {label}: {error}");
+            return Err(EXIT_INTEGRITY);
+        }
+    };
+    match serde_json::from_value(value) {
+        Ok(file) => Ok(file),
+        Err(error) => {
+            eprintln!("invalid {label}: {error}");
+            Err(EXIT_INTEGRITY)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PolicyIdentity {
+    id: String,
+    version: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PolicyFile {
+    id: String,
+    version: String,
+    rules: RuleSystem,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SupportFile {
+    #[serde(default, rename = "schema")]
+    _schema: Option<String>,
+    #[serde(default, rename = "spec")]
+    _spec: Option<String>,
+    rules: RuleSystem,
+    #[serde(default)]
+    revoked: BTreeSet<String>,
+    #[serde(default)]
+    challenged: BTreeSet<String>,
+    #[serde(default)]
+    claim: Option<String>,
+    #[serde(default)]
+    policy: Option<PolicyIdentity>,
+}
+
+fn command_evidence(rest: &[String]) -> Result<i32, String> {
+    if rest.first().map(String::as_str) != Some("verify") || rest.len() != 3 || rest[1] != "--root"
+    {
+        eprintln!("usage: evidence verify --root DIR");
+        return Ok(EXIT_USAGE);
+    }
+    let root = Path::new(&rest[2]);
+    if !root.is_dir() {
+        eprintln!("not a directory: {}", root.display());
+        return Ok(EXIT_USAGE);
+    }
+
+    let mut files = Vec::new();
+    let mut walk_error = None;
+    walk_json(root, 0, &mut files, &mut walk_error);
+    if let Some(error) = walk_error {
+        eprintln!("{error}");
+        return Ok(EXIT_HARNESS);
+    }
+    files.sort();
+
+    let mut checked = 0usize;
+    let mut canonical = 0usize;
+    let mut errors = Vec::new();
+    for path in files {
+        checked += 1;
+        match read_limited(&path) {
+            Ok(bytes) => match require_canonical(&bytes) {
+                Ok(_) => canonical += 1,
+                Err(error) => errors.push(serde_json::json!({
+                    "file": path.display().to_string(),
+                    "error": error.to_string(),
+                })),
+            },
+            Err(error) => errors.push(serde_json::json!({
+                "file": path.display().to_string(),
+                "error": error,
+            })),
+        }
+    }
+    let ok = errors.is_empty();
+    emit_json(&serde_json::json!({
+        "root": root.display().to_string(),
+        "files_checked": checked,
+        "canonical": canonical,
+        "errors": errors,
+        "status": if ok { "OK" } else { "INVALID_EVIDENCE" },
+    }))?;
+    Ok(if ok { EXIT_OK } else { EXIT_INTEGRITY })
+}
+
+fn walk_json(directory: &Path, depth: usize, files: &mut Vec<PathBuf>, error: &mut Option<String>) {
+    if depth > 64 {
+        *error = Some(format!(
+            "directory nesting exceeds 64 at {}",
+            directory.display()
+        ));
+        return;
+    }
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(read_error) => {
+            *error = Some(format!("cannot read {}: {read_error}", directory.display()));
+            return;
+        }
+    };
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(read_error) => {
+                *error = Some(format!(
+                    "cannot read entry in {}: {read_error}",
+                    directory.display()
+                ));
+                return;
+            }
+        };
+        let path = entry.path();
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(metadata_error) => {
+                *error = Some(format!("cannot stat {}: {metadata_error}", path.display()));
+                return;
+            }
+        };
+        if metadata.file_type().is_symlink() {
+            continue;
+        }
+        if metadata.is_dir() {
+            walk_json(&path, depth + 1, files, error);
+        } else if metadata.is_file()
+            && path.extension().and_then(|extension| extension.to_str()) == Some("json")
+        {
+            files.push(path);
+        }
+    }
+}
+
+fn command_report(rest: &[String]) -> Result<i32, String> {
+    let mut case = None;
+    let mut format = None;
+    let mut index = 0usize;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--case" => {
+                let Some(value) = rest.get(index + 1) else {
+                    eprintln!("usage: report --case FILE --format json|markdown");
+                    return Ok(EXIT_USAGE);
+                };
+                case = Some(value.clone());
+                index += 2;
+            }
+            "--format" => {
+                let Some(value) = rest.get(index + 1) else {
+                    eprintln!("usage: report --case FILE --format json|markdown");
+                    return Ok(EXIT_USAGE);
+                };
+                format = Some(value.clone());
+                index += 2;
+            }
+            _ => {
+                eprintln!("usage: report --case FILE --format json|markdown");
+                return Ok(EXIT_USAGE);
+            }
+        }
+    }
+    let (Some(case), Some(format)) = (case, format) else {
+        eprintln!("usage: report --case FILE --format json|markdown");
+        return Ok(EXIT_USAGE);
+    };
+    if format != "json" && format != "markdown" {
+        eprintln!("--format must be json or markdown");
+        return Ok(EXIT_USAGE);
+    }
+    let bytes = match read_limited(Path::new(&case)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return Ok(EXIT_USAGE);
+        }
+    };
+    let evaluation = evaluate_profile_json(&bytes);
+    if format == "json" {
+        emit_json(&evaluation)?;
+    } else {
+        print!("{}", render_markdown(&case, &evaluation));
+    }
+    Ok(evaluation_exit_code(&evaluation))
+}
+
+fn render_markdown(case: &str, evaluation: &ProfileEvaluation) -> String {
+    let mut output = String::new();
+    output.push_str("# FRF-MemorySafety report\n\n");
+    output.push_str(&format!("- Case file: `{case}`\n"));
+    output.push_str(&format!(
+        "- Protocol checks: {}\n",
+        if evaluation.protocol_ok {
+            "clean"
+        } else {
+            "refused"
+        }
+    ));
+    output.push_str(&format!(
+        "- Universal soundness: `{}` (not an established fact)\n\n",
+        evaluation.universal_soundness
+    ));
+    if !evaluation.refusals.is_empty() {
+        output.push_str("## Refusals\n\n");
+        for refusal in &evaluation.refusals {
+            output.push_str(&format!(
+                "- `{}`{}: {}\n",
+                refusal.kind.as_str(),
+                refusal
+                    .claim
+                    .as_ref()
+                    .map(|claim| format!(" ({claim})"))
+                    .unwrap_or_default(),
+                refusal.detail
+            ));
+        }
+        output.push('\n');
+    }
+    output.push_str("## Claims\n\n");
+    output.push_str("| claim | rule | property | disposition | cases | detail |\n");
+    output.push_str("|---|---|---|---|---:|---|\n");
+    for verdict in evaluation.claims.values() {
+        output.push_str(&format!(
+            "| `{}` | {:?} | {} | {:?} | {} | {} |\n",
+            verdict.claim_id,
+            verdict.rule,
+            verdict.property,
+            verdict.disposition,
+            verdict.case_count,
+            verdict.detail.replace('|', "\\|")
+        ));
+    }
+    output
+}
+
+fn command_court(rest: &[String]) -> Result<i32, String> {
+    match rest.first().map(String::as_str) {
+        Some("run") => not_run("court run"),
+        Some("verify") => Ok(command_court_verify(&rest[1..])),
+        _ => {
+            eprintln!("usage: court verify FILE [--json] | court run ...");
+            Ok(EXIT_USAGE)
+        }
+    }
+}
+
+fn command_court_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: court verify FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: court verify FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: court verify FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match verify_transcript_json(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return court_error_exit(&error);
+        }
+    };
+    let bytes = match report.canonical_bytes() {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return court_error_exit(&error);
+        }
+    };
+    // `--json` is accepted explicitly; both spellings emit the same canonical
+    // machine form so callers cannot accidentally depend on a lossy pretty form.
+    let _ = json;
+    if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write court report: {error}");
+        return EXIT_HARNESS;
+    }
+    report.outcome.exit_status()
+}
+
+fn court_error_exit(error: &CourtError) -> i32 {
+    match error.category() {
+        CourtErrorCategory::Usage => EXIT_USAGE,
+        CourtErrorCategory::Integrity => EXIT_INTEGRITY,
+        CourtErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn command_proof(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) == Some("verify") {
+        command_proof_verify(&rest[1..])
+    } else {
+        eprintln!("usage: proof verify MANIFEST [--live] [--json]");
+        EXIT_USAGE
+    }
+}
+
+fn command_proof_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut live = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            "--live" => live = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: proof verify MANIFEST [--live] [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: proof verify MANIFEST [--live] [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: proof verify MANIFEST [--live] [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let base_dir = Path::new(path)
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let report = if live {
+        verify_manifest_bytes_live(&bytes, base_dir)
+    } else {
+        verify_manifest_bytes(&bytes, base_dir, &CheckerContext::NotConfigured)
+    };
+    let report = match report {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return proof_error_exit(error.category());
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return proof_error_exit(error.category());
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write proof report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else if let Err(error) = write_proof_summary(&report) {
+        eprintln!("cannot write proof summary: {error}");
+        return EXIT_HARNESS;
+    }
+    report.outcome.exit_code()
+}
+
+fn command_etp(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("validate") => command_etp_validate(&rest[1..]),
+        Some("campaign") => command_etp_campaign(&rest[1..]),
+        Some("sarif") => command_etp_sarif(&rest[1..]),
+        Some("attest") => command_etp_attest(&rest[1..]),
+        Some("time") => command_etp_time(&rest[1..]),
+        Some("integrity") => command_etp_integrity(&rest[1..]),
+        Some("reproducibility") => command_etp_reproducibility_verify(&rest[1..]),
+        Some("population") => command_etp_population_verify(&rest[1..]),
+        Some("revocation") => command_etp_revocation(&rest[1..]),
+        Some("archive") => command_etp_archive(&rest[1..]),
+        Some("transparency") => command_etp_transparency(&rest[1..]),
+        Some("checkpoint") => command_etp_checkpoint(&rest[1..]),
+        Some("witnesses") => command_etp_witnesses(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp validate MANIFEST [--json] | etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json] | etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE] | etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json] | etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json] | etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json] | etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json] | etp revocation record SUPPORT --out FILE [--json] | etp archive verify ARCHIVE [--json] | etp transparency verify --proof FILE --checkpoint FILE --policy FILE [--json] [--horizon-out FILE] | etp checkpoint verify FILE [--policy FILE] [--json] | etp witnesses verify FILE [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_attest(rest: &[String]) -> i32 {
+    if let Some("verify") = rest.first().map(String::as_str) {
+        command_etp_attest_verify(&rest[1..])
+    } else {
+        eprintln!("usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]");
+        EXIT_USAGE
+    }
+}
+
+fn print_attestation_report(report: &crate::etp_auth::AttestationReport) {
+    println!("attestation: {}", report.status.as_str());
+    println!("envelope sha256: {}", report.envelope_sha256);
+    println!("payload sha256: {}", report.payload_sha256);
+    println!("predicate type: {}", report.predicate_type);
+    if let Some(campaign_id) = &report.campaign_id {
+        println!("campaign: {campaign_id}");
+    }
+    println!(
+        "dimensions: signature={}; payload={}; authorization={}; scope={}; freshness={}; semantic={}; independent_review={}",
+        report.dimensions.signature_validity.as_str(),
+        report.dimensions.payload_integrity.as_str(),
+        report.dimensions.authorization.as_str(),
+        report.dimensions.scope_applicability.as_str(),
+        report.dimensions.freshness.as_str(),
+        report.dimensions.semantic_support.as_str(),
+        report.dimensions.independent_review.as_str()
+    );
+    println!("independent reviewers: {}", report.independent_reviewers);
+    for signature in &report.signatures {
+        println!(
+            "signature {} (actor {}, roles {}): {}; {}",
+            signature.keyid,
+            signature.actor.as_deref().unwrap_or("unknown"),
+            signature.roles.join(","),
+            if signature.valid { "valid" } else { "invalid" },
+            signature.detail
+        );
+    }
+    for refusal in &report.refusals {
+        println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_attest_verify(rest: &[String]) -> i32 {
+    let mut envelope = None;
+    let mut policy_path = None;
+    let mut campaign_path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--policy" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!(
+                        "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                    );
+                    return EXIT_USAGE;
+                };
+                policy_path = Some(value.clone());
+            }
+            "--campaign" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!(
+                        "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                    );
+                    return EXIT_USAGE;
+                };
+                campaign_path = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!(
+                    "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                );
+                return EXIT_USAGE;
+            }
+            value => {
+                if envelope.is_some() {
+                    eprintln!(
+                        "usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]"
+                    );
+                    return EXIT_USAGE;
+                }
+                envelope = Some(value);
+            }
+        }
+        index += 1;
+    }
+    let Some(envelope) = envelope else {
+        eprintln!("usage: etp attest verify ENVELOPE [--policy FILE] [--campaign FILE] [--json]");
+        return EXIT_USAGE;
+    };
+    let policy_path =
+        policy_path.unwrap_or_else(|| "evaluation/earned-trust/trust-policy.json".to_owned());
+    let policy = match crate::etp_auth::load_policy(Path::new(&policy_path)) {
+        Ok(policy) => policy,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    let expectation = match campaign_path {
+        Some(path) => match crate::etp_auth::load_campaign_expectation(Path::new(&path)) {
+            Ok(expectation) => Some(expectation),
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        },
+        None => None,
+    };
+    let report = match crate::etp_auth::verify_envelope_file(
+        Path::new(envelope),
+        &policy,
+        expectation.as_ref(),
+        crate::etp_auth::now_unix(),
+    ) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write attestation report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_attestation_report(&report);
+    }
+    report.exit_code()
+}
+
+fn command_etp_integrity(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_integrity_verify(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp integrity verify FILE [--json] | etp reproducibility verify FILE [--json] | etp population verify FILE [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_integrity_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp integrity verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("etp integrity verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                path = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("etp integrity verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(&path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::integrity::IntegrityReport::from_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("integrity: {}", report.status_label());
+        println!("schema: {}", report.schema);
+        println!("spec: {}", report.spec);
+        println!("artifact binary sha256: {}", report.artifact.binary_sha256);
+        println!("artifact binary size: {}", report.artifact.binary_size);
+        println!("dimensions: {}", report.dimensions.len());
+        for assessment in &report.dimensions {
+            println!(
+                "  {}: {}",
+                assessment.dimension.as_str(),
+                assessment.status.as_str()
+            );
+        }
+        match &report.population {
+            Some(population) => {
+                println!("population: complete ({} cases)", population.count);
+            }
+            None => {
+                println!("population: missing");
+            }
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_reproducibility_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp reproducibility verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("etp reproducibility verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                path = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("etp reproducibility verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(&path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::integrity::IntegrityReport::from_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("reproducibility: {}", report.status_label());
+        println!("schema: {}", report.schema);
+        println!("spec: {}", report.spec);
+        println!("artifact binary sha256: {}", report.artifact.binary_sha256);
+        println!("artifact binary size: {}", report.artifact.binary_size);
+        println!("dimensions: {}", report.dimensions.len());
+        for assessment in &report.dimensions {
+            println!(
+                "  {}: {}",
+                assessment.dimension.as_str(),
+                assessment.status.as_str()
+            );
+        }
+        match &report.population {
+            Some(population) => {
+                println!("population: complete ({} cases)", population.count);
+            }
+            None => {
+                println!("population: missing");
+            }
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_population_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp population verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("etp population verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                path = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("etp population verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(&path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::integrity::IntegrityReport::from_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("population: {}", report.status_label());
+        println!("schema: {}", report.schema);
+        println!("spec: {}", report.spec);
+        match &report.population {
+            Some(population) => {
+                println!("population: complete ({} cases)", population.count);
+                println!("manifest digest: {}", population.manifest_digest);
+            }
+            None => {
+                println!("population: missing");
+            }
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_time(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_time_verify(&rest[1..]),
+        Some("stamp") => command_etp_time_stamp(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp time verify TOKEN --imprint HEX [--tsa-cert PEM] [--json] | etp time stamp --imprint HEX --tsa-config FILE --out TOKEN [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_time_verify(rest: &[String]) -> i32 {
+    let mut token = None;
+    let mut imprint = None;
+    let mut tsa_cert = None;
+    let mut untrusted = None;
+    let mut policy_oid = None;
+    let mut tsa_cert_sha256 = None;
+    let mut trust_domain = None;
+    let mut verify_at = None;
+    let mut now = crate::etp_time::current_unix();
+    let mut declared = None;
+    let mut openssl = PathBuf::from("openssl");
+    let mut work_dir = PathBuf::from("target/etp-time-work");
+    let mut timeout_ms = crate::etp_time::DEFAULT_TIMEOUT_MS;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--imprint" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --imprint requires a value");
+                    return EXIT_USAGE;
+                };
+                imprint = Some(value.clone());
+            }
+            "--tsa-cert" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --tsa-cert requires a path");
+                    return EXIT_USAGE;
+                };
+                tsa_cert = Some(PathBuf::from(value));
+            }
+            "--untrusted" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --untrusted requires a path");
+                    return EXIT_USAGE;
+                };
+                untrusted = Some(PathBuf::from(value));
+            }
+            "--policy-oid" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --policy-oid requires a value");
+                    return EXIT_USAGE;
+                };
+                policy_oid = Some(value.clone());
+            }
+            "--tsa-cert-sha256" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --tsa-cert-sha256 requires a value");
+                    return EXIT_USAGE;
+                };
+                tsa_cert_sha256 = Some(value.clone());
+            }
+            "--trust-domain" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --trust-domain requires a value");
+                    return EXIT_USAGE;
+                };
+                trust_domain = Some(value.clone());
+            }
+            "--verify-at-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --verify-at-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => verify_at = Some(value),
+                    Err(_) => {
+                        eprintln!("etp time verify: --verify-at-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            "--now-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --now-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => now = value,
+                    Err(_) => {
+                        eprintln!("etp time verify: --now-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            "--declared-execution-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --declared-execution-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => declared = Some(value),
+                    Err(_) => {
+                        eprintln!("etp time verify: --declared-execution-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            "--openssl" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --openssl requires a path");
+                    return EXIT_USAGE;
+                };
+                openssl = PathBuf::from(value);
+            }
+            "--work-dir" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --work-dir requires a path");
+                    return EXIT_USAGE;
+                };
+                work_dir = PathBuf::from(value);
+            }
+            "--timeout-ms" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time verify: --timeout-ms requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => timeout_ms = value,
+                    Err(_) => {
+                        eprintln!("etp time verify: --timeout-ms must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp time verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if token.is_some() {
+                    eprintln!("etp time verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                token = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(token) = token else {
+        eprintln!("etp time verify: TOKEN is required");
+        return EXIT_USAGE;
+    };
+    let Some(imprint) = imprint else {
+        eprintln!("etp time verify: --imprint is required");
+        return EXIT_USAGE;
+    };
+    let request = crate::etp_time::VerifyTokenRequest {
+        token_path: &token,
+        imprint_hex: &imprint,
+        tsa_cert_path: tsa_cert.as_deref(),
+        untrusted_path: untrusted.as_deref(),
+        expected_policy_oid: policy_oid.as_deref(),
+        expected_tsa_cert_sha256: tsa_cert_sha256.as_deref(),
+        trust_domain: trust_domain.as_deref(),
+        verify_at_unix: verify_at,
+        now_unix: now,
+        declared_execution_unix: declared,
+        openssl_bin: &openssl,
+        work_dir: &work_dir,
+        timeout_ms,
+    };
+    let report = match crate::etp_time::verify_token(&request) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_time_report(&report);
+    }
+    report.exit_code()
+}
+
+fn print_time_report(report: &crate::etp_time::TimeReport) {
+    println!("timestamp: {}", report.status.as_str());
+    println!("token sha256: {}", report.token_sha256);
+    println!("imprint expected: {}", report.imprint_expected);
+    println!(
+        "imprint in token: {}",
+        report.imprint_in_token.as_deref().unwrap_or("unparsed")
+    );
+    println!(
+        "hash algorithm: {}",
+        report.hash_algorithm.as_deref().unwrap_or("unparsed")
+    );
+    println!(
+        "policy oid: {}",
+        report.policy_oid.as_deref().unwrap_or("unparsed")
+    );
+    println!("serial: {}", report.serial.as_deref().unwrap_or("unparsed"));
+    println!(
+        "generation time: {} ({}; {})",
+        report
+            .gen_time_unix
+            .map_or_else(|| "unparsed".to_owned(), |value| value.to_string()),
+        report.gen_time_text.as_deref().unwrap_or("unparsed"),
+        report.gen_time_relation
+    );
+    println!(
+        "dimensions: token={}; imprint={}; hash={}; chain={}; policy={}; pin={}; time={}",
+        report.dimensions.token_integrity.as_str(),
+        report.dimensions.imprint.as_str(),
+        report.dimensions.hash_algorithm.as_str(),
+        report.dimensions.signature_chain.as_str(),
+        report.dimensions.policy_oid.as_str(),
+        report.dimensions.certificate_pin.as_str(),
+        report.dimensions.gen_time.as_str()
+    );
+    println!(
+        "trust domain: {} (external trust: {})",
+        report.trust_domain, report.external_trust
+    );
+    println!(
+        "temporal facts: source_creation={}; experimental_execution={}; evidence_production={}; statement_authentication={}; trusted_timestamping={}; transparency_inclusion={}; witness_observation={}; release_authorization={}; correction_revocation={}",
+        report.time_dimensions.source_creation.as_str(),
+        report.time_dimensions.experimental_execution.as_str(),
+        report.time_dimensions.evidence_production.as_str(),
+        report.time_dimensions.statement_authentication.as_str(),
+        report.time_dimensions.trusted_timestamping.as_str(),
+        report.time_dimensions.transparency_inclusion.as_str(),
+        report.time_dimensions.witness_observation.as_str(),
+        report.time_dimensions.release_authorization.as_str(),
+        report.time_dimensions.correction_revocation.as_str()
+    );
+    println!(
+        "execution time established: {}",
+        report.execution_time_established
+    );
+    println!("backdating: {}", report.backdating.classification.as_str());
+    for refusal in &report.refusals {
+        println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_time_stamp(rest: &[String]) -> i32 {
+    let mut imprint = None;
+    let mut tsa_config = None;
+    let mut out_token = None;
+    let mut out_request = None;
+    let mut tsa_section = None;
+    let mut tsa_cert = None;
+    let mut openssl = PathBuf::from("openssl");
+    let mut work_dir = PathBuf::from("target/etp-time-work");
+    let mut timeout_ms = crate::etp_time::DEFAULT_TIMEOUT_MS;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--imprint" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --imprint requires a value");
+                    return EXIT_USAGE;
+                };
+                imprint = Some(value.clone());
+            }
+            "--tsa-config" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --tsa-config requires a path");
+                    return EXIT_USAGE;
+                };
+                tsa_config = Some(PathBuf::from(value));
+            }
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --out requires a path");
+                    return EXIT_USAGE;
+                };
+                out_token = Some(PathBuf::from(value));
+            }
+            "--request-out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --request-out requires a path");
+                    return EXIT_USAGE;
+                };
+                out_request = Some(PathBuf::from(value));
+            }
+            "--tsa-section" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --tsa-section requires a value");
+                    return EXIT_USAGE;
+                };
+                tsa_section = Some(value.clone());
+            }
+            "--tsa-cert" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --tsa-cert requires a path");
+                    return EXIT_USAGE;
+                };
+                tsa_cert = Some(PathBuf::from(value));
+            }
+            "--openssl" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --openssl requires a path");
+                    return EXIT_USAGE;
+                };
+                openssl = PathBuf::from(value);
+            }
+            "--work-dir" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --work-dir requires a path");
+                    return EXIT_USAGE;
+                };
+                work_dir = PathBuf::from(value);
+            }
+            "--timeout-ms" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp time stamp: --timeout-ms requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => timeout_ms = value,
+                    Err(_) => {
+                        eprintln!("etp time stamp: --timeout-ms must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp time stamp: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                eprintln!("etp time stamp: unexpected argument {value}");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let (Some(imprint), Some(tsa_config), Some(out_token)) = (imprint, tsa_config, out_token)
+    else {
+        eprintln!("etp time stamp: --imprint, --tsa-config, and --out are required");
+        return EXIT_USAGE;
+    };
+    let request = crate::etp_time::StampTokenRequest {
+        imprint_hex: &imprint,
+        tsa_config: &tsa_config,
+        tsa_section: tsa_section.as_deref(),
+        out_token: &out_token,
+        out_request: out_request.as_deref(),
+        tsa_cert_path: tsa_cert.as_deref(),
+        openssl_bin: &openssl,
+        work_dir: &work_dir,
+        timeout_ms,
+    };
+    let report = match crate::etp_time::stamp_token(&request) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("timestamp token: {}", report.status.as_str());
+        println!("imprint: {}", report.imprint);
+        println!("token sha256: {}", report.token_sha256);
+        println!("request sha256: {}", report.request_sha256);
+        println!(
+            "policy oid: {}",
+            report.policy_oid.as_deref().unwrap_or("unparsed")
+        );
+        println!("serial: {}", report.serial.as_deref().unwrap_or("unparsed"));
+        println!(
+            "trust domain: {} (external trust: {})",
+            report.trust_domain, report.external_trust
+        );
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    0
+}
+
+fn command_etp_revocation(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_revocation_verify(&rest[1..]),
+        Some("record") => command_etp_revocation_record(&rest[1..]),
+        Some("model") => command_etp_revocation_model(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp revocation verify REGISTRY [--policy FILE] [--support FILE] [--historical FILE] [--json] | etp revocation record SUPPORT --out FILE [--json] | etp revocation model --out FILE [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_revocation_verify(rest: &[String]) -> i32 {
+    let mut registry = None;
+    let mut policy = PathBuf::from("evaluation/earned-trust/trust-policy.json");
+    let mut support = None;
+    let mut historical = None;
+    let mut now = crate::etp_time::current_unix();
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--policy" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --policy requires a path");
+                    return EXIT_USAGE;
+                };
+                policy = PathBuf::from(value);
+            }
+            "--support" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --support requires a path");
+                    return EXIT_USAGE;
+                };
+                support = Some(PathBuf::from(value));
+            }
+            "--historical" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --historical requires a path");
+                    return EXIT_USAGE;
+                };
+                historical = Some(PathBuf::from(value));
+            }
+            "--now-unix" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation verify: --now-unix requires a value");
+                    return EXIT_USAGE;
+                };
+                match value.parse::<u64>() {
+                    Ok(value) => now = value,
+                    Err(_) => {
+                        eprintln!("etp revocation verify: --now-unix must be an integer");
+                        return EXIT_USAGE;
+                    }
+                }
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp revocation verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if registry.is_some() {
+                    eprintln!("etp revocation verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                registry = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(registry) = registry else {
+        eprintln!("etp revocation verify: REGISTRY is required");
+        return EXIT_USAGE;
+    };
+    let report = match crate::etp_revocation::verify_registry_file(
+        &registry,
+        &policy,
+        support.as_deref(),
+        historical.as_deref(),
+        now,
+    ) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("revocation registry: {}", report.status.as_str());
+        println!(
+            "registry: {} ({} entries)",
+            report.registry_id, report.entry_count
+        );
+        println!("registry sha256: {}", report.registry_sha256);
+        println!("policy: {}/{}", report.policy_id, report.policy_version);
+        println!(
+            "dimensions: registry={}; sequence={}; signature={}; authorization={}; freshness={}; historical={}; present={}",
+            report.dimensions.registry_integrity.as_str(),
+            report.dimensions.sequence_integrity.as_str(),
+            report.dimensions.signature_validity.as_str(),
+            report.dimensions.authorization.as_str(),
+            report.dimensions.policy_freshness.as_str(),
+            report.dimensions.historical_replay.as_str(),
+            report.dimensions.present_authorization.as_str()
+        );
+        for signer in &report.signers {
+            println!(
+                "signer {} (entry {}, actor {}): valid={}; authorized={}; current={}; {}",
+                signer.keyid,
+                signer.entry_id,
+                signer.actor.as_deref().unwrap_or("unknown"),
+                signer.signature_valid,
+                signer.authorized,
+                signer.within_validity,
+                signer.detail
+            );
+        }
+        for record in &report.revocations {
+            println!(
+                "revocation {}: claim {} evidence [{}] applied={} historical_replay={}",
+                record.entry_id,
+                record.claim_id,
+                record.evidence_ids.join(","),
+                record.applied,
+                record.historical_replay
+            );
+        }
+        for record in &report.corrections {
+            println!(
+                "correction {}: claim {} retained={}",
+                record.entry_id, record.claim_id, record.retained
+            );
+        }
+        for record in &report.retained_dissent {
+            println!(
+                "retained dissent {}: claim {}",
+                record.entry_id, record.claim_id
+            );
+        }
+        if let Some(support) = &report.support {
+            println!(
+                "support: policy {} v{}; historical verdict valid={}; freshness={}",
+                support.policy_id,
+                support.policy_version,
+                support.historical_verdict_valid,
+                support.present_freshness
+            );
+            for claim in &support.claims {
+                println!(
+                    "claim {}: historical={:?}; present={:?}; admissible={}; alternative={}; revoked evidence [{}]",
+                    claim.claim_id,
+                    claim.historical_state,
+                    claim.present_state,
+                    claim.present_admissible,
+                    claim.alternative_support,
+                    claim.revoked_evidence.join(",")
+                );
+            }
+            println!("invalidated: [{}]", support.invalidated.join(","));
+            println!(
+                "alternative survives: [{}]",
+                support.alternative_survives.join(",")
+            );
+            println!("withheld: [{}]", support.withheld.join(","));
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_revocation_record(rest: &[String]) -> i32 {
+    let mut support = None;
+    let mut out = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation record: --out requires a path");
+                    return EXIT_USAGE;
+                };
+                out = Some(PathBuf::from(value));
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp revocation record: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if support.is_some() {
+                    eprintln!("etp revocation record: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                support = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let (Some(support), Some(out)) = (support, out) else {
+        eprintln!("etp revocation record: SUPPORT and --out are required");
+        return EXIT_USAGE;
+    };
+    let bytes = match std::fs::read(&support) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("cannot read {}: {error}", support.display());
+            return EXIT_INTEGRITY;
+        }
+    };
+    let model = match crate::etp_revocation::parse_support_model(&bytes) {
+        Ok(model) => model,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    let verdict = match crate::etp_revocation::record_historical_verdict(&model) {
+        Ok(verdict) => verdict,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if let Err(error) = write_json(&out, &verdict) {
+        eprintln!("{error}");
+        return EXIT_HARNESS;
+    }
+    if json {
+        if let Err(error) = emit_json(&verdict) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("historical verdict recorded: {}", out.display());
+        println!("policy: {}/{}", verdict.policy_id, verdict.policy_version);
+        println!("verdict digest: {}", verdict.verdict_digest);
+        println!("positive claims: {}", verdict.result.positive.len());
+    }
+    0
+}
+
+fn command_etp_revocation_model(rest: &[String]) -> i32 {
+    let mut out = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp revocation model: --out requires a path");
+                    return EXIT_USAGE;
+                };
+                out = Some(PathBuf::from(value));
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp revocation model: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                eprintln!("etp revocation model: unexpected argument {value}");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let Some(out) = out else {
+        eprintln!("etp revocation model: --out is required");
+        return EXIT_USAGE;
+    };
+    let model = match crate::etp_revocation::committed_support_model() {
+        Ok(model) => model,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if let Err(error) = write_json(&out, &model) {
+        eprintln!("{error}");
+        return EXIT_HARNESS;
+    }
+    if json {
+        if let Err(error) = emit_json(&model) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("support model written: {}", out.display());
+        println!("policy: {}/{}", model.policy.id, model.policy.version);
+        println!("claims: {}", model.claims.len());
+    }
+    0
+}
+
+fn command_etp_archive(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_archive_verify(&rest[1..]),
+        _ => {
+            eprintln!("usage: etp archive verify ARCHIVE [--json]");
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_archive_verify(rest: &[String]) -> i32 {
+    let mut archive = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp archive verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if archive.is_some() {
+                    eprintln!("etp archive verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                archive = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(archive) = archive else {
+        eprintln!("etp archive verify: ARCHIVE is required");
+        return EXIT_USAGE;
+    };
+    let report = match crate::etp_archive::verify_archive(&archive) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("archive: {}", report.status.as_str());
+        println!("archive id: {}", report.archive_id);
+        println!(
+            "objects: {}/{} verified",
+            report.verified_objects, report.object_count
+        );
+        println!("knowledge horizon: {}", report.knowledge_horizon_unix);
+        println!(
+            "required categories: [{}]",
+            report.required_categories.join(",")
+        );
+        if !report.missing_required_categories.is_empty() {
+            println!(
+                "missing required categories: [{}]",
+                report.missing_required_categories.join(",")
+            );
+        }
+        for problem in &report.problems {
+            println!("problem {}: {}", problem.path, problem.problem);
+        }
+        for unlisted in &report.unlisted_objects {
+            println!("unlisted object: {unlisted}");
+        }
+        println!(
+            "reconstruction: {} commands, {} inputs, complete={}",
+            report.reconstruction.command_count,
+            report.reconstruction.input_count,
+            report.reconstruction.complete
+        );
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code, refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_transparency(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("verify") {
+        eprintln!(
+            "usage: etp transparency verify --proof FILE --checkpoint FILE --policy FILE [--json] [--horizon-out FILE]"
+        );
+        return EXIT_USAGE;
+    }
+    let mut proof = None;
+    let mut checkpoint = None;
+    let mut policy = None;
+    let mut horizon_out = None;
+    let mut json = false;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--proof" | "--checkpoint" | "--policy" | "--horizon-out" => {
+                let flag = rest[index].clone();
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp transparency verify: {flag} requires a path");
+                    return EXIT_USAGE;
+                };
+                let path = PathBuf::from(value);
+                match flag.as_str() {
+                    "--proof" => proof = Some(path),
+                    "--checkpoint" => checkpoint = Some(path),
+                    "--policy" => policy = Some(path),
+                    _ => horizon_out = Some(path),
+                }
+            }
+            value => {
+                eprintln!("etp transparency verify: unknown argument {value}");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let (Some(proof), Some(checkpoint), Some(policy)) = (proof, checkpoint, policy) else {
+        eprintln!("etp transparency verify: --proof, --checkpoint, and --policy are required");
+        return EXIT_USAGE;
+    };
+    let proof_bytes = match read_limited(&proof) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let checkpoint_bytes = match read_limited(&checkpoint) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let policy_bytes = match read_limited(&policy) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = crate::etp_transparency::verify_transparency(
+        &proof_bytes,
+        &checkpoint_bytes,
+        &policy_bytes,
+    );
+    if json {
+        match report.canonical_bytes() {
+            Ok(bytes) => {
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write transparency report: {error}");
+                    return EXIT_HARNESS;
+                }
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    } else {
+        print_transparency_report(&report);
+    }
+    if report.status == crate::etp_transparency::TransparencyStatus::Verified {
+        if let Some(path) = horizon_out {
+            if let Err(error) = persist_horizon(&path, &report) {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    }
+    report.exit_code()
+}
+
+#[derive(Serialize)]
+struct HorizonFile {
+    schema: String,
+    spec: String,
+    policy_id: String,
+    tree_size: u64,
+    root_hash: String,
+    checkpoint_sha256: String,
+}
+
+fn persist_horizon(
+    path: &Path,
+    report: &crate::etp_transparency::TransparencyReport,
+) -> Result<(), String> {
+    let (Some(tree_size), Some(root_hash), Some(checkpoint_sha256)) = (
+        report.tree_size,
+        report.root_hash.clone(),
+        report.checkpoint_sha256.clone(),
+    ) else {
+        return Err("cannot persist a horizon without a parsed proof".to_owned());
+    };
+    let file = HorizonFile {
+        schema: "frf-etp.horizon.v1".to_owned(),
+        spec: crate::etp::ETP_SPEC.to_owned(),
+        policy_id: report.policy_id.clone(),
+        tree_size,
+        root_hash,
+        checkpoint_sha256,
+    };
+    let value = serde_json::to_value(&file).map_err(|error| error.to_string())?;
+    let bytes = crate::identity::canonical_bytes(&value).map_err(|error| error.to_string())?;
+    let temporary = path.with_extension("tmp");
+    fs::write(&temporary, &bytes)
+        .map_err(|error| format!("cannot write {}: {error}", temporary.display()))?;
+    fs::rename(&temporary, path)
+        .map_err(|error| format!("cannot persist {}: {error}", path.display()))
+}
+
+fn print_transparency_report(report: &crate::etp_transparency::TransparencyReport) {
+    println!("transparency: {}", report.status.as_str());
+    if let Some(identity) = &report.log_identity {
+        println!("log origin: {}", identity.origin);
+        println!("log id: {}", identity.log_id);
+        println!("log vkey: {}", identity.vkey);
+        println!("log public key sha256: {}", identity.public_key_sha256);
+        println!("log algorithm: {}", identity.algorithm);
+    }
+    println!(
+        "tree size: {}",
+        report
+            .tree_size
+            .map_or_else(|| "unparsed".to_owned(), |value| value.to_string())
+    );
+    println!(
+        "leaf index: {}",
+        report
+            .leaf_index
+            .map_or_else(|| "unparsed".to_owned(), |value| value.to_string())
+    );
+    println!(
+        "trust profile: {}",
+        report.trust_profile.as_deref().unwrap_or("unparsed")
+    );
+    println!("external trust: {}", report.external_trust);
+    println!("public transparency: {}", report.public_transparency);
+    println!("witness observation: {}", report.witness_observation);
+    println!(
+        "dimensions: identity={}; version={}; entry={}; leaf={}; inclusion={}; signature={}; persistence={}; consistency={}; conflict={}; rollback={}; tiles={}; cross_log={}; offline={}",
+        report.dimensions.log_identity.as_str(),
+        report.dimensions.log_version.as_str(),
+        report.dimensions.entry_binding.as_str(),
+        report.dimensions.leaf_hash.as_str(),
+        report.dimensions.inclusion.as_str(),
+        report.dimensions.checkpoint_signature.as_str(),
+        report.dimensions.checkpoint_persistence.as_str(),
+        report.dimensions.consistency.as_str(),
+        report.dimensions.conflict_detection.as_str(),
+        report.dimensions.anti_rollback.as_str(),
+        report.dimensions.tiled_reconstruction.as_str(),
+        report.dimensions.cross_log_rejection.as_str(),
+        report.dimensions.offline_verification.as_str()
+    );
+    for horizon in &report.known_horizons {
+        println!(
+            "known horizon: size={} root={} checkpoint={}",
+            horizon.tree_size, horizon.root_hash, horizon.checkpoint_sha256
+        );
+    }
+    for assumption in &report.assumptions {
+        println!("assumption: {assumption}");
+    }
+    for feature in &report.unsupported_features {
+        println!("unsupported: {feature}");
+    }
+    for refusal in &report.refusals {
+        println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_checkpoint(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("verify") {
+        eprintln!("usage: etp checkpoint verify FILE [--policy FILE] [--json]");
+        return EXIT_USAGE;
+    }
+    let mut file = None;
+    let mut policy = None;
+    let mut json = false;
+    let mut index = 1;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--policy" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("etp checkpoint verify: --policy requires a path");
+                    return EXIT_USAGE;
+                };
+                policy = Some(PathBuf::from(value));
+            }
+            value if value.starts_with("--") => {
+                eprintln!("etp checkpoint verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if file.is_some() {
+                    eprintln!("etp checkpoint verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                file = Some(PathBuf::from(value));
+            }
+        }
+        index += 1;
+    }
+    let Some(file) = file else {
+        eprintln!("etp checkpoint verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(&file) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let policy_bytes = match policy {
+        Some(path) => match read_limited(&path) {
+            Ok(bytes) => Some(bytes),
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_USAGE;
+            }
+        },
+        None => None,
+    };
+    let report = crate::etp_transparency::verify_checkpoint(&bytes, policy_bytes.as_deref());
+    if json {
+        match report.canonical_bytes() {
+            Ok(bytes) => {
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write checkpoint report: {error}");
+                    return EXIT_HARNESS;
+                }
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    } else {
+        println!("checkpoint: {}", report.status.as_str());
+        println!("origin: {}", report.origin);
+        println!("tree size: {}", report.tree_size);
+        println!("root hash: {}", report.root_hash);
+        println!("checkpoint sha256: {}", report.checkpoint_sha256);
+        println!("signatures: {}", report.signature_count);
+        println!("signature: {}", report.signature.as_str());
+        println!("anti-rollback: {}", report.anti_rollback.as_str());
+        println!("conflict detection: {}", report.conflict_detection.as_str());
+        for horizon in &report.known_horizons {
+            println!(
+                "known horizon: size={} root={} checkpoint={}",
+                horizon.tree_size, horizon.root_hash, horizon.checkpoint_sha256
+            );
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn command_etp_witnesses(rest: &[String]) -> i32 {
+    if rest.first().map(String::as_str) != Some("verify") {
+        eprintln!("usage: etp witnesses verify FILE [--json]");
+        return EXIT_USAGE;
+    }
+    let mut file = None;
+    let mut json = false;
+    for value in &rest[1..] {
+        match value.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("etp witnesses verify: unknown flag {value}");
+                return EXIT_USAGE;
+            }
+            value => {
+                if file.is_some() {
+                    eprintln!("etp witnesses verify: unexpected argument {value}");
+                    return EXIT_USAGE;
+                }
+                file = Some(PathBuf::from(value));
+            }
+        }
+    }
+    let Some(file) = file else {
+        eprintln!("etp witnesses verify: FILE is required");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(&file) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = crate::etp_witness::verify_witness_state(&bytes);
+    if json {
+        match report.canonical_bytes() {
+            Ok(bytes) => {
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write witness report: {error}");
+                    return EXIT_HARNESS;
+                }
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        }
+    } else {
+        println!("witnesses: {}", report.status.as_str());
+        println!("policy: {}", report.policy_id);
+        println!("log origin: {}", report.log_origin);
+        println!("external witnessing: {}", report.external_witnessing);
+        println!("local test only: {}", report.local_test_only);
+        println!("witness observation: {}", report.witness_observation);
+        println!(
+            "quorum: n={} q={} f={} condition={} holds={} observed={} effective={} domains={} required_domains={} met={} basis={}",
+            report.quorum.n,
+            report.quorum.q,
+            report.quorum.f,
+            report.quorum.intersection_condition,
+            report.quorum.intersection_holds,
+            report.quorum.observed,
+            report.quorum.effective_independent,
+            report.quorum.distinct_domains,
+            report.quorum.required_domains,
+            report.quorum.met,
+            report.quorum.basis
+        );
+        for witness in &report.witnesses {
+            println!(
+                "witness {} domain={} signature={} observation={} last_size={} rollback={}",
+                witness.id,
+                witness.domain,
+                witness.signature.as_str(),
+                witness.observation,
+                witness.last_observed_tree_size,
+                witness.rollback.as_str()
+            );
+        }
+        for pair in &report.correlated_witnesses {
+            println!("correlated {} / {}: {}", pair.left, pair.right, pair.reason);
+        }
+        for conflict in &report.conflicting_checkpoints {
+            println!("conflict: {conflict}");
+        }
+        for refusal in &report.refusals {
+            println!("refused {}: {}", refusal.code.as_str(), refusal.detail);
+        }
+        println!("claim ceiling: {}", report.claim_ceiling);
+    }
+    report.exit_code()
+}
+
+fn print_campaign_report(report: &crate::etp_campaign::CampaignReport) {
+    println!("campaign: {}", report.campaign_id);
+    println!("status: {}", report.status.as_str());
+    println!(
+        "closure: {}; acceptance: {}; cases: {}; receipts: {}; raw evidence: {}",
+        report.closure_status.as_str(),
+        report.acceptance.as_str(),
+        report.case_count,
+        report.receipt_count,
+        report.raw_evidence_count
+    );
+    for count in &report.outcomes {
+        println!("outcome {}: {}", count.label, count.count);
+    }
+    for count in &report.decisions {
+        println!("decision {}: {}", count.label, count.count);
+    }
+    println!("accepted cases: {}", report.accepted_cases.len());
+    for case_id in &report.retained_findings {
+        println!("retained finding: {case_id}");
+    }
+    for refusal in &report.refusals {
+        println!(
+            "refused {} ({}): {}",
+            refusal.case_id,
+            refusal.code.as_str(),
+            refusal.detail
+        );
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_campaign(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_campaign_verify(&rest[1..]),
+        Some("run") => command_etp_campaign_run(&rest[1..]),
+        _ => {
+            eprintln!("usage: etp campaign verify FILE [--json] | etp campaign run --protocol FILE --out DIR [--json]");
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_campaign_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp campaign verify FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: etp campaign verify FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: etp campaign verify FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let report = match crate::etp_campaign::verify_campaign_file(Path::new(path)) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write campaign report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_campaign_report(&report);
+    }
+    report.exit_code()
+}
+
+fn command_etp_campaign_run(rest: &[String]) -> i32 {
+    let mut protocol = None;
+    let mut out = None;
+    let mut json = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--json" => json = true,
+            "--protocol" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                    return EXIT_USAGE;
+                };
+                protocol = Some(value.clone());
+            }
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                    return EXIT_USAGE;
+                };
+                out = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                return EXIT_USAGE;
+            }
+            _ => {
+                eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+                return EXIT_USAGE;
+            }
+        }
+        index += 1;
+    }
+    let (Some(protocol), Some(out)) = (protocol, out) else {
+        eprintln!("usage: etp campaign run --protocol FILE --out DIR [--json]");
+        return EXIT_USAGE;
+    };
+    #[cfg(all(unix, feature = "native-harness"))]
+    {
+        let summary = match crate::etp_campaign::run_campaign(Path::new(&protocol), Path::new(&out))
+        {
+            Ok(summary) => summary,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if json {
+            if let Err(error) = emit_json(&summary) {
+                eprintln!("{error}");
+                return EXIT_HARNESS;
+            }
+        } else {
+            println!("campaign: {}", summary.campaign_id);
+            println!("closure: {}", summary.closure_status.as_str());
+            println!("acceptance: {}", summary.acceptance.as_str());
+            println!(
+                "cases: {}; receipts: {}; raw evidence: {}",
+                summary.case_count, summary.receipt_count, summary.raw_evidence_count
+            );
+            println!("closure sha256: {}", summary.closure_sha256);
+        }
+        0
+    }
+    #[cfg(not(all(unix, feature = "native-harness")))]
+    {
+        let _ = (protocol, out, json);
+        eprintln!(
+            "etp campaign run is NOT_RUN: this build lacks the native-harness feature; build with --features native-harness"
+        );
+        EXIT_NOT_RUN
+    }
+}
+
+fn print_sarif_report(report: &crate::sarif::SarifReport) {
+    println!("SARIF status: {}", report.status.as_str());
+    println!(
+        "version: {}; results: {}; rules: {}; suppressed: {}",
+        report.sarif_version,
+        report.result_count,
+        report.rule_count,
+        report.suppressed_result_count
+    );
+    println!("candidate: {}", report.candidate_identity);
+    println!("instrument: {}", report.instrument_identity);
+    println!(
+        "limits: results {}/{}; bytes {}/{}",
+        report.limits.result_count,
+        report.limits.max_results,
+        report.limits.encoded_bytes,
+        report.limits.max_bytes
+    );
+    for refusal in &report.refusals {
+        println!(
+            "refused {} ({}): {}",
+            refusal.subject,
+            refusal.code.as_str(),
+            refusal.detail
+        );
+    }
+    println!("claim ceiling: {}", report.claim_ceiling);
+}
+
+fn command_etp_sarif(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("verify") => command_etp_sarif_verify(&rest[1..]),
+        Some("export") => command_etp_sarif_export(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: etp sarif verify FILE [--json] | etp sarif export CAMPAIGN [--out FILE]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_etp_sarif_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp sarif verify FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: etp sarif verify FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: etp sarif verify FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let report = match crate::sarif::verify_sarif_file(Path::new(path)) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write SARIF report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        print_sarif_report(&report);
+    }
+    report.exit_code()
+}
+
+fn command_etp_sarif_export(rest: &[String]) -> i32 {
+    let mut campaign = None;
+    let mut out = None;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--out" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+                    return EXIT_USAGE;
+                };
+                out = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if campaign.is_some() {
+                    eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+                    return EXIT_USAGE;
+                }
+                campaign = Some(value);
+            }
+        }
+        index += 1;
+    }
+    let Some(campaign) = campaign else {
+        eprintln!("usage: etp sarif export CAMPAIGN [--out FILE]");
+        return EXIT_USAGE;
+    };
+    let bytes = match crate::sarif::export_campaign_bytes(Path::new(&campaign)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if let Some(out) = out {
+        if let Err(error) = fs::write(&out, &bytes) {
+            eprintln!("cannot write {out}: {error}");
+            return EXIT_HARNESS;
+        }
+        println!("wrote {out} ({} bytes)", bytes.len());
+    } else if let Err(error) = std::io::stdout().write_all(&bytes) {
+        eprintln!("cannot write SARIF: {error}");
+        return EXIT_HARNESS;
+    }
+    EXIT_OK
+}
+
+fn command_etp_validate(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: etp validate MANIFEST [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: etp validate MANIFEST [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: etp validate MANIFEST [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match crate::etp::validate_manifest_bytes(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return error.exit_code();
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return error.exit_code();
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write ETP report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        println!("ETP status: {:?}", report.status);
+        println!(
+            "claims: {}; obligations: {}; coordinates/claim: {}; dimensions/claim: {}",
+            report.claims,
+            report.obligations,
+            report.coordinates_per_claim,
+            report.dimensions_per_claim
+        );
+        println!("eligible claims: {}", report.eligible_claims.len());
+        for refusal in &report.refusals {
+            println!(
+                "refused {} ({}): {}",
+                refusal.claim_id,
+                refusal.code.as_str(),
+                refusal.detail
+            );
+        }
+    }
+    report.exit_code()
+}
+
+fn command_bridge(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("status") => command_bridge_status(&rest[1..]),
+        Some("verify") => command_bridge_verify(&rest[1..]),
+        Some("capture") => command_bridge_capture(&rest[1..]),
+        _ => {
+            eprintln!(
+                "usage: bridge verify FILE [--json] [--candidate SHA256] | bridge capture OUT ... | bridge status [--json]"
+            );
+            EXIT_USAGE
+        }
+    }
+}
+
+fn command_bridge_status(rest: &[String]) -> i32 {
+    if !only_flags(rest, &["--json"]) {
+        eprintln!("usage: bridge status [--json]");
+        return EXIT_USAGE;
+    }
+    let status = BridgeStatus::observe();
+    if rest.iter().any(|argument| argument == "--json") {
+        if let Err(error) = emit_json(&status) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        let mut output = format!(
+            "bridge status: {}\nclaim ceiling: {}\nproviders:\n",
+            if status.all_live_available {
+                "all providers live"
+            } else {
+                "native providers NOT_RUN"
+            },
+            status.claim_ceiling
+        );
+        for provider in &status.providers {
+            output.push_str(&format!(
+                "  {} {}@{} schema {} accessible={} live={} executable={}\n",
+                provider.provider,
+                provider.repository,
+                provider.commit,
+                provider.schema,
+                provider.accessible,
+                provider.live_available,
+                provider
+                    .configured_executable
+                    .as_deref()
+                    .unwrap_or("<not configured>"),
+            ));
+            output.push_str(&format!(
+                "    build: {}\n",
+                serde_json::to_string(&provider.build).unwrap_or_default()
+            ));
+        }
+        if let Err(error) = std::io::stdout().write_all(output.as_bytes()) {
+            eprintln!("cannot write bridge status: {error}");
+            return EXIT_HARNESS;
+        }
+    }
+    status.exit_code()
+}
+
+fn command_bridge_verify(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    let mut candidate = None;
+    let mut arguments = rest.iter();
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--json" => json = true,
+            "--candidate" => {
+                let Some(value) = arguments.next() else {
+                    eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+                    return EXIT_USAGE;
+                };
+                candidate = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: bridge verify FILE [--json] [--candidate SHA256]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = verify_bundle_bytes(&bytes, candidate.as_deref());
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        let detail =
+            serde_json::to_string(&report.outcome).unwrap_or_else(|_| "<unavailable>".to_owned());
+        let mut output = format!(
+            "bridge: {}\nstage: {}\nbundle schema: {}\nobservations:\n",
+            report.outcome.as_str(),
+            report.stage.as_str(),
+            BRIDGE_BUNDLE_SCHEMA,
+        );
+        for observation in &report.observations {
+            output.push_str(&format!(
+                "  {} provenance={} schema={} identity={} digest_verified={} authentic_native={}\n",
+                observation.provider,
+                observation.provenance.as_str(),
+                observation.schema,
+                observation.identity,
+                observation.digest_verified,
+                observation.authentic_native,
+            ));
+        }
+        output.push_str(&format!(
+            "authentic native identities retained: {}\nidentities generated by this crate: {}\noutcome: {detail}\nclaim ceiling: {}\n",
+            report.authentic_native_identities,
+            report.generated_identities,
+            report.claim_ceiling,
+        ));
+        if let Err(error) = std::io::stdout().write_all(output.as_bytes()) {
+            eprintln!("cannot write bridge report: {error}");
+            return EXIT_HARNESS;
+        }
+    }
+    report.exit_code()
+}
+
+const BRIDGE_CAPTURE_FLAGS: &[&str] = &[
+    "--candidate",
+    "--finding",
+    "--receipt",
+    "--gemel",
+    "--gemel-evidence",
+    "--gemel-repo",
+    "--frf-root",
+    "--frf-run",
+    "--frf-bin",
+    "--frf-fuzz-bin",
+    "--gemel-bin",
+    "--frf-map",
+    "--frf-fuzz-map",
+    "--gemel-map",
+    "--probe",
+];
+
+#[allow(clippy::too_many_lines)]
+fn command_bridge_capture(rest: &[String]) -> i32 {
+    const USAGE: &str = "usage: bridge capture OUT --candidate P --finding P --receipt P --gemel P --gemel-evidence P --gemel-repo DIR --frf-root DIR --frf-run ID --frf-bin P --frf-fuzz-bin P --gemel-bin P --frf-map P --frf-fuzz-map P --gemel-map P --probe P [--json]";
+    let mut output = None;
+    let mut json = false;
+    let mut values: Vec<(&str, String)> = Vec::new();
+    let mut arguments = rest.iter();
+    while let Some(argument) = arguments.next() {
+        if argument == "--json" {
+            json = true;
+            continue;
+        }
+        let Some(flag) = BRIDGE_CAPTURE_FLAGS
+            .iter()
+            .find(|flag| **flag == argument.as_str())
+        else {
+            if argument.starts_with("--") || output.is_some() {
+                eprintln!("{USAGE}");
+                return EXIT_USAGE;
+            }
+            output = Some(argument.clone());
+            continue;
+        };
+        let Some(value) = arguments.next() else {
+            eprintln!("{USAGE}");
+            return EXIT_USAGE;
+        };
+        values.push((*flag, value.clone()));
+    }
+    let Some(output) = output else {
+        eprintln!("{USAGE}");
+        return EXIT_USAGE;
+    };
+    let get = |name: &str| {
+        values
+            .iter()
+            .find(|(flag, _)| *flag == name)
+            .map(|(_, value)| value.clone())
+    };
+    let required = |name: &'static str| match get(name) {
+        Some(value) => Ok(PathBuf::from(value)),
+        None => Err(name),
+    };
+    let paths = [
+        "--candidate",
+        "--finding",
+        "--receipt",
+        "--gemel",
+        "--gemel-evidence",
+        "--gemel-repo",
+        "--frf-root",
+        "--frf-bin",
+        "--frf-fuzz-bin",
+        "--gemel-bin",
+        "--frf-map",
+        "--frf-fuzz-map",
+        "--gemel-map",
+        "--probe",
+    ];
+    let mut resolved = std::collections::BTreeMap::new();
+    for name in paths {
+        match required(name) {
+            Ok(path) => {
+                resolved.insert(name, path);
+            }
+            Err(missing) => {
+                eprintln!("bridge capture: missing {missing}\n{USAGE}");
+                return EXIT_USAGE;
+            }
+        }
+    }
+    let Some(frf_run) = get("--frf-run") else {
+        eprintln!("bridge capture: missing --frf-run\n{USAGE}");
+        return EXIT_USAGE;
+    };
+    let request = CaptureRequest {
+        candidate: resolved["--candidate"].clone(),
+        finding: resolved["--finding"].clone(),
+        receipt: resolved["--receipt"].clone(),
+        gemel_gce: resolved["--gemel"].clone(),
+        gemel_evidence: resolved["--gemel-evidence"].clone(),
+        gemel_repo: resolved["--gemel-repo"].clone(),
+        frf_root: resolved["--frf-root"].clone(),
+        frf_run,
+        frf_bin: resolved["--frf-bin"].clone(),
+        frf_fuzz_bin: resolved["--frf-fuzz-bin"].clone(),
+        gemel_bin: resolved["--gemel-bin"].clone(),
+        frf_map: resolved["--frf-map"].clone(),
+        frf_fuzz_map: resolved["--frf-fuzz-map"].clone(),
+        gemel_map: resolved["--gemel-map"].clone(),
+        probe: resolved["--probe"].clone(),
+    };
+    let bytes = match capture_bundle(&request) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("bridge capture: {error}");
+            return EXIT_NOT_RUN;
+        }
+    };
+    if let Err(error) = fs::write(&output, &bytes) {
+        eprintln!("cannot write bridge bundle {output}: {error}");
+        return EXIT_HARNESS;
+    }
+    let report = verify_bundle_bytes(&bytes, None);
+    if json {
+        if let Err(error) = emit_json(&report) {
+            eprintln!("{error}");
+            return EXIT_HARNESS;
+        }
+    } else {
+        let detail =
+            serde_json::to_string(&report.outcome).unwrap_or_else(|_| "<unavailable>".to_owned());
+        let mut text = format!(
+            "bridge capture: wrote {output}\nbridge: {}\nstage: {}\nobservations:\n",
+            report.outcome.as_str(),
+            report.stage.as_str(),
+        );
+        for observation in &report.observations {
+            text.push_str(&format!(
+                "  {} provenance={} identity={} digest_verified={} authentic_native={}\n",
+                observation.provider,
+                observation.provenance.as_str(),
+                observation.identity,
+                observation.digest_verified,
+                observation.authentic_native,
+            ));
+        }
+        text.push_str(&format!(
+            "authentic native identities retained: {}\nidentities generated by this crate: {}\noutcome: {detail}\nclaim ceiling: {}\n",
+            report.authentic_native_identities,
+            report.generated_identities,
+            report.claim_ceiling,
+        ));
+        if let Err(error) = std::io::stdout().write_all(text.as_bytes()) {
+            eprintln!("cannot write bridge capture report: {error}");
+            return EXIT_HARNESS;
+        }
+    }
+    report.exit_code()
+}
+
+fn proof_error_exit(category: ProofErrorCategory) -> i32 {
+    match category {
+        ProofErrorCategory::Integrity => EXIT_INTEGRITY,
+        ProofErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn write_proof_summary(report: &ProofReport) -> Result<(), String> {
+    let gate = |status: GateStatus| match status {
+        GateStatus::Pass => "pass",
+        GateStatus::Fail => "fail",
+    };
+    let checker = if report.live_checker_configured {
+        if report.live_checker_invoked {
+            "configured; invoked by this build"
+        } else {
+            "configured; recorded evidence supplied; not invoked by this build"
+        }
+    } else if report.live_checker_invoked {
+        "invoked; run failed before a checker result was bound"
+    } else {
+        "not configured; parser success is not proof acceptance"
+    };
+    let mut output = format!(
+        "proof: {}\ntheorem: {}\nchecker: {} {}\nadmission: {} ({})\ncorrespondence: {} ({})\nlive checker: {}\nclaim ceiling: {}\nuniversal soundness: {}\n",
+        report.outcome.as_str(),
+        report.theorem.name,
+        report.checker.kind.as_str(),
+        report.checker.version,
+        report.admission.outcome.as_str(),
+        report.admission.detail,
+        gate(report.correspondence.status),
+        report.correspondence.detail,
+        checker,
+        report.claim_ceiling,
+        report.universal_soundness,
+    );
+    if let Some(run) = &report.live_run {
+        output.push_str(&format!(
+            "live run: {} {} at {} sha256 {} exit {}\n",
+            run.checker_kind.as_str(),
+            run.checker_version,
+            run.executable,
+            run.executable_sha256,
+            run.exit_code,
+        ));
+    }
+    if report.outcome != ProofOutcome::AcceptedWithinScope {
+        output.push_str(&format!("detail: {}\n", report.outcome_detail));
+    }
+    std::io::stdout()
+        .write_all(output.as_bytes())
+        .map_err(|error| error.to_string())
+}
+
+fn command_detector(rest: &[String]) -> Result<i32, String> {
+    if rest.first().map(String::as_str) == Some("calibrate") {
+        if rest.iter().any(|arg| arg == "--live") {
+            command_detector_live(&rest[1..])
+        } else {
+            Ok(command_detector_calibrate(&rest[1..]))
+        }
+    } else {
+        eprintln!(
+            "usage: detector calibrate FILE [--json] | detector calibrate --live --detector KIND [--json]"
+        );
+        Ok(EXIT_USAGE)
+    }
+}
+
+#[cfg(unix)]
+fn command_detector_live(rest: &[String]) -> Result<i32, String> {
+    let mut detector = None;
+    let mut json = false;
+    let mut live = false;
+    let mut index = 0;
+    while index < rest.len() {
+        match rest[index].as_str() {
+            "--live" => live = true,
+            "--json" => json = true,
+            "--detector" => {
+                index += 1;
+                let Some(value) = rest.get(index) else {
+                    eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                    return Ok(EXIT_USAGE);
+                };
+                if detector.is_some() {
+                    eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                    return Ok(EXIT_USAGE);
+                }
+                detector = Some(value.clone());
+            }
+            value if value.starts_with("--") => {
+                eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                return Ok(EXIT_USAGE);
+            }
+            value => {
+                if detector.is_some() {
+                    eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+                    return Ok(EXIT_USAGE);
+                }
+                detector = Some(value.to_owned());
+            }
+        }
+        index += 1;
+    }
+    if !live {
+        eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+        return Ok(EXIT_USAGE);
+    }
+    let Some(detector) = detector else {
+        eprintln!("usage: detector calibrate --live --detector KIND [--json]");
+        return Ok(EXIT_USAGE);
+    };
+    let Some(kind) = parse_detector_kind(&detector) else {
+        eprintln!(
+            "unknown detector kind: {detector}; expected miri|asan|lsan|tsan|loom|kani|crypto"
+        );
+        return Ok(EXIT_USAGE);
+    };
+    let calibration = calibrate_live(&kind);
+    match calibration.status {
+        LiveStatus::NotRun => {
+            let reason = calibration
+                .reason
+                .as_deref()
+                .unwrap_or("instrument unavailable");
+            if json {
+                let value = not_run_json(&kind, reason)?;
+                emit_json(&value)?;
+            } else {
+                println!("live: NOT_RUN");
+                println!("detector: {detector}");
+                println!("reason: {reason}");
+            }
+            Ok(EXIT_NOT_RUN)
+        }
+        LiveStatus::Calibrated | LiveStatus::Refused => {
+            let Some(report) = calibration.report.as_ref() else {
+                eprintln!("live calibration produced no report");
+                return Ok(EXIT_HARNESS);
+            };
+            if json {
+                let bytes = match report.canonical_bytes() {
+                    Ok(bytes) => bytes,
+                    Err(error) => {
+                        eprintln!("{error}");
+                        return Ok(detector_error_exit(&error));
+                    }
+                };
+                if let Err(error) = std::io::stdout().write_all(&bytes) {
+                    eprintln!("cannot write live calibration report: {error}");
+                    return Ok(EXIT_HARNESS);
+                }
+            } else if let Err(error) = write_live_summary(&calibration) {
+                eprintln!("cannot write live calibration summary: {error}");
+                return Ok(EXIT_HARNESS);
+            }
+            Ok(calibration_exit_code(report))
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn command_detector_live(_rest: &[String]) -> Result<i32, String> {
+    not_run("detector calibrate --live")
+}
+
+#[cfg(unix)]
+fn write_live_summary(calibration: &LiveCalibration) -> Result<(), String> {
+    if let Some(report) = calibration.report.as_ref() {
+        write_calibration_summary(report)?;
+    }
+    if let Some(reason) = calibration.reason.as_deref() {
+        println!("reason: {reason}");
+    }
+    Ok(())
+}
+
+fn command_detector_calibrate(rest: &[String]) -> i32 {
+    let mut path = None;
+    let mut json = false;
+    for argument in rest {
+        match argument.as_str() {
+            "--json" => json = true,
+            value if value.starts_with("--") => {
+                eprintln!("usage: detector calibrate FILE [--json]");
+                return EXIT_USAGE;
+            }
+            value => {
+                if path.is_some() {
+                    eprintln!("usage: detector calibrate FILE [--json]");
+                    return EXIT_USAGE;
+                }
+                path = Some(value);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("usage: detector calibrate FILE [--json]");
+        return EXIT_USAGE;
+    };
+    let bytes = match read_limited(Path::new(path)) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{error}");
+            return EXIT_USAGE;
+        }
+    };
+    let report = match evaluate_calibration_json(&bytes) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("{error}");
+            return detector_error_exit(&error);
+        }
+    };
+    if json {
+        let bytes = match report.canonical_bytes() {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                eprintln!("{error}");
+                return detector_error_exit(&error);
+            }
+        };
+        if let Err(error) = std::io::stdout().write_all(&bytes) {
+            eprintln!("cannot write calibration report: {error}");
+            return EXIT_HARNESS;
+        }
+    } else if let Err(error) = write_calibration_summary(&report) {
+        eprintln!("cannot write calibration summary: {error}");
+        return EXIT_HARNESS;
+    }
+    calibration_exit_code(&report)
+}
+
+fn detector_error_exit(error: &crate::detector::DetectorError) -> i32 {
+    match error.category() {
+        DetectorErrorCategory::Integrity => EXIT_INTEGRITY,
+        DetectorErrorCategory::Harness => EXIT_HARNESS,
+    }
+}
+
+fn calibration_exit_code(report: &CalibrationReport) -> i32 {
+    if report.integrity_failed() {
+        EXIT_INTEGRITY
+    } else if report.outcome == CalibrationOutcome::Refused {
+        EXIT_DETECTOR
+    } else {
+        EXIT_OK
+    }
+}
+
+fn write_calibration_summary(report: &CalibrationReport) -> Result<(), String> {
+    let outcome = match report.outcome {
+        CalibrationOutcome::Calibrated => "CALIBRATED",
+        CalibrationOutcome::Refused => "REFUSED",
+    };
+    let status = |value: crate::detector::ControlStatus| match value {
+        crate::detector::ControlStatus::Pass => "PASS",
+        crate::detector::ControlStatus::Fail => "FAIL",
+        crate::detector::ControlStatus::NotEvaluated => "NOT_EVALUATED",
+    };
+    let mut output = format!(
+        "calibration: {outcome}\ndetector: {}\nmechanisms: {}\nsensitivity: {}/{}\nspecificity: {}/{}\nbuild_separation: {}\nauthenticity: {}\n",
+        kind_label(&report.detector_kind),
+        report.mechanisms.join(","),
+        report.sensitivity.passed,
+        report.sensitivity.total,
+        report.specificity.passed,
+        report.specificity.total,
+        status(report.build_separation),
+        status(report.authenticity),
+    );
+    if report.refusals.is_empty() {
+        output.push_str("refusals: none\n");
+    } else {
+        output.push_str("refusals:\n");
+        for refusal in &report.refusals {
+            let severity = match refusal.severity {
+                RefusalSeverity::Integrity => "integrity",
+                RefusalSeverity::Detector => "detector",
+            };
+            let case = refusal.case_id.as_deref().unwrap_or("-");
+            let code = serde_json::to_value(refusal.code)
+                .ok()
+                .and_then(|value| value.as_str().map(str::to_owned))
+                .unwrap_or_else(|| format!("{:?}", refusal.code));
+            output.push_str(&format!(
+                "  {severity} {code} case={case} {}\n",
+                refusal.detail
+            ));
+        }
+    }
+    std::io::stdout()
+        .write_all(output.as_bytes())
+        .map_err(|error| error.to_string())
+}
+
+fn kind_label(kind: &crate::model::DetectorKind) -> String {
+    serde_json::to_value(kind)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .unwrap_or_else(|| format!("{kind:?}"))
+}
+
+fn command_not_run(expected: &str, args: &[String]) -> Result<i32, String> {
+    let matches = match expected {
+        "court run" => {
+            args.first().is_some_and(|arg| arg == "court")
+                && args.get(1).is_some_and(|arg| arg == "run")
+        }
+        "frf promote" => {
+            args.first().is_some_and(|arg| arg == "frf")
+                && args.get(1).is_some_and(|arg| arg == "promote")
+        }
+        "gemel publish" => {
+            args.first().is_some_and(|arg| arg == "gemel")
+                && args.get(1).is_some_and(|arg| arg == "publish")
+        }
+        _ => false,
+    };
+    if !matches {
+        eprintln!("unknown subcommand for {expected}");
+        return Ok(EXIT_USAGE);
+    }
+    not_run(expected)
+}
+
+fn not_run(command: &str) -> Result<i32, String> {
+    emit_json(&serde_json::json!({
+        "status": "NOT_RUN",
+        "command": command,
+        "reason": "external integration is unavailable in this build",
+        "universal_soundness": UNIVERSAL_SOUNDNESS,
+    }))?;
+    Ok(EXIT_NOT_RUN)
+}
+
+fn evaluation_exit_code(evaluation: &ProfileEvaluation) -> i32 {
+    if evaluation
+        .refusals
+        .iter()
+        .any(|refusal| refusal.kind.exit_code() == EXIT_INTEGRITY)
+    {
+        EXIT_INTEGRITY
+    } else if evaluation.refusals.iter().any(|refusal| {
+        refusal.kind.exit_code() == EXIT_REFUSED
+            || refusal.kind == ProfileRefusalKind::UniversalOrNativeClaim
+    }) {
+        EXIT_REFUSED
+    } else {
+        EXIT_OK
+    }
+}
+
+fn emit_json<T: Serialize>(value: &T) -> Result<(), String> {
+    let text = serde_json::to_string_pretty(value)
+        .map_err(|error| format!("cannot encode JSON: {error}"))?;
+    println!("{text}");
+    Ok(())
+}
+
+fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    let value =
+        serde_json::to_value(value).map_err(|error| format!("cannot encode JSON: {error}"))?;
+    let bytes = crate::identity::canonical_bytes(&value)
+        .map_err(|error| format!("cannot canonicalize {}: {error}", path.display()))?;
+    write_canonical(path, &bytes)
+}
+
+fn write_canonical(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    fs::write(path, bytes).map_err(|error| format!("cannot write {}: {error}", path.display()))
+}
+
+fn read_limited(path: &Path) -> Result<Vec<u8>, String> {
+    let metadata =
+        fs::metadata(path).map_err(|error| format!("cannot stat {}: {error}", path.display()))?;
+    if !metadata.is_file() {
+        return Err(format!("not a regular file: {}", path.display()));
+    }
+    let length = usize::try_from(metadata.len())
+        .map_err(|_| format!("file is too large: {}", path.display()))?;
+    if length > MAX_BYTES {
+        return Err(format!(
+            "file {} is {length} bytes; limit is {MAX_BYTES}",
+            path.display()
+        ));
+    }
+    let bytes =
+        fs::read(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    if bytes.len() > MAX_BYTES {
+        return Err(format!("file {} exceeds {MAX_BYTES} bytes", path.display()));
+    }
+    Ok(bytes)
+}
+
+/// Exit status for a support error, used by callers that embed the CLI.
+#[must_use]
+pub fn support_error_exit(error: &SupportError) -> i32 {
+    match error {
+        SupportError::PolicyMismatch | SupportError::HistoryMismatch(_) => EXIT_INTEGRITY,
+        SupportError::UnjustifiedLeaf(_)
+        | SupportError::UnknownClaim(_)
+        | SupportError::CertificateLimitExceeded { .. } => EXIT_USAGE,
+        SupportError::InconsistentSupport(_) => EXIT_HARNESS,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run_args(args: &[&str]) -> i32 {
+        run(args.iter().copied())
+    }
+
+    #[test]
+    fn version_json_is_available() {
+        assert_eq!(run_args(&["version", "--json"]), EXIT_OK);
+    }
+
+    #[test]
+    fn live_commands_are_not_run() {
+        assert_eq!(run_args(&["court", "run", "x"]), EXIT_NOT_RUN);
+        assert_eq!(run_args(&["frf", "promote", "x"]), EXIT_NOT_RUN);
+        assert_eq!(run_args(&["gemel", "publish", "x"]), EXIT_NOT_RUN);
+        #[cfg(unix)]
+        assert_eq!(run_args(&["detector", "calibrate", "--live"]), EXIT_USAGE);
+        #[cfg(unix)]
+        assert_eq!(
+            run_args(&[
+                "detector",
+                "calibrate",
+                "--live",
+                "--detector",
+                "not-a-detector"
+            ]),
+            EXIT_USAGE
+        );
+    }
+
+    #[test]
+    fn unknown_command_is_usage_error() {
+        assert_eq!(run_args(&["nope"]), EXIT_USAGE);
+    }
+
+    #[test]
+    fn report_rejects_bad_format() {
+        assert_eq!(
+            run_args(&["report", "--case", "x", "--format", "yaml"]),
+            EXIT_USAGE
+        );
+    }
+}

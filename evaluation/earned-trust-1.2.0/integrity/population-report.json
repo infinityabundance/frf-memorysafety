@@ -1,0 +1,150 @@
+{
+  "schema": "frf-integrity.report.v1",
+  "spec": "frf-integrity-v1",
+  "artifact": {
+    "source_tree_sha256": "2a3de526e85053e901575efd233ced244333e548b8779812d3fb92cd87cd45cd",
+    "lockfile_sha256": "070decb90b42ae6d4509f8f2a33705271a0ac8c9ee227922c7d2711258d9e6c8",
+    "build_recipe_sha256": "e0e51af3dedafb47ea15c6cb2037577967ef2ff8af704100db80612f221c1f0f",
+    "toolchain": {
+      "rustc_version": "rustc 1.85.0 (4d91de4e4 2025-02-17)",
+      "host": "x86_64-unknown-linux-gnu"
+    },
+    "target": "x86_64-unknown-linux-gnu",
+    "features": [],
+    "profile": "release",
+    "lto": "off",
+    "panic": "unwind",
+    "overflow_checks": true,
+    "env_whitelist_sha256": "208e5488bdba6ab4cb91a51cccf2711546f90e222c4e5195d050963b4334e6ab",
+    "binary_sha256": "8067fd797e8358fb2de7a4cb1e50c453f41c549ea2abdbcf460f414078631cd2",
+    "binary_size": 9467192,
+    "scope": "frf-memorysafety release CLI binary; declared source, lockfile, toolchain, flags, and environment only; no authenticity or completeness claim"
+  },
+  "rebuild_artifact": {
+    "source_tree_sha256": "2a3de526e85053e901575efd233ced244333e548b8779812d3fb92cd87cd45cd",
+    "lockfile_sha256": "070decb90b42ae6d4509f8f2a33705271a0ac8c9ee227922c7d2711258d9e6c8",
+    "build_recipe_sha256": "e0e51af3dedafb47ea15c6cb2037577967ef2ff8af704100db80612f221c1f0f",
+    "toolchain": {
+      "rustc_version": "rustc 1.85.0 (4d91de4e4 2025-02-17)",
+      "host": "x86_64-unknown-linux-gnu"
+    },
+    "target": "x86_64-unknown-linux-gnu",
+    "features": [],
+    "profile": "release",
+    "lto": "off",
+    "panic": "unwind",
+    "overflow_checks": true,
+    "env_whitelist_sha256": "208e5488bdba6ab4cb91a51cccf2711546f90e222c4e5195d050963b4334e6ab",
+    "binary_sha256": "8067fd797e8358fb2de7a4cb1e50c453f41c549ea2abdbcf460f414078631cd2",
+    "binary_size": 9467192,
+    "scope": "frf-memorysafety release CLI binary; declared source, lockfile, toolchain, flags, and environment only; no authenticity or completeness claim"
+  },
+  "dimensions": [
+    {
+      "dimension": "source_reconstruction",
+      "status": "established"
+    },
+    {
+      "dimension": "environment_reconstruction",
+      "status": "established"
+    },
+    {
+      "dimension": "byte_identical_artifact",
+      "status": "established"
+    },
+    {
+      "dimension": "semantically_equivalent_artifact",
+      "status": "not_run"
+    },
+    {
+      "dimension": "experiment_replay",
+      "status": "not_run"
+    },
+    {
+      "dimension": "statistical_replication",
+      "status": "not_run"
+    },
+    {
+      "dimension": "proof_replay",
+      "status": "not_run"
+    },
+    {
+      "dimension": "independent_adjudication",
+      "status": "not_run"
+    }
+  ],
+  "population": {
+    "version": "frf-etp-native-fixtures-2026-11-22",
+    "cases": [
+      {
+        "id": "atomic-control-c",
+        "digest": "baae83dd28618e1e27ba362f5db13a1c2d157566d22192eb91c97311a6e5bdde",
+        "required": true
+      },
+      {
+        "id": "data-race-c",
+        "digest": "6881be75a3cd26b43d87e9b8d99baa19509530575ec675c310deb1cd26c2cdff",
+        "required": true
+      },
+      {
+        "id": "deferred-callback-c",
+        "digest": "c637f2087eb2dbf745d41c3ae79f1fbd04c1bd74bbc15836307fbd8b847bed40",
+        "required": true
+      },
+      {
+        "id": "legal-transfer-free-c",
+        "digest": "718ee234dd1698a32a9bd50cc8b4b079e6a341d9a84a8aeb5eb6bb797a7b6801",
+        "required": true
+      },
+      {
+        "id": "legal-transfer-free-rust",
+        "digest": "aca80973173fdc9186b323467507d1ff540700ec50cfc1e9147d38e73ab2e389",
+        "required": true
+      },
+      {
+        "id": "mutable-alias-c",
+        "digest": "9746175061e5ce4f9dd0abaf1611adf97ca96a1460871d673700a0aae087a567",
+        "required": true
+      },
+      {
+        "id": "nondeterministic-c",
+        "digest": "1458419b2783ad98f825ad06bd18a4964722ebe6750845a3c2086296e78d7942",
+        "required": true
+      },
+      {
+        "id": "oversized-output-c",
+        "digest": "ada5334f9297d4e4c9e42ba5f3e0914a639c6f525fcbcbc5e59dc34a883a13e8",
+        "required": true
+      },
+      {
+        "id": "skipped-free-c",
+        "digest": "1bf56b7c62671ec5b878304f1e0f6b96b1ec6141dab1b32e5b3cdeeb92eedd4f",
+        "required": true
+      },
+      {
+        "id": "stale-generation-c",
+        "digest": "05880d24a354ae2ee306016c9c03358dbe6137f0543dcb9636936999e78398db",
+        "required": true
+      },
+      {
+        "id": "sync-callback-c",
+        "digest": "7cb03011ee5692ff4de6713e310f2c92fc552aaa11d5356514220a0bfb733c9a",
+        "required": true
+      },
+      {
+        "id": "use-after-free-c",
+        "digest": "bb0a9b582887b15dcd27f272df7bbda4fc0f2cc6be70b6eace91ef2c96b3b195",
+        "required": true
+      },
+      {
+        "id": "use-after-free-rust",
+        "digest": "a2317058c76714ca64331b2dcf91eb5b407d8e1b94b288f85fe577e9b1e6d44e",
+        "required": true
+      }
+    ],
+    "count": 13,
+    "manifest_digest": "c8663ff10a431e0007734daae0e43e98166f981895dcc8cb498594696e6b3302"
+  },
+  "refusals": [],
+  "claim_ceiling": "Integrity validation is bookkeeping over declared reproducibility dimensions and a frozen population manifest. It does not establish that a build is reproducible, that an artifact is authentic, that a population is complete, or that any dimension is independently confirmed. A digest is not authentication, a recorded justification is not proof, and a passing validator is not certification."
+}

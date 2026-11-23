@@ -38,7 +38,8 @@ fn repo() -> PathBuf {
 }
 
 fn committed_bundle() -> CampaignBundle {
-    load_bundle(&repo().join("evaluation/earned-trust/MANIFEST.json")).expect("committed bundle")
+    load_bundle(&repo().join("evaluation/earned-trust-1.2.0/MANIFEST.json"))
+        .expect("committed bundle")
 }
 
 fn expectation() -> CampaignExpectation {
@@ -228,10 +229,10 @@ fn assert_refused(
 #[test]
 fn committed_attestation_is_accepted_with_separate_dimensions() {
     let expectation = expectation();
-    let policy = load_policy(&repo().join("evaluation/earned-trust/trust-policy.json"))
+    let policy = load_policy(&repo().join("evaluation/earned-trust-1.2.0/trust-policy.json"))
         .expect("committed policy");
     let report = frf_memorysafety::etp_auth::verify_envelope_file(
-        &repo().join("evaluation/earned-trust/attestations/campaign-closure.envelope.json"),
+        &repo().join("evaluation/earned-trust-1.2.0/attestations/campaign-closure.envelope.json"),
         &policy,
         Some(&expectation),
         NOW,

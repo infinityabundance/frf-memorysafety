@@ -223,7 +223,7 @@ EOF
         openssl req -new -key "$TSA/tsa.key" -out "$TSA/tsa.csr" -sha256 -subj "/CN=FRF Local Test TSA"
         openssl x509 -req -in "$TSA/tsa.csr" -CA "$TSA/ca.crt" -CAkey "$TSA/ca.key" \
             -CAcreateserial -out "$TSA/tsa.crt" -days 2 -sha256 -extfile "$TSA/ext.cnf"
-        IMPRINT=$(sha256sum evaluation/earned-trust/MANIFEST.json | cut -d" " -f1)
+        IMPRINT=$(sha256sum evaluation/earned-trust-1.2.0/MANIFEST.json | cut -d" " -f1)
         printf "%s\n" "$IMPRINT" > target/etp-populate/time/evidence-imprint.txt
         ./target/debug/frf-memorysafety etp time stamp \
             --imprint "$IMPRINT" \
@@ -248,17 +248,17 @@ EOF
         ./target/debug/frf-memorysafety etp revocation record \
             target/etp-populate/revocations/support-model.json \
             --out target/etp-populate/revocations/historical-verdict.json
-        cp evaluation/earned-trust/revocations/plan.json target/etp-populate/revocations/plan.json
+        cp evaluation/earned-trust-1.2.0/revocations/plan.json target/etp-populate/revocations/plan.json
         rm -f "$TSA"/*.key "$TSA"/*.csr "$TSA"/*.srl
         find target/etp-populate -type f -exec chmod 0644 {} +
         find target/etp-populate -type d -exec chmod 0755 {} +
     '
 
     python_run etp-time-populate-revocation \
-        python3 evaluation/earned-trust/make_revocation.py \
-        --policy-in evaluation/earned-trust/trust-policy.json \
+        python3 evaluation/earned-trust-1.2.0/make_revocation.py \
+        --policy-in evaluation/earned-trust-1.2.0/trust-policy.json \
         --support target/etp-populate/revocations/support-model.json \
-        --plan evaluation/earned-trust/revocations/plan.json \
+        --plan evaluation/earned-trust-1.2.0/revocations/plan.json \
         --out-policy target/etp-populate/trust-policy.json \
         --out-registry target/etp-populate/revocations/registry.json \
         --out-public target/etp-populate/revocations/correction.pem \
@@ -282,49 +282,49 @@ EOF
             --json > target/etp-populate/revocations/revocation-report.json
     '
 
-    mkdir -p "$ROOT/evaluation/earned-trust/time" "$ROOT/evaluation/earned-trust/revocations"
-    cp -f "$ROOT/target/etp-populate/time/"* "$ROOT/evaluation/earned-trust/time/"
-    cp -f "$ROOT/target/etp-populate/revocations/"* "$ROOT/evaluation/earned-trust/revocations/"
-    cp -f "$ROOT/target/etp-populate/trust-policy.json" "$ROOT/evaluation/earned-trust/trust-policy.json"
+    mkdir -p "$ROOT/evaluation/earned-trust-1.2.0/time" "$ROOT/evaluation/earned-trust-1.2.0/revocations"
+    cp -f "$ROOT/target/etp-populate/time/"* "$ROOT/evaluation/earned-trust-1.2.0/time/"
+    cp -f "$ROOT/target/etp-populate/revocations/"* "$ROOT/evaluation/earned-trust-1.2.0/revocations/"
+    cp -f "$ROOT/target/etp-populate/trust-policy.json" "$ROOT/evaluation/earned-trust-1.2.0/trust-policy.json"
     rm -rf "$ROOT/target/etp-populate/tsa" || true
-    HORIZON=$(grep -o "\"gen_time_unix\": [0-9]*" "$ROOT/evaluation/earned-trust/time/time-report.json" | head -n 1 | tr -dc "0-9")
+    HORIZON=$(grep -o "\"gen_time_unix\": [0-9]*" "$ROOT/evaluation/earned-trust-1.2.0/time/time-report.json" | head -n 1 | tr -dc "0-9")
     python_run_rw etp-time-populate-archive \
-        python3 evaluation/earned-trust/make_archive.py \
-        --out-dir evaluation/earned-trust/archive \
-        --time-dir evaluation/earned-trust/time \
-        --revocation-dir evaluation/earned-trust/revocations \
+        python3 evaluation/earned-trust-1.2.0/make_archive.py \
+        --out-dir evaluation/earned-trust-1.2.0/archive \
+        --time-dir evaluation/earned-trust-1.2.0/time \
+        --revocation-dir evaluation/earned-trust-1.2.0/revocations \
         --horizon-unix "$HORIZON"
     echo "PASS etp-time-populate"
     exit 0
 fi
 
 if [ "$MODE" = "archive" ]; then
-    HORIZON=$(grep -o "\"gen_time_unix\": [0-9]*" "$ROOT/evaluation/earned-trust/time/time-report.json" | head -n 1 | tr -dc "0-9")
+    HORIZON=$(grep -o "\"gen_time_unix\": [0-9]*" "$ROOT/evaluation/earned-trust-1.2.0/time/time-report.json" | head -n 1 | tr -dc "0-9")
     python_run_rw etp-time-archive-build \
-        python3 evaluation/earned-trust/make_archive.py \
-        --out-dir evaluation/earned-trust/archive \
-        --time-dir evaluation/earned-trust/time \
-        --revocation-dir evaluation/earned-trust/revocations \
+        python3 evaluation/earned-trust-1.2.0/make_archive.py \
+        --out-dir evaluation/earned-trust-1.2.0/archive \
+        --time-dir evaluation/earned-trust-1.2.0/time \
+        --revocation-dir evaluation/earned-trust-1.2.0/revocations \
         --horizon-unix "$HORIZON"
     exit 0
 fi
 
 if [ "$MODE" = "attest" ]; then
     python_run etp-attest-refreeze \
-        python3 evaluation/earned-trust/make_attestation.py \
-        --campaign evaluation/earned-trust/MANIFEST.json \
+        python3 evaluation/earned-trust-1.2.0/make_attestation.py \
+        --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
         --out target/etp-attestation-refreeze \
-        --base-policy evaluation/earned-trust/trust-policy.json \
+        --base-policy evaluation/earned-trust-1.2.0/trust-policy.json \
         --policy-out target/etp-attestation-refreeze/trust-policy.json \
         --key-dir target/etp-attestation-refreeze/key
     cp -f "$ROOT/target/etp-attestation-refreeze/campaign-closure.envelope.json" \
-        "$ROOT/evaluation/earned-trust/attestations/campaign-closure.envelope.json"
+        "$ROOT/evaluation/earned-trust-1.2.0/attestations/campaign-closure.envelope.json"
     cp -f "$ROOT/target/etp-attestation-refreeze/campaign-closure.statement.json" \
-        "$ROOT/evaluation/earned-trust/attestations/campaign-closure.statement.json"
+        "$ROOT/evaluation/earned-trust-1.2.0/attestations/campaign-closure.statement.json"
     cp -f "$ROOT/target/etp-attestation-refreeze/campaign-closure.public.pem" \
-        "$ROOT/evaluation/earned-trust/attestations/campaign-closure.public.pem"
+        "$ROOT/evaluation/earned-trust-1.2.0/attestations/campaign-closure.public.pem"
     cp -f "$ROOT/target/etp-attestation-refreeze/trust-policy.json" \
-        "$ROOT/evaluation/earned-trust/trust-policy.json"
+        "$ROOT/evaluation/earned-trust-1.2.0/trust-policy.json"
     echo "PASS etp-attest-refreeze-copy"
     exit 0
 fi
@@ -351,7 +351,7 @@ if [ "$MODE" = "campaign" ]; then
             rm -rf target/etp-campaign-refreeze
             mkdir -p target/etp-campaign-refreeze
             ./target/debug/frf-memorysafety etp campaign run \
-                --protocol evaluation/earned-trust/protocol.json \
+                --protocol evaluation/earned-trust-1.2.0/protocol.json \
                 --out target/etp-campaign-refreeze
             ./target/debug/frf-memorysafety etp campaign verify \
                 target/etp-campaign-refreeze/MANIFEST.json
@@ -370,59 +370,59 @@ if [ "$MODE" = "campaign" ]; then
         echo "FAIL etp-campaign-refreeze (exit $status)"
         exit "$status"
     fi
-    cp -f "$ROOT/target/etp-campaign-refreeze/protocol.json" "$ROOT/evaluation/earned-trust/protocol.json"
-    cp -f "$ROOT/target/etp-campaign-refreeze/opening.sha256" "$ROOT/evaluation/earned-trust/opening.sha256"
-    cp -f "$ROOT/target/etp-campaign-refreeze/MANIFEST.json" "$ROOT/evaluation/earned-trust/MANIFEST.json"
-    cp -f "$ROOT/target/etp-campaign-refreeze/campaign.sarif" "$ROOT/evaluation/earned-trust/campaign.sarif"
-    rm -rf "$ROOT/evaluation/earned-trust/receipts"
-    cp -r "$ROOT/target/etp-campaign-refreeze/receipts" "$ROOT/evaluation/earned-trust/receipts"
+    cp -f "$ROOT/target/etp-campaign-refreeze/protocol.json" "$ROOT/evaluation/earned-trust-1.2.0/protocol.json"
+    cp -f "$ROOT/target/etp-campaign-refreeze/opening.sha256" "$ROOT/evaluation/earned-trust-1.2.0/opening.sha256"
+    cp -f "$ROOT/target/etp-campaign-refreeze/MANIFEST.json" "$ROOT/evaluation/earned-trust-1.2.0/MANIFEST.json"
+    cp -f "$ROOT/target/etp-campaign-refreeze/campaign.sarif" "$ROOT/evaluation/earned-trust-1.2.0/campaign.sarif"
+    rm -rf "$ROOT/evaluation/earned-trust-1.2.0/receipts"
+    cp -r "$ROOT/target/etp-campaign-refreeze/receipts" "$ROOT/evaluation/earned-trust-1.2.0/receipts"
     echo "PASS etp-campaign-refreeze-copy"
     exit 0
 fi
 
 if [ "$MODE" = "verify" ]; then
-    IMPRINT=$(cat "$ROOT/evaluation/earned-trust/time/evidence-imprint.txt")
-    NOW=1795343000
+    IMPRINT=$(cat "$ROOT/evaluation/earned-trust-1.2.0/time/evidence-imprint.txt")
+    NOW=1795417304
     rust_run etp-time-committed sh -c '
         set -eu
-        IMPRINT=$(cat evaluation/earned-trust/time/evidence-imprint.txt)
-        CA_DIGEST=$(openssl x509 -in evaluation/earned-trust/time/tsa-ca.pem -outform DER | sha256sum | cut -d" " -f1)
-        ./target/debug/frf-memorysafety etp time verify evaluation/earned-trust/time/token.tsr \
+        IMPRINT=$(cat evaluation/earned-trust-1.2.0/time/evidence-imprint.txt)
+        CA_DIGEST=$(openssl x509 -in evaluation/earned-trust-1.2.0/time/tsa-ca.pem -outform DER | sha256sum | cut -d" " -f1)
+        ./target/debug/frf-memorysafety etp time verify evaluation/earned-trust-1.2.0/time/token.tsr \
             --imprint "$IMPRINT" \
-            --tsa-cert evaluation/earned-trust/time/tsa-ca.pem \
+            --tsa-cert evaluation/earned-trust-1.2.0/time/tsa-ca.pem \
             --tsa-cert-sha256 "$CA_DIGEST" \
             --policy-oid 1.3.6.1.4.1.99999.1 \
             --trust-domain local-test-tsa \
-            --now-unix 1795343000 \
+            --now-unix 1795417304 \
             --json > target/etp-time-committed-report.json
-        ./target/debug/frf-memorysafety etp time verify evaluation/earned-trust/time/token.tsr \
+        ./target/debug/frf-memorysafety etp time verify evaluation/earned-trust-1.2.0/time/token.tsr \
             --imprint "$IMPRINT" \
-            --tsa-cert evaluation/earned-trust/time/tsa-ca.pem \
+            --tsa-cert evaluation/earned-trust-1.2.0/time/tsa-ca.pem \
             --tsa-cert-sha256 "$CA_DIGEST" \
             --policy-oid 1.3.6.1.4.1.99999.1 \
             --trust-domain local-test-tsa \
-            --now-unix 1795343000
+            --now-unix 1795417304
         ./target/debug/frf-memorysafety etp revocation verify \
-            evaluation/earned-trust/revocations/registry.json \
-            --policy evaluation/earned-trust/trust-policy.json \
-            --support evaluation/earned-trust/revocations/support-model.json \
-            --historical evaluation/earned-trust/revocations/historical-verdict.json \
-            --now-unix 1795343000 --json > target/etp-revocation-committed-report.json
+            evaluation/earned-trust-1.2.0/revocations/registry.json \
+            --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+            --support evaluation/earned-trust-1.2.0/revocations/support-model.json \
+            --historical evaluation/earned-trust-1.2.0/revocations/historical-verdict.json \
+            --now-unix 1795417304 --json > target/etp-revocation-committed-report.json
         ./target/debug/frf-memorysafety etp revocation verify \
-            evaluation/earned-trust/revocations/registry.json \
-            --policy evaluation/earned-trust/trust-policy.json \
-            --support evaluation/earned-trust/revocations/support-model.json \
-            --historical evaluation/earned-trust/revocations/historical-verdict.json \
-            --now-unix 1795343000
+            evaluation/earned-trust-1.2.0/revocations/registry.json \
+            --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+            --support evaluation/earned-trust-1.2.0/revocations/support-model.json \
+            --historical evaluation/earned-trust-1.2.0/revocations/historical-verdict.json \
+            --now-unix 1795417304
         ./target/debug/frf-memorysafety etp archive verify \
-            evaluation/earned-trust/archive --json > target/etp-archive-committed-report.json
-        ./target/debug/frf-memorysafety etp archive verify evaluation/earned-trust/archive
+            evaluation/earned-trust-1.2.0/archive --json > target/etp-archive-committed-report.json
+        ./target/debug/frf-memorysafety etp archive verify evaluation/earned-trust-1.2.0/archive
     '
     python_run etp-time-independent \
-        python3 evaluation/earned-trust/verify_time.py \
-        --token evaluation/earned-trust/time/token.tsr \
+        python3 evaluation/earned-trust-1.2.0/verify_time.py \
+        --token evaluation/earned-trust-1.2.0/time/token.tsr \
         --imprint "$IMPRINT" \
-        --tsa-cert evaluation/earned-trust/time/tsa-ca.pem \
+        --tsa-cert evaluation/earned-trust-1.2.0/time/tsa-ca.pem \
         --policy-oid 1.3.6.1.4.1.99999.1 \
         --now "$NOW" --controls
     if ! grep -q 'controls passed: 6 of 6' "$LOGS/etp-time-independent.log"; then
@@ -430,11 +430,11 @@ if [ "$MODE" = "verify" ]; then
         exit 1
     fi
     python_run etp-revocation-independent \
-        python3 evaluation/earned-trust/verify_revocation.py \
-        --registry evaluation/earned-trust/revocations/registry.json \
-        --policy evaluation/earned-trust/trust-policy.json \
-        --support evaluation/earned-trust/revocations/support-model.json \
-        --historical evaluation/earned-trust/revocations/historical-verdict.json \
+        python3 evaluation/earned-trust-1.2.0/verify_revocation.py \
+        --registry evaluation/earned-trust-1.2.0/revocations/registry.json \
+        --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+        --support evaluation/earned-trust-1.2.0/revocations/support-model.json \
+        --historical evaluation/earned-trust-1.2.0/revocations/historical-verdict.json \
         --now "$NOW" --controls
     if ! grep -q 'controls passed: 6 of 6' "$LOGS/etp-revocation-independent.log"; then
         echo "FAIL etp-revocation-independent (unexpected control count)"
@@ -442,7 +442,7 @@ if [ "$MODE" = "verify" ]; then
     fi
     rust_run_offline etp-archive-offline \
         ./target/debug/frf-memorysafety etp archive verify \
-        evaluation/earned-trust/archive
+        evaluation/earned-trust-1.2.0/archive
     echo "PASS etp-time-verify"
     exit 0
 fi
@@ -516,7 +516,7 @@ EOF
         openssl req -new -key "$TSA/tsa.key" -out "$TSA/tsa.csr" -sha256 -subj "/CN=FRF Local Test TSA"
         openssl x509 -req -in "$TSA/tsa.csr" -CA "$TSA/ca.crt" -CAkey "$TSA/ca.key" \
             -CAcreateserial -out "$TSA/tsa.crt" -days 2 -sha256 -extfile "$TSA/ext.cnf"
-        IMPRINT=$(sha256sum evaluation/earned-trust/MANIFEST.json | cut -d" " -f1)
+        IMPRINT=$(sha256sum evaluation/earned-trust-1.2.0/MANIFEST.json | cut -d" " -f1)
         printf "%s\n" "$IMPRINT" > target/etp-time-run/evidence-imprint.txt
         ./target/debug/frf-memorysafety etp time stamp \
             --imprint "$IMPRINT" --tsa-config "$TSA/tsa.cnf" --tsa-cert "$TSA/tsa.crt" \
@@ -546,7 +546,7 @@ EOF
 
     FRESH_IMPRINT=$(cat "$ROOT/target/etp-time-run/evidence-imprint.txt")
     python_run etp-time-independent-fresh \
-        python3 evaluation/earned-trust/verify_time.py \
+        python3 evaluation/earned-trust-1.2.0/verify_time.py \
         --token target/etp-time-run/token.tsr \
         --imprint "$FRESH_IMPRINT" \
         --tsa-cert target/etp-time-run/tsa-ca.pem \
@@ -557,12 +557,12 @@ EOF
     fi
 
     # Fresh archive built from the committed objects and verified offline.
-    HORIZON=$(grep -o "\"gen_time_unix\": [0-9]*" "$ROOT/evaluation/earned-trust/time/time-report.json" | head -n 1 | tr -dc "0-9")
+    HORIZON=$(grep -o "\"gen_time_unix\": [0-9]*" "$ROOT/evaluation/earned-trust-1.2.0/time/time-report.json" | head -n 1 | tr -dc "0-9")
     python_run etp-archive-fresh \
-        python3 evaluation/earned-trust/make_archive.py \
+        python3 evaluation/earned-trust-1.2.0/make_archive.py \
         --out-dir target/etp-archive-fresh \
-        --time-dir evaluation/earned-trust/time \
-        --revocation-dir evaluation/earned-trust/revocations \
+        --time-dir evaluation/earned-trust-1.2.0/time \
+        --revocation-dir evaluation/earned-trust-1.2.0/revocations \
         --horizon-unix "$HORIZON"
     rust_run_offline etp-archive-fresh-verify \
         ./target/debug/frf-memorysafety etp archive verify target/etp-archive-fresh

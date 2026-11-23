@@ -1,0 +1,7 @@
+{
+  "campaign_id": "frf-etp-native-fixtures-2026-11-22",
+  "claim_ceiling": "Suppression review is bookkeeping over a finite set of suppressions. It does not establish the truth of a suppression, the safety of the code, or the absence of a defect. A suppression without an independent review is refused. A suppressed finding remains a finding.",
+  "reviews": [],
+  "schema": "frf-etp.suppression-review.v1",
+  "spec": "frf-etp-v1"
+}

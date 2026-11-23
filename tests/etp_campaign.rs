@@ -17,7 +17,8 @@ fn repo() -> PathBuf {
 }
 
 fn bundle() -> CampaignBundle {
-    load_bundle(&repo().join("evaluation/earned-trust/MANIFEST.json")).expect("campaign bundle")
+    load_bundle(&repo().join("evaluation/earned-trust-1.2.0/MANIFEST.json"))
+        .expect("campaign bundle")
 }
 
 fn value(bytes: &[u8]) -> Value {

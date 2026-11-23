@@ -11,7 +11,7 @@
 # limit, OOM adjustment, reduced capabilities, and no-new-privileges. It has
 # no network. The repository is mounted read-only at /src; only target/ is
 # writable. The oracle writes the receipt into target/gate-logs, and the host
-# copies those bytes into evaluation/earned-trust/receipts. That copy is the
+# copies those bytes into evaluation/earned-trust-1.2.0/receipts. That copy is the
 # only host action on the artifact.
 #
 # This gate is not a proof check, not Rust verification, and not
@@ -21,14 +21,14 @@ set -eu
 PYTHON_IMAGE="${FRF_PYTHON_IMAGE:-python:3.11-slim}"
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 LOGS="$ROOT/target/gate-logs"
-VERIFIER_REL="evaluation/earned-trust/verify_acceptance_model.py"
+VERIFIER_REL="evaluation/earned-trust-1.2.0/verify_acceptance_model.py"
 VERIFIER="$ROOT/$VERIFIER_REL"
 RECEIPT_SRC="$LOGS/acceptance-controls.json"
-RECEIPT_DST="$ROOT/evaluation/earned-trust/acceptance-controls/receipt.json"
+RECEIPT_DST="$ROOT/evaluation/earned-trust-1.2.0/acceptance-controls/receipt.json"
 LOG="$LOGS/acceptance-controls.log"
 STDOUT_LOG="$LOGS/acceptance-controls.stdout.json"
 
-mkdir -p "$LOGS" "$ROOT/evaluation/earned-trust/receipts"
+mkdir -p "$LOGS" "$ROOT/evaluation/earned-trust-1.2.0/receipts" "$ROOT/evaluation/earned-trust-1.2.0/acceptance-controls"
 
 if [ ! -f "$VERIFIER" ]; then
     echo "FAIL etp-formal-acceptance-gate (missing $VERIFIER_REL)"
@@ -69,7 +69,7 @@ then
         && grep -q '"evidence_kind": "EXECUTED_MODEL"' "$RECEIPT_SRC"; then
         cp "$RECEIPT_SRC" "$RECEIPT_DST"
         RECEIPT_SHA=$(sha256sum "$RECEIPT_DST" | cut -d' ' -f1)
-        echo "receipt: evaluation/earned-trust/acceptance-controls/receipt.json sha256=$RECEIPT_SHA"
+        echo "receipt: evaluation/earned-trust-1.2.0/acceptance-controls/receipt.json sha256=$RECEIPT_SHA"
         echo "PASS etp-formal-acceptance-gate"
     else
         echo "FAIL etp-formal-acceptance-gate (receipt missing or reports failures)"

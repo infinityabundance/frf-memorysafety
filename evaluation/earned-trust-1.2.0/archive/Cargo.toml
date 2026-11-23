@@ -1,0 +1,51 @@
+[package]
+name = "frf-memorysafety"
+version = "1.2.0"
+edition = "2021"
+rust-version = "1.85"
+license = "Apache-2.0 OR MIT"
+description = "Candidate-bound memory-safety assurance for unsafe-to-safe Rust compatibility ports"
+repository = "https://github.com/infinityabundance/frf-memorysafety"
+documentation = "https://docs.rs/frf-memorysafety"
+readme = "README.md"
+keywords = ["rust", "memory-safety", "assurance", "ffi", "verification"]
+categories = ["development-tools", "security"]
+
+[lib]
+name = "frf_memorysafety"
+path = "src/lib.rs"
+
+[[bin]]
+name = "frf-memorysafety"
+path = "src/main.rs"
+
+[features]
+# Test-only Phase 4.2 native fixture harness. The gates enable it; default
+# builds do not compile native execution code.
+default = []
+native-harness = []
+
+[dependencies]
+base64 = "0.22.1"
+blake3 = "1.8.7"
+ed25519-dalek = "2.1.1"
+proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
+quote = "1.0.47"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = { version = "1.0.134", features = ["preserve_order"] }
+sha2 = "0.10.8"
+syn = { version = "=2.0.119", default-features = false, features = ["full", "parsing", "printing", "visit"] }
+thiserror = "2.0.11"
+
+[dev-dependencies]
+
+[profile.release]
+overflow-checks = true
+debug = 1
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"

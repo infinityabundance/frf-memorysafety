@@ -1,0 +1,116 @@
+{
+  "campaign_id": "frf-etp-native-fixtures-2026-11-22",
+  "claim_ceiling": "Campaign closure is bookkeeping over a finite, pre-registered case population. It establishes that every declared case has one retained typed observation and that the declared counts were derived from the complete population. It does not establish memory safety, functional correctness, detector sensitivity, proof soundness, population-level recall, reviewer independence, authentication, transparency completeness, or deployment security. A typed NOT_RUN is not a pass. A digest is not authentication. A SARIF projection is not a certification and a code-scanning view is not authoritative.",
+  "claims": [
+    {
+      "expected": "13/13 pass decisions; 0 fail; 0 not_run; 0 mandatory unresolved",
+      "id": "C1",
+      "kind": "measured",
+      "metric": "exact expected-observation match over the declared population",
+      "observed": {
+        "accepted_clean_cases": 4,
+        "cases": 13,
+        "fail": 0,
+        "incomplete_transcript": 1,
+        "mandatory_unresolved": 0,
+        "not_run": 0,
+        "observed_violation": 6,
+        "pass": 13,
+        "receipts": 13,
+        "unresolved": 2,
+        "verified_compatible_within_transcript": 4
+      },
+      "receipts": [
+        "atomic-control-c",
+        "data-race-c",
+        "deferred-callback-c",
+        "legal-transfer-free-c",
+        "legal-transfer-free-rust",
+        "mutable-alias-c",
+        "nondeterministic-c",
+        "oversized-output-c",
+        "skipped-free-c",
+        "stale-generation-c",
+        "sync-callback-c",
+        "use-after-free-c",
+        "use-after-free-rust"
+      ],
+      "statement": "Every one of the 13 declared cases produced its pre-registered terminal outcome; all 13 receipts pass; no mandatory-resolution case is unresolved."
+    },
+    {
+      "expected": "13/13 receipts backed by 25 raw evidence files; 0 digest mismatches; 0 missing raw files",
+      "id": "C2",
+      "kind": "measured",
+      "metric": "receipt and raw-evidence digest agreement",
+      "observed": {
+        "digest_mismatches": 0,
+        "missing_raw_evidence": 0,
+        "raw_evidence": 25,
+        "receipts": 13,
+        "receipts_with_transcript": 12,
+        "receipts_without_transcript": 1
+      },
+      "receipts": [
+        "atomic-control-c",
+        "data-race-c",
+        "deferred-callback-c",
+        "legal-transfer-free-c",
+        "legal-transfer-free-rust",
+        "mutable-alias-c",
+        "nondeterministic-c",
+        "oversized-output-c",
+        "skipped-free-c",
+        "stale-generation-c",
+        "sync-callback-c",
+        "use-after-free-c",
+        "use-after-free-rust"
+      ],
+      "statement": "Every receipt is backed by its raw transcript and retained court report, and every raw evidence digest matches the receipt and closure manifest."
+    },
+    {
+      "expected": "13 declared cases; 13 receipts; 0 missing; 0 duplicate; 0 unexpected; 0 truncated; 0 suppressed",
+      "id": "C3",
+      "kind": "measured",
+      "metric": "complete population reconciliation",
+      "observed": {
+        "cases": 13,
+        "duplicate": 0,
+        "missing": 0,
+        "receipts": 13,
+        "suppressed": 0,
+        "truncated": 0,
+        "unexpected": 0
+      },
+      "receipts": [
+        "atomic-control-c",
+        "data-race-c",
+        "deferred-callback-c",
+        "legal-transfer-free-c",
+        "legal-transfer-free-rust",
+        "mutable-alias-c",
+        "nondeterministic-c",
+        "oversized-output-c",
+        "skipped-free-c",
+        "stale-generation-c",
+        "sync-callback-c",
+        "use-after-free-c",
+        "use-after-free-rust"
+      ],
+      "statement": "Closure counts are derived from the complete declared population; no case is missing, duplicated, unexpected, truncated, or suppressed."
+    }
+  ],
+  "non_claims": [
+    "No population-level detector sensitivity, specificity, or defect recall is established.",
+    "No memory-safety, functional-correctness, interoperability, constant-time, or deployment-security conclusion is established.",
+    "No reviewer or adjudicator independence is established.",
+    "No signature, transparency-log inclusion, consistency, non-equivocation, trusted time, or TUF metadata is established.",
+    "No GitHub code-scanning view or external SARIF consumer is authoritative.",
+    "A passing gate is not a certification and not an authorization to deploy.",
+    "The Phase 10.2 opening manifest was re-frozen in Phase 10.4a as an explicitly separated instrument change and the same population was re-executed; the Phase 10.3 opening digest fc9202bc553472bb94362e4de1d4da168f51ebd5be624eefc5cf0d334d8fa7ec remains at commit cb59ddb.",
+    "The 1.1.0 crate-version bump changed Cargo.toml, a declared candidate and instrument file. The opening manifest was re-frozen as an explicitly separated instrument change and the same 13-case population was re-executed. The Phase 10.4b opening digest df6cd0e8a6e62011cc6acb32359a00bccac7c5e078bc87420926f5399f78a6ff and closure digest 20743ae9b2315a66c4529e8f14e8799bfa4fdb48a6a9849bf5d5c8524b39ac25 remain available at commit c150de3. Population, outcomes, and claim ceiling are unchanged.",
+    "The 1.2.0 crate-version bump changed Cargo.toml, a declared candidate and instrument file. The opening manifest was re-created for the same 13-case population, producing opening digest 180e50318dc045c9ea81168c7e1e958e1d9e108b9a99c662f06081967e8b7f8a and closure digest ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a. Population, outcomes, expected decisions, and claim ceiling are unchanged. The 1.1.0 opening digest 1380703f and closure digest d26e19bd remain available in evaluation/earned-trust/ for the historical evidence."
+  ],
+  "opening_sha256": "180e50318dc045c9ea81168c7e1e958e1d9e108b9a99c662f06081967e8b7f8a",
+  "schema": "frf-etp.campaign-claims.v1",
+  "spec": "frf-etp-v1"
+}

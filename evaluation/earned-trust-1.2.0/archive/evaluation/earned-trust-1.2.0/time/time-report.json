@@ -1,0 +1,85 @@
+{
+  "schema": "frf-etp.time-verification.v1",
+  "spec": "frf-etp-v1",
+  "status": "verified",
+  "token_sha256": "e29725174b5ba9c839e7ab0f3f573f40817fd8f19bfa205cc7eb855c0d8a2fe8",
+  "request_sha256": null,
+  "imprint_expected": "ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a",
+  "imprint_in_token": "ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a",
+  "hash_algorithm": "sha256",
+  "policy_oid": "1.3.6.1.4.1.99999.1",
+  "expected_policy_oid": "1.3.6.1.4.1.99999.1",
+  "serial": "02",
+  "gen_time_unix": 1795417198,
+  "gen_time_text": "Nov 23 06:59:58 2026 GMT",
+  "gen_time_relation": "current",
+  "accuracy": "0x01 seconds, unspecified millis, unspecified micros",
+  "ordering": "yes",
+  "tsa_name": "DirName:/CN=FRF Local Test TSA",
+  "tsa_cert_sha256": "e8bdba0ba0bd4fc6163180eebd075416ed696599d49e4954e5b942c0cb47eada",
+  "tsa_cert_subject": "CN = \"FRF Test TSA CA (local, test-only)\"",
+  "tsa_cert_dates": "notBefore=Nov 23 06:59:58 2026 GMT; notAfter=Nov 25 06:59:58 2026 GMT",
+  "trust_domain": "local-test-tsa",
+  "external_trust": false,
+  "pinned_certificate": true,
+  "dimensions": {
+    "token_integrity": "valid",
+    "imprint": "valid",
+    "hash_algorithm": "valid",
+    "signature_chain": "valid",
+    "policy_oid": "valid",
+    "certificate_pin": "valid",
+    "gen_time": "valid"
+  },
+  "time_dimensions": {
+    "source_creation": "not_observed",
+    "experimental_execution": "not_observed",
+    "evidence_production": "not_observed",
+    "statement_authentication": "not_observed",
+    "trusted_timestamping": "observed",
+    "transparency_inclusion": "not_implemented",
+    "witness_observation": "not_implemented",
+    "release_authorization": "not_observed",
+    "correction_revocation": "not_observed"
+  },
+  "execution_time_established": false,
+  "trusted_time_establishes": "that the declared digest was presented to the timestamp authority and that the token was signed at its generation time; not when the evidence was produced, executed, authenticated, reviewed, included, or released",
+  "backdating": {
+    "declared_execution_unix": null,
+    "gen_time_unix": 1795417198,
+    "classification": "not_requested",
+    "execution_time_established": false,
+    "detail": "no execution time was declared; a token does not establish one"
+  },
+  "provenance": {
+    "program": "/usr/bin/openssl",
+    "openssl_version": "OpenSSL 3.0.15 3 Sep 2024 (Library: OpenSSL 3.0.15 3 Sep 2024)",
+    "argv": [
+      "/usr/bin/openssl",
+      "ts",
+      "-reply",
+      "-in",
+      "/src/target/time-1.2.0/token.tsr",
+      "-text",
+      "-token_in"
+    ],
+    "work_directory": "/src/target/etp-time-work/time-verify-32-1795417198222589083 (removed)",
+    "duration_ms": 10,
+    "return_code": 0,
+    "stdout_sha256": "319aef6da291b92d3ea6b8bde009d7e38cfc0d9db6402b0eae0fcec4dc1d8f0d",
+    "stderr_sha256": "7655c43435e95540985c43269ea9ab0841aed1da77c89a3d15d1cafba3afbedc"
+  },
+  "refusals": [],
+  "unsupported_features": [
+    "external_trusted_tsa",
+    "transparency_inclusion",
+    "witness_observation",
+    "public_revocation_feed"
+  ],
+  "limitations": [
+    "the Phase 10.4a token is anchored in a local test TSA, not an external trusted authority",
+    "a timestamp binds a digest at generation time and is not proof of an earlier execution date",
+    "no transparency-log inclusion or witness observation is implemented"
+  ],
+  "claim_ceiling": "A verified RFC 3161 token establishes only that a timestamp authority whose certificate chains to the caller-supplied pinned certificate signed a token with the declared message imprint and generation time. It does not establish source creation, experimental execution, evidence production, statement authentication, transparency inclusion, witness observation, release authorization, or correction time. A later timestamp is not proof of an earlier execution date, and a local test TSA is not external trusted time."
+}

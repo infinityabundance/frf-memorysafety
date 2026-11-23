@@ -81,18 +81,18 @@ rust_run etp-auth-tests sh -c '
     cargo build --locked --features native-harness --bin frf-memorysafety
     cargo test --locked --features native-harness --test etp_auth
     ./target/debug/frf-memorysafety etp campaign verify \
-        evaluation/earned-trust/MANIFEST.json
+        evaluation/earned-trust-1.2.0/MANIFEST.json
     ./target/debug/frf-memorysafety etp sarif verify \
-        evaluation/earned-trust/campaign.sarif
+        evaluation/earned-trust-1.2.0/campaign.sarif
     ./target/debug/frf-memorysafety etp attest verify \
-        evaluation/earned-trust/attestations/campaign-closure.envelope.json \
-        --policy evaluation/earned-trust/trust-policy.json \
-        --campaign evaluation/earned-trust/MANIFEST.json \
+        evaluation/earned-trust-1.2.0/attestations/campaign-closure.envelope.json \
+        --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+        --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
         --json > target/etp-attestation-committed-report.json
     ./target/debug/frf-memorysafety etp attest verify \
-        evaluation/earned-trust/attestations/campaign-closure.envelope.json \
-        --policy evaluation/earned-trust/trust-policy.json \
-        --campaign evaluation/earned-trust/MANIFEST.json
+        evaluation/earned-trust-1.2.0/attestations/campaign-closure.envelope.json \
+        --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+        --campaign evaluation/earned-trust-1.2.0/MANIFEST.json
 '
 if ! grep -Eq '^test result: ok\. 21 passed; 0 failed; 0 ignored' "$LOGS/etp-auth-tests.log"; then
     echo "FAIL etp-auth-tests (unexpected focused-test counts)"
@@ -101,10 +101,10 @@ if ! grep -Eq '^test result: ok\. 21 passed; 0 failed; 0 ignored' "$LOGS/etp-aut
 fi
 
 python_run etp-auth-independent \
-    python3 evaluation/earned-trust/verify_attestations.py \
-    --attestations evaluation/earned-trust/attestations \
-    --policy evaluation/earned-trust/trust-policy.json \
-    --campaign evaluation/earned-trust/MANIFEST.json \
+    python3 evaluation/earned-trust-1.2.0/verify_attestations.py \
+    --attestations evaluation/earned-trust-1.2.0/attestations \
+    --policy evaluation/earned-trust-1.2.0/trust-policy.json \
+    --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
     --controls
 if ! grep -q 'controls passed: 13' "$LOGS/etp-auth-independent.log"; then
     echo "FAIL etp-auth-independent (unexpected control count)"
@@ -114,8 +114,8 @@ fi
 # Generate a fresh ephemeral key and attestation inside the gate. The private key
 # is written only under target/ and is removed by the helper before it exits.
 python_run etp-auth-ephemeral-generate \
-    python3 evaluation/earned-trust/make_attestation.py \
-    --campaign evaluation/earned-trust/MANIFEST.json \
+    python3 evaluation/earned-trust-1.2.0/make_attestation.py \
+    --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
     --out target/etp-attestation-run \
     --policy-out target/etp-attestation-run/trust-policy.json \
     --key-dir target/etp-attestation-key
@@ -129,19 +129,19 @@ rust_run etp-auth-ephemeral-verify-rust sh -c '
     ./target/debug/frf-memorysafety etp attest verify \
         target/etp-attestation-run/campaign-closure.envelope.json \
         --policy target/etp-attestation-run/trust-policy.json \
-        --campaign evaluation/earned-trust/MANIFEST.json \
+        --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
         --json > target/etp-attestation-ephemeral-report.json
     ./target/debug/frf-memorysafety etp attest verify \
         target/etp-attestation-run/campaign-closure.envelope.json \
         --policy target/etp-attestation-run/trust-policy.json \
-        --campaign evaluation/earned-trust/MANIFEST.json
+        --campaign evaluation/earned-trust-1.2.0/MANIFEST.json
 '
 
 python_run etp-auth-ephemeral-verify-python \
-    python3 evaluation/earned-trust/verify_attestations.py \
+    python3 evaluation/earned-trust-1.2.0/verify_attestations.py \
     --attestations target/etp-attestation-run \
     --policy target/etp-attestation-run/trust-policy.json \
-    --campaign evaluation/earned-trust/MANIFEST.json \
+    --campaign evaluation/earned-trust-1.2.0/MANIFEST.json \
     --envelope target/etp-attestation-run/campaign-closure.envelope.json \
     --statement target/etp-attestation-run/campaign-closure.statement.json
 

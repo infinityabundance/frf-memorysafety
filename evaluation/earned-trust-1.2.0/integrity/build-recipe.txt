@@ -1,0 +1,5 @@
+cargo build --locked --release --bin frf-memorysafety
+CARGO_INCREMENTAL=0
+CARGO_PROFILE_RELEASE_DEBUG=0
+SOURCE_DATE_EPOCH=0
+RUSTUP_AUTO_INSTALL=0

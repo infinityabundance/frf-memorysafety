@@ -1,0 +1,112 @@
+{
+  "schema": "frf-etp.witness-state.v1",
+  "spec": "frf-etp-v1",
+  "checkpoint_base64": "ZnJmLmxvY2FsL2V0cC10cmFuc3BhcmVuY3ktMS4yLjAKMwpKNHNQM2J0N0MwT3krY2hPYXdkWmhNNkdhK2Fkc1JnblBEeDAxejdIaWFRPQoK4oCUIGZyZi5sb2NhbC9ldHAtdHJhbnNwYXJlbmN5LTEuMi4wIHkyb0xMYStWYm40bC85ZnRNa3AzQUk4WWpxYlVURjRXd3ZqbG02TG5haWNrZ2ttRjdyQ2FkY2xTeGZLaDhDY1ZNaVJNa2NOTkFwcitGZ3lVOWhTUU9sczBIQUU9Cg==",
+  "checkpoint_sha256": "777c4f4370e897cb5bf2c459a384323ef0188f6ff269b0833d59a4ba7f16807f",
+  "external_witnessing": false,
+  "local_test_only": false,
+  "policy": {
+    "schema": "frf-etp.witness-policy.v1",
+    "spec": "frf-etp-v1",
+    "policy_id": "frf-local-witness-model-2026-11-22",
+    "log_origin": "frf.local/etp-transparency-1.2.0",
+    "log_id": "sha256:c443bf59d7a9016ccabd5af15a80192f1ed1e49ef7f7aa40c2f18f3d5960cb8f",
+    "require_external_witnesses": true,
+    "administrative_domains": [
+      {
+        "id": "domain-a",
+        "operator": "local-test-operator-a (not an external witness)",
+        "independent": true,
+        "shared_trust": [
+          "same-container-runtime"
+        ],
+        "single_fault_domain": true
+      },
+      {
+        "id": "domain-b",
+        "operator": "local-test-operator-b (not an external witness)",
+        "independent": true,
+        "shared_trust": [
+          "same-host-kernel"
+        ],
+        "single_fault_domain": true
+      },
+      {
+        "id": "domain-c",
+        "operator": "local-test-operator-c (not an external witness)",
+        "independent": true,
+        "shared_trust": [
+          "same-host-kernel"
+        ],
+        "single_fault_domain": true
+      }
+    ],
+    "witnesses": [
+      {
+        "id": "witness-a",
+        "name": "frf.local/etp/witness-a",
+        "domain": "domain-a",
+        "public_key_base64": "t7vM4b9fWMnIDqmt6xOlgZ1B6cn/HMhH/Akum0EwZEQ=",
+        "correlation_group": null,
+        "trust_assumptions": [
+          "local-test-key"
+        ]
+      },
+      {
+        "id": "witness-b",
+        "name": "frf.local/etp/witness-b",
+        "domain": "domain-b",
+        "public_key_base64": "fCeKoy8GCZr2LYeN3W3XId8rlUv/HyRvBw7E++d3teA=",
+        "correlation_group": null,
+        "trust_assumptions": [
+          "local-test-key"
+        ]
+      },
+      {
+        "id": "witness-c",
+        "name": "frf.local/etp/witness-c",
+        "domain": "domain-c",
+        "public_key_base64": "vblPZqVVjC77v5e+JpsBzzP6DNcUkPTssgZOM6tVTkI=",
+        "correlation_group": null,
+        "trust_assumptions": [
+          "local-test-key"
+        ]
+      }
+    ],
+    "quorum": {
+      "n": 3,
+      "q": 2,
+      "f": 0,
+      "required_domains": 2
+    }
+  },
+  "observations": [
+    {
+      "id": "witness-a",
+      "status": "not_observed",
+      "last_observed_tree_size": 0,
+      "prior_max_tree_size": null,
+      "checkpoint_sha256": "777c4f4370e897cb5bf2c459a384323ef0188f6ff269b0833d59a4ba7f16807f",
+      "cosignature": null,
+      "observed_roots": []
+    },
+    {
+      "id": "witness-b",
+      "status": "not_observed",
+      "last_observed_tree_size": 0,
+      "prior_max_tree_size": null,
+      "checkpoint_sha256": "777c4f4370e897cb5bf2c459a384323ef0188f6ff269b0833d59a4ba7f16807f",
+      "cosignature": null,
+      "observed_roots": []
+    },
+    {
+      "id": "witness-c",
+      "status": "not_observed",
+      "last_observed_tree_size": 0,
+      "prior_max_tree_size": null,
+      "checkpoint_sha256": "777c4f4370e897cb5bf2c459a384323ef0188f6ff269b0833d59a4ba7f16807f",
+      "cosignature": null,
+      "observed_roots": []
+    }
+  ]
+}

@@ -26,7 +26,7 @@ if ! command -v python3 >/dev/null 2>&1; then
     apt-get install -y --no-install-recommends python3 >/dev/null
 fi
 
-python3 /src/evaluation/earned-trust/build_integrity_receipt.py \
+python3 /src/evaluation/earned-trust-1.2.0/build_integrity_receipt.py \
     --root /src \
     --build1 /tmp/frf-b1/release/frf-memorysafety \
     --build2 /tmp/frf-b2/release/frf-memorysafety \
@@ -39,7 +39,7 @@ BIN=/tmp/frf-b1/release/frf-memorysafety
 "$BIN" etp reproducibility /out/integrity-receipt.json --json > /out/reproducibility-report.json
 "$BIN" etp integrity verify /out/integrity-receipt.json --json > /out/integrity-report.json
 
-python3 /src/evaluation/earned-trust/verify_reproducibility.py \
+python3 /src/evaluation/earned-trust-1.2.0/verify_reproducibility.py \
     --receipt /out/integrity-receipt.json \
     --root /src \
     --build1 /tmp/frf-b1/release/frf-memorysafety \

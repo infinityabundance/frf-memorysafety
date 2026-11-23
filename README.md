@@ -5,18 +5,36 @@ ports. This crate records and checks finite evidence, claim scopes, obligations,
 and support derivations. It deliberately separates finite-model results from
 universal soundness claims.
 
-**Evidence release `etp-evidence-v1` (crate 1.1.0).** This tree adds Phases 11-18:
-execution witnessing, information-flow and cross-property evidence, reusable and
-real TLS interoperability matrices, SARIF/DSSE/role verification, local
-transparency/time/correction/archive evidence, a 15-theorem finite Coq
-acceptance model with 17 executable controls, and an 18-case preregistered
-comparative evaluation with independent reconstruction. Measured at this tree:
-base gate 509/509 debug and 509/509 release; proof gate 8/8 seal cases and 6/6
-live tests; formal acceptance 17 controls / 36 of 36 checks; comparative
-held-out 11/12 decisions with 0 wrongful acceptance and one wrongful refusal.
-No 1.2.0 package was published: bumping `Cargo.toml` changes the candidate-bound
-campaign identity, and the campaign and attestation gates correctly refused.
-See [`docs/ETP-STATUS-MATRIX.md`](docs/ETP-STATUS-MATRIX.md).
+**1.2.0 migration candidate (crate `1.2.0`, not published).** The working tree
+now carries a candidate-bound 1.2.0 evidence tree under
+`evaluation/earned-trust-1.2.0/`: candidate
+`79e72160a6a1c169093d5e7abb39f426a9f189d07aef7ddc472b3856911bcbb7`, instrument
+`832be8cdb11fe65a9e602832569942e7e81f15a8755188752e11ee96762bdfd0`, opening
+`180e50318dc045c9ea81168c7e1e958e1d9e108b9a99c662f06081967e8b7f8a`, closure
+`ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a`, 13 cases /
+13 receipts / 25 raw evidence files. The migrated gates and tests ran in the
+hardened containers: `ci/gate.sh` 509/509 debug and 509/509 release; campaign
+13/13/25 with SARIF 18 results / 11 rules / 0 suppressed; independent
+attestation 13/13, transparency 20/20, time 6/6, revocation 6/6, policy metadata
+18/18, SARIF 18/18; archive 106/106 objects with `reconstruct.py` and
+`verify_sarif.py` running from the archive root; integrity two byte-identical
+release builds; formal acceptance 36/36 checks. The 1.1.0 evidence remains
+unchanged under `evaluation/earned-trust/`. The Phase 17 comparative corpus is
+1.1.0-bound and was **not rebound** to 1.2.0. No package was published and no
+external review or external trust exists. See
+[`evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md`](evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md)
+and [`docs/ETP-STATUS-MATRIX.md`](docs/ETP-STATUS-MATRIX.md).
+
+**Evidence release `etp-evidence-v1` (crate 1.1.0, historical).** This tree adds
+Phases 11-18: execution witnessing, information-flow and cross-property
+evidence, reusable and real TLS interoperability matrices, SARIF/DSSE/role
+verification, local transparency/time/correction/archive evidence, a 15-theorem
+finite Coq acceptance model with 17 executable controls, and an 18-case
+preregistered comparative evaluation with independent reconstruction. Measured
+at the 1.1.0 tree: base gate 509/509 debug and 509/509 release; proof gate 8/8
+seal cases and 6/6 live tests; formal acceptance 17 controls / 36 of 36 checks;
+comparative held-out 11/12 decisions with 0 wrongful acceptance and one wrongful
+refusal. See [`docs/ETP-STATUS-MATRIX.md`](docs/ETP-STATUS-MATRIX.md).
 
 Version 1.1.0 releases the FRF Earned Trust Protocol (ETP, Phases 10.1-10.4b)
 without changing the 1.0.0 evidence or claim ceilings: a claim algebra with
@@ -32,8 +50,9 @@ closure. It does not establish truth, independent review, external trusted time,
 public transparency, external witnessing or gossip, Sigstore keyless identity,
 TUF metadata, public revocation, or deployment security.
 
-**This build makes no memory-safety soundness claim.** Version 1.1.0 is the
-Phase 10 ETP release; 1.0.0 was the Phase 9 release. It retains the Phase 8
+**This build makes no memory-safety soundness claim.** The 1.2.0 migration
+candidate and the 1.1.0 evidence release are assurance bookkeeping; 1.0.0 was
+the Phase 9 release. It retains the Phase 8
 OpenSSL-Rust conversion evidence, the Phase 7 live FRF-Fuzz -> FRF -> Gemel chain,
 pinned provider contracts, provider-typed opaque identities, and fail-closed
 custody pipeline, the Phase 6 proof manifest with a declared
@@ -203,6 +222,26 @@ recorded instrument change and the same 13-case population was re-executed. The
 population, outcomes, and claim ceiling are unchanged; the Phase 10.4b values
 remain at commit `c150de3`. See
 [`docs/ETP-MIGRATION.md`](docs/ETP-MIGRATION.md) for the 1.1.0 digest record.
+
+### ETP layer (1.2.0 migration candidate)
+
+The 1.2.0 tree re-executes the same 13-case population against the bumped
+crate and regenerates every candidate-bound artifact. Exact digests, migrated
+files, measured gate counts, and remaining `NOT_RUN` items are recorded in
+[`evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md`](evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md).
+The verifiers and builders under `evaluation/earned-trust-1.2.0/` are copies
+with only candidate, opening, native-manifest, driver-version, and default-path
+constants changed; schema, limit, suppression, control, and count checks are
+unchanged. `verify_policy_metadata.py` now takes a required `--now` instead of
+a pinned 1.1.0 time, and still refuses `issued_after_now`. The archive includes
+the declared candidate and instrument source so `reconstruct.py` and
+`verify_sarif.py` run from the archive root.
+
+The Phase 17 comparative evaluation remains bound to the 1.1.0 candidate and
+closure `d26e19bd…`. It was replayed with the 1.2.0 binary but is
+**NOT_REBOUND**; no comparative result applies to 1.2.0. External trusted time,
+public transparency, external witnessing, external review, and the full
+`ci/etp-release-gate.sh` inventory remain `NOT_RUN` for 1.2.0.
 
 ### Authenticated evidence (Phase 10.3)
 
@@ -990,10 +1029,13 @@ and no campaign re-freeze was performed.
 
 ### Phase 15.1 local transparency, time, correction, and archive closure
 
-`ci/etp-phase15-gate.sh` rebuilds a 76-object durable archive offline and
-verifies every object digest, then runs the independent policy-metadata (18
-controls), transparency (20), timestamp (6), revocation (6), attestation (13),
-and SARIF (18) verifiers from the archive root. The TUF-inspired policy metadata
+`ci/etp-phase15-gate.sh` rebuilds the durable archive offline and verifies
+every object digest, then runs the independent policy-metadata (18 controls),
+transparency (20), timestamp (6), revocation (6), attestation (13), and SARIF
+(18) verifiers from the archive root. The 1.1.0 archive held 76 objects; the
+1.2.0 archive holds 106 objects because it also preserves the declared
+candidate and instrument source, and its `reconstruct.py` and `verify_sarif.py`
+run from the archive root. The TUF-inspired policy metadata
 records version, expiry, roles, delegations, rotation state, rollback counter,
 and freeze state; it is test-only and does not establish production key custody
 or a TUF repository. The archive now includes the Phase 14 suppression review

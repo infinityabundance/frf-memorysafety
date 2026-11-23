@@ -188,16 +188,16 @@ case "${1:-full}" in
             cargo build --locked --features native-harness --bin frf-memorysafety
             cargo test --locked --features native-harness --test etp_transparency
             ./target/debug/frf-memorysafety etp transparency verify \
-                --proof evaluation/earned-trust/transparency/proof.json \
-                --checkpoint evaluation/earned-trust/transparency/checkpoint-size-3.txt \
-                --policy evaluation/earned-trust/transparency/policy.json \
+                --proof evaluation/earned-trust-1.2.0/transparency/proof.json \
+                --checkpoint evaluation/earned-trust-1.2.0/transparency/checkpoint-size-3.txt \
+                --policy evaluation/earned-trust-1.2.0/transparency/policy.json \
                 --json > target/etp-transparency-committed-report.json
             ./target/debug/frf-memorysafety etp checkpoint verify \
-                evaluation/earned-trust/transparency/checkpoint-size-3.txt \
-                --policy evaluation/earned-trust/transparency/policy.json \
+                evaluation/earned-trust-1.2.0/transparency/checkpoint-size-3.txt \
+                --policy evaluation/earned-trust-1.2.0/transparency/policy.json \
                 --json > target/etp-transparency-checkpoint-report.json
             if ./target/debug/frf-memorysafety etp witnesses verify \
-                evaluation/earned-trust/transparency/witness-state.json \
+                evaluation/earned-trust-1.2.0/transparency/witness-state.json \
                 --json > target/etp-transparency-witness-report.json; then
                 echo "FAIL: external witness state was reported as verified"
                 exit 1
@@ -217,8 +217,8 @@ case "${1:-full}" in
             grep -q "witness_observation.:.not_observed" target/etp-transparency-witness-local-report.json
         '
         python_run etp-transparency-independent \
-            python3 evaluation/earned-trust/verify_transparency.py \
-            --dir evaluation/earned-trust/transparency \
+            python3 evaluation/earned-trust-1.2.0/verify_transparency.py \
+            --dir evaluation/earned-trust-1.2.0/transparency \
             --controls
         if ! grep -q 'controls passed: 20 of 20' "$LOGS/etp-transparency-independent.log"; then
             echo "FAIL etp-transparency-independent (unexpected control count)"
@@ -235,7 +235,7 @@ case "${1:-full}" in
         LIVE="$ROOT/target/etp-transparency-live"
         rm -rf "$LIVE"
         mkdir -p "$LIVE/entries-a" "$LIVE/entries-b" "$LIVE/entries-cross"
-        cp "$ROOT/evaluation/earned-trust/transparency/attestation-entry.bin" \
+        cp "$ROOT/evaluation/earned-trust-1.2.0/transparency/attestation-entry.bin" \
             "$LIVE/entries-a/000-attestation.bin"
         printf 'frf-etp-cross-log-entry\n' > "$LIVE/entries-cross/000-entry.bin"
         if go_run_optional etp-transparency-live-log sh -c '
@@ -276,7 +276,7 @@ case "${1:-full}" in
         '
         then
             python_run etp-transparency-live-policy \
-                python3 evaluation/earned-trust/make_transparency_policy.py \
+                python3 evaluation/earned-trust-1.2.0/make_transparency_policy.py \
                 --origin frf.local/etp-transparency-live \
                 --public-key target/etp-transparency-live/log-key.pub \
                 --checkpoint-old target/etp-transparency-live/checkpoint-old.txt \
@@ -309,7 +309,7 @@ case "${1:-full}" in
                 grep -q "cross_log_proof" "$OUT/cross-log-report.json"
             '
             python_run etp-transparency-live-independent \
-                python3 evaluation/earned-trust/verify_transparency.py \
+                python3 evaluation/earned-trust-1.2.0/verify_transparency.py \
                 --proof target/etp-transparency-live/proof.json \
                 --checkpoint target/etp-transparency-live/checkpoint-new.txt \
                 --policy target/etp-transparency-live/policy.json

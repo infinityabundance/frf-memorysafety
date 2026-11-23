@@ -246,7 +246,7 @@ impl TestTsa {
 }
 
 fn imprint_of_manifest() -> String {
-    sha256_file(&repo().join("evaluation/earned-trust/MANIFEST.json"))
+    sha256_file(&repo().join("evaluation/earned-trust-1.2.0/MANIFEST.json"))
 }
 
 fn verify<'a>(
@@ -324,7 +324,7 @@ fn wrong_imprint_is_refused() {
     let tsa = TestTsa::new();
     let imprint = imprint_of_manifest();
     let (token, _request, gen_time) = tsa.stamp(&imprint);
-    let other = sha256_file(&repo().join("evaluation/earned-trust/protocol.json"));
+    let other = sha256_file(&repo().join("evaluation/earned-trust-1.2.0/protocol.json"));
     let report = verify(&token, &other, &tsa, gen_time + 1, None, None, None);
     assert_eq!(report.status, TimeStatus::Refused);
     assert_eq!(report.exit_code(), 4);

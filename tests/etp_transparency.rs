@@ -27,7 +27,7 @@ fn repo() -> PathBuf {
 }
 
 fn transparency_dir() -> PathBuf {
-    repo().join("evaluation/earned-trust/transparency")
+    repo().join("evaluation/earned-trust-1.2.0/transparency")
 }
 
 fn read(name: &str) -> Vec<u8> {
@@ -163,7 +163,7 @@ fn wrong_root_is_refused() {
 #[test]
 fn wrong_checkpoint_signature_is_refused() {
     let mut text = String::from_utf8(checkpoint()).expect("checkpoint utf8");
-    let marker = "\u{2014} frf.local/etp-transparency-2026 ";
+    let marker = "\u{2014} frf.local/etp-transparency-1.2.0 ";
     let start = text.find(marker).expect("signature line") + marker.len();
     let mut bytes = text.into_bytes();
     let replacement = if bytes[start] == b'A' { b'B' } else { b'A' };
@@ -315,7 +315,7 @@ fn checkpoint_verification_uses_the_pinned_key_and_horizon() {
     assert_eq!(report.signature.as_str(), "valid");
 
     let mut wrong = size_one.clone();
-    let marker = b"\xe2\x80\x94 frf.local/etp-transparency-2026 ";
+    let marker = b"\xe2\x80\x94 frf.local/etp-transparency-1.2.0 ";
     let start = wrong
         .windows(marker.len())
         .position(|window| window == marker)

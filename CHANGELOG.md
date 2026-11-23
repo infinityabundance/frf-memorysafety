@@ -9,6 +9,45 @@ This crate is assurance *bookkeeping*: it records, checks, and replays finite
 evidence, support derivations, and policy-bound verdicts. It does not establish
 universal memory-safety soundness, and no release below makes such a claim.
 
+## [Unreleased] - 1.2.0 candidate-bound evidence migration
+
+This entry records a migration candidate. No commit, tag, push, or package
+publish was performed. The 1.1.0 evidence under `evaluation/earned-trust/` is
+unchanged; all new artifacts are under `evaluation/earned-trust-1.2.0/`.
+
+### Changed
+
+- Re-froze the 13-case campaign for crate `1.2.0`: candidate
+  `79e72160a6a1c169093d5e7abb39f426a9f189d07aef7ddc472b3856911bcbb7`,
+  instrument `832be8cdb11fe65a9e602832569942e7e81f15a8755188752e11ee96762bdfd0`,
+  opening `180e50318dc045c9ea81168c7e1e958e1d9e108b9a99c662f06081967e8b7f8a`,
+  closure `ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a`,
+  SARIF `3d6ca4fd72bbf1ecacf336dd528eec7daac9601bdeafb1d455f38fc34f5908ad`.
+  Population, outcomes, decisions, and claim ceilings are unchanged.
+- Migrated `verify_sarif.py`, `reconstruct.py`, `verify_policy_metadata.py`,
+  `make_revocation.py`, `make_archive.py`, `verify_attestations.py`,
+  `verify_transparency.py`, `make_attestation.py`, `build_integrity_receipt.py`,
+  and `verify_reproducibility.py` into `evaluation/earned-trust-1.2.0/` with
+  candidate/opening/manifest/driver/default-path constants only. Schema, limit,
+  suppression, control, and count checks are unchanged.
+- `verify_policy_metadata.py` now requires an explicit `--now`; it still refuses
+  `issued_after_now` and `expired_before_now`.
+- Migrated the campaign, auth, time, transparency, phase 14, phase 15, integrity,
+  and formal-acceptance gates and the campaign/auth/archive/time/transparency/
+  SARIF/CLI tests to the 1.2.0 evidence. Exact gate counts are recorded in
+  `evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md`.
+- The 1.2.0 archive now includes the declared candidate and instrument source
+  and has 106 objects, 7 reconstruction commands, and 54 inputs;
+  `reconstruct.py` and `verify_sarif.py` run from the archive root.
+
+### Not changed / not claimed
+
+- The Phase 17 comparative corpus remains 1.1.0-bound and is **NOT_REBOUND**.
+  Its 18-case results do not apply to 1.2.0.
+- External trusted time, public transparency, external witnessing, external
+  review, and the full `ci/etp-release-gate.sh` inventory remain `NOT_RUN` for
+  1.2.0. A `NOT_RUN` is not a pass.
+
 ## [Unreleased] - evidence release `etp-evidence-v1`
 
 Additive evidence, formal-model, control and evaluation work over the unchanged

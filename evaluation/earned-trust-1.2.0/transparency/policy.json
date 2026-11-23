@@ -1,0 +1,43 @@
+{
+  "schema": "frf-etp.transparency-policy.v1",
+  "spec": "frf-etp-v1",
+  "policy_id": "frf-local-transparency-live-policy",
+  "trust_profile": "local-test-tlog-tiles",
+  "log": {
+    "origin": "frf.local/etp-transparency-1.2.0",
+    "log_id": "sha256:c443bf59d7a9016ccabd5af15a80192f1ed1e49ef7f7aa40c2f18f3d5960cb8f",
+    "public_key_base64": "fFznHZgp/Ye2stFUYwV0x4JF+EGQXfBiohjkFi6mq+w=",
+    "vkey": "frf.local/etp-transparency-1.2.0+cb6a0b2d+AXxc5x2YKf2HtrLRVGMFdMeCRfhBkF3wYqIY5BYupqvs",
+    "algorithm": "ed25519-note-v1",
+    "supported_log_versions": [
+      "tlog-tiles-v1"
+    ],
+    "supported_checkpoint_versions": [
+      "tlog-checkpoint-v1"
+    ],
+    "external_trust": false
+  },
+  "anti_rollback": {
+    "known_horizons": [
+      {
+        "tree_size": 1,
+        "root_hash": "31a375fd1a2505fbfd2d5f69270a47417e2a188f28731880fad2b25cd86f8fca",
+        "checkpoint_sha256": "afd2b86af350ab9e521425c85acd530cdca43236951b3b251fabda3deef562ce"
+      }
+    ],
+    "persistence": "caller_supplied"
+  },
+  "witness_policy_required": false,
+  "witness_policy_id": "frf-local-witness-model-2026-11-22",
+  "claim_ceiling": "A verified local transparency proof establishes only that the exact entry bytes hash to the declared leaf and that the leaf is included at the declared index in an RFC 6962 Merkle tree whose signed root equals the caller-pinned local log checkpoint, consistent with the caller-supplied known horizon when a consistency proof is present. It does not establish semantic validity, completeness, non-equivocation, public transparency, witness observation, trusted time, independent review, or release authorization. Inclusion is not semantic validity and not completeness. A witness quorum is not a protocol proof.",
+  "non_claims": [
+    "not a public transparency log",
+    "not Rekor v2 or a Sigstore public good instance",
+    "not external trusted time",
+    "not external witnessing",
+    "not global non-equivocation",
+    "not completeness of the log",
+    "not semantic validity of the logged attestation",
+    "not independent review or certification"
+  ]
+}

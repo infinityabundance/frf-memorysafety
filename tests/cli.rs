@@ -445,7 +445,7 @@ fn mir_scan_uses_section_14_statuses_and_typed_not_run() {
 #[test]
 fn etp_integrity_commands_accept_the_committed_receipt() {
     let receipt = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("evaluation/earned-trust/integrity/integrity-receipt.json");
+        .join("evaluation/earned-trust-1.2.0/integrity/integrity-receipt.json");
     let receipt = receipt.to_str().unwrap();
     assert_eq!(run(&["etp", "integrity", "verify", receipt, "--json"]), 0);
     assert_eq!(run(&["etp", "reproducibility", receipt, "--json"]), 0);

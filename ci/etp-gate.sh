@@ -41,13 +41,13 @@ if timeout 1800 docker run --rm \
         rm -rf target/etp-campaign-run
         mkdir -p target/etp-campaign-run
         ./target/debug/frf-memorysafety etp campaign run \
-            --protocol evaluation/earned-trust/protocol.json \
+            --protocol evaluation/earned-trust-1.2.0/protocol.json \
             --out target/etp-campaign-run
         ./target/debug/frf-memorysafety etp campaign verify \
             target/etp-campaign-run/MANIFEST.json --json \
             > target/etp-campaign-run/report.json
         ./target/debug/frf-memorysafety etp campaign verify \
-            evaluation/earned-trust/MANIFEST.json --json \
+            evaluation/earned-trust-1.2.0/MANIFEST.json --json \
             > target/etp-committed-report.json
         ./target/debug/frf-memorysafety etp sarif export \
             target/etp-campaign-run/MANIFEST.json \
@@ -56,12 +56,12 @@ if timeout 1800 docker run --rm \
             target/etp-campaign-run/campaign.sarif --json \
             > target/etp-campaign-run/sarif-report.json
         ./target/debug/frf-memorysafety etp sarif verify \
-            evaluation/earned-trust/campaign.sarif --json \
+            evaluation/earned-trust-1.2.0/campaign.sarif --json \
             > target/etp-committed-sarif-report.json
         ./target/debug/frf-memorysafety etp campaign verify \
-            evaluation/earned-trust/MANIFEST.json
+            evaluation/earned-trust-1.2.0/MANIFEST.json
         ./target/debug/frf-memorysafety etp sarif verify \
-            evaluation/earned-trust/campaign.sarif
+            evaluation/earned-trust-1.2.0/campaign.sarif
     ' >"$LOGS/etp-campaign.log" 2>&1
 then
     cat "$LOGS/etp-campaign.log"
@@ -84,7 +84,7 @@ if timeout 600 docker run --rm \
     --security-opt no-new-privileges \
     --network=none \
     -v "$ROOT":/src:ro -w /src "$PYTHON_IMAGE" \
-    python3 evaluation/earned-trust/reconstruct.py >"$LOGS/etp-reconstruction.log" 2>&1
+    python3 evaluation/earned-trust-1.2.0/reconstruct.py >"$LOGS/etp-reconstruction.log" 2>&1
 then
     cat "$LOGS/etp-reconstruction.log"
     echo "PASS etp-reconstruction"

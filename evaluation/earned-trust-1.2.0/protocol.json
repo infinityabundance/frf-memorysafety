@@ -1,0 +1,505 @@
+{
+  "acceptance_policy": {
+    "expected_case_count": 13,
+    "expected_finding_count": 9,
+    "expected_pass_count": 13,
+    "expected_raw_evidence_count": 25,
+    "expected_receipt_count": 13,
+    "not_run_is_pass": false,
+    "require_raw_evidence": true,
+    "require_replay_identical": true,
+    "rule": "Closure is accepted only when every declared case has exactly one receipt, every observed terminal outcome equals its pre-registered outcome, every mandatory-resolution case resolves, no case is missing, duplicated, unexpected, or truncated, every retained finding is present without unauthorized suppression, and every receipt's raw evidence digest matches."
+  },
+  "assumptions": [
+    "The checked-in fixture registry, native harness, and court verifier are the instrument; the candidate and instrument trees overlap and that overlap is declared.",
+    "The harness executes in the declared container environment with the declared compilers and resource caps.",
+    "Candidate and instrument file digests bind the exact bytes used for the run.",
+    "A digest is not authentication; the opening manifest is frozen only against accidental or silent change.",
+    "Replay equality is a transcript-byte condition within the declared environment, not a proof of determinism beyond it."
+  ],
+  "campaign_id": "frf-etp-native-fixtures-2026-11-22",
+  "candidate": {
+    "files": [
+      {
+        "path": "Cargo.toml",
+        "sha256": "e9c233865c3b1e381dcf02812f15212464ffe0f71714b1ba75dd34c0eda2de4c"
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "sha256": "dc8a9e7668c882190e58da244ac78e86d0d9875140a6249849f49b74d7382a76"
+      },
+      {
+        "path": "src/court.rs",
+        "sha256": "127f07dfc7edcea34eb0f90137f9893c912b95bd34211fcb5593b715c57a960e"
+      },
+      {
+        "path": "src/native.rs",
+        "sha256": "8c148768afbda5fa761ffb5a73030f9527eb0fba90fd36555780151514bf5903"
+      },
+      {
+        "path": "src/identity.rs",
+        "sha256": "24009a1f2415244d660b5be52fb868bd18b6d186fbfbc8fcb513faa242e4e6bd"
+      },
+      {
+        "path": "tests/native/fixtures/legal_transfer_free.c",
+        "sha256": "ba861f6924b6d573b48001c9aabfd34712f110320887c12d766d180b76569b65"
+      },
+      {
+        "path": "tests/native/fixtures/legal_transfer_free.rs",
+        "sha256": "2fa78812ca56223ef689f15b99bef0a050148a92846b97f9d7d51d4f97d8562d"
+      },
+      {
+        "path": "tests/native/fixtures/use_after_free.c",
+        "sha256": "6eeda8ee93c3718e5f8281298f949c617e515bcf41c169531fad14a4aae0cfc1"
+      },
+      {
+        "path": "tests/native/fixtures/use_after_free.rs",
+        "sha256": "a0eea22bbe69b793fea380ed675ef93540f83d51d1c8adfd0d3d0df11037e2f2"
+      },
+      {
+        "path": "tests/native/fixtures/mutable_alias.c",
+        "sha256": "1c76395910a8333953c2290fdfd148a57988cf4236aafce8ac5c5ff68455d953"
+      },
+      {
+        "path": "tests/native/fixtures/stale_generation.c",
+        "sha256": "2d13a1edc7d0aaefa0f073b1e8cbf1f1a282f9256874f3220c3fcededf407984"
+      },
+      {
+        "path": "tests/native/fixtures/sync_callback.c",
+        "sha256": "892b9e5974748e689ce45417b65ad27d38ae2bc54f3342edb376312105224a0d"
+      },
+      {
+        "path": "tests/native/fixtures/deferred_callback.c",
+        "sha256": "dd6125e120d632175f4e394f1ce6944632562977888dde4f4c392e9c6314ccdb"
+      },
+      {
+        "path": "tests/native/fixtures/data_race.c",
+        "sha256": "ebb55a77d38c84501a9f756fa5430c494d213a9319565cc6f8d7c42aba0e5aef"
+      },
+      {
+        "path": "tests/native/fixtures/atomic_control.c",
+        "sha256": "d7a07ba4452994f2b06adb716ed32eecbae4b4ff6e854f4bcd3f21345c3ca444"
+      },
+      {
+        "path": "tests/native/fixtures/skipped_event.c",
+        "sha256": "5e689e2eb2f6c6430b2b997d53fccdbb276fe16be7d6e289f72688546026b2e2"
+      },
+      {
+        "path": "tests/native/fixtures/nondeterministic.c",
+        "sha256": "18c906f721ddb3e36407e855659d6d99d0878395f62e2b155388bea495cba71b"
+      },
+      {
+        "path": "tests/native/fixtures/oversized_output.c",
+        "sha256": "e466a69883beb2f5a268e381493ffcabc352c6ac49fd83d58da019669bf0699a"
+      }
+    ],
+    "id": "frf-memorysafety-native-fixtures",
+    "tree_sha256": "79e72160a6a1c169093d5e7abb39f426a9f189d07aef7ddc472b3856911bcbb7",
+    "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1",
+    "version": "1.2.0"
+  },
+  "claim_ceiling": "Campaign closure is bookkeeping over a finite, pre-registered case population. It establishes that every declared case has one retained typed observation and that the declared counts were derived from the complete population. It does not establish memory safety, functional correctness, detector sensitivity, proof soundness, population-level recall, reviewer independence, authentication, transparency completeness, or deployment security. A typed NOT_RUN is not a pass. A digest is not authentication. A SARIF projection is not a certification and a code-scanning view is not authoritative.",
+  "claims": [
+    {
+      "id": "C1",
+      "statement": "Every one of the 13 declared cases produced its pre-registered terminal outcome; all 13 receipts pass; no mandatory-resolution case is unresolved."
+    },
+    {
+      "id": "C2",
+      "statement": "Every receipt is backed by its raw transcript and retained court report, and every raw evidence digest matches the receipt and closure manifest."
+    },
+    {
+      "id": "C3",
+      "statement": "Closure counts are derived from the complete declared population; no case is missing, duplicated, unexpected, truncated, or suppressed."
+    }
+  ],
+  "completion_expectations": {
+    "acceptance": "accepted",
+    "case_count": 13,
+    "closure_status": "closed",
+    "raw_evidence_count": 25,
+    "receipt_count": 13
+  },
+  "frozen": "2026-11-22",
+  "instrument": {
+    "court": "frf-memorysafety.court-verification.v1",
+    "crate_version": "1.2.0",
+    "files": [
+      {
+        "path": "Cargo.toml",
+        "sha256": "e9c233865c3b1e381dcf02812f15212464ffe0f71714b1ba75dd34c0eda2de4c"
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "sha256": "dc8a9e7668c882190e58da244ac78e86d0d9875140a6249849f49b74d7382a76"
+      },
+      {
+        "path": "src/cli.rs",
+        "sha256": "0a86f01a00163915257e73689a7fbdd6e8dfbbedba0d4e3c32f3d2ccb4d6b02b"
+      },
+      {
+        "path": "src/court.rs",
+        "sha256": "127f07dfc7edcea34eb0f90137f9893c912b95bd34211fcb5593b715c57a960e"
+      },
+      {
+        "path": "src/etp_archive.rs",
+        "sha256": "1c42393cf75430e7f3c52a9a160ec5262b16019982bcd225ad9d4f80995017fc"
+      },
+      {
+        "path": "src/etp_auth.rs",
+        "sha256": "8c3a3abb4cfdec99a028f1cfacb6fd3e361a00d283c3132a02dd389532ff5a24"
+      },
+      {
+        "path": "src/etp_campaign.rs",
+        "sha256": "bbe27563cd61371312031c24ffeb150df0539e8f6c7d5c1e8d5abdb5eb521f50"
+      },
+      {
+        "path": "src/etp_revocation.rs",
+        "sha256": "6921c178c1f3c0f46d67b675c4026c7698a04ba97a569c3aec15212ef77f42cb"
+      },
+      {
+        "path": "src/etp_time.rs",
+        "sha256": "9c73f700b92f35beaa696d09c49f818aeb2ab4567497d1d9be4cdd82cc23a975"
+      },
+      {
+        "path": "src/etp_transparency.rs",
+        "sha256": "6a2b0a65dd92e95c261f92969a12bc3f855072db4facef567531d89ec0a92fa2"
+      },
+      {
+        "path": "src/etp_witness.rs",
+        "sha256": "630eda4ac8576f089e9cb10cdf2fa7867adc6b5b233394268aede1e7fe20e0da"
+      },
+      {
+        "path": "src/identity.rs",
+        "sha256": "24009a1f2415244d660b5be52fb868bd18b6d186fbfbc8fcb513faa242e4e6bd"
+      },
+      {
+        "path": "src/integrity.rs",
+        "sha256": "d00ea9e4c7fd0e49f92c85145bc2046c5cb106d45598bc5719d023dece2b042e"
+      },
+      {
+        "path": "src/lib.rs",
+        "sha256": "a92e37d37a9622fe2019aef6a66f48bc99075c6a3b8932aab4c415df24f27837"
+      },
+      {
+        "path": "src/main.rs",
+        "sha256": "880b122fdedfa82f62af794b62075f3cbf3d56a0765b1ba6465d747520e7beec"
+      },
+      {
+        "path": "src/native.rs",
+        "sha256": "8c148768afbda5fa761ffb5a73030f9527eb0fba90fd36555780151514bf5903"
+      },
+      {
+        "path": "src/sarif.rs",
+        "sha256": "8f3b45abf3f40b74ffb0e1477796ea4917361a6d82a77aace4f28115fb1a3301"
+      }
+    ],
+    "harness": "frf-native-fixture-harness",
+    "id": "frf-native-court-instrument-v1",
+    "required_tools": [
+      "cc",
+      "rustc",
+      "prlimit",
+      "ld"
+    ],
+    "tree_sha256": "832be8cdb11fe65a9e602832569942e7e81f15a8755188752e11ee96762bdfd0",
+    "tree_sha256_algorithm": "sha256-sorted-path-nul-digest-lf-v1"
+  },
+  "mutation_controls": [
+    {
+      "description": "Delete a receipt for a case whose expected observation is a retained violation.",
+      "expected": "refused as missing_receipt and closure blocked",
+      "id": "M1"
+    },
+    {
+      "description": "Remove a receipt and its closure reference while leaving the declared population intact.",
+      "expected": "refused as truncated_population or missing_receipt",
+      "id": "M2"
+    },
+    {
+      "description": "Duplicate a receipt identity.",
+      "expected": "refused as duplicate_receipt",
+      "id": "M3"
+    },
+    {
+      "description": "Change a closure summary count.",
+      "expected": "refused as inconsistent_count",
+      "id": "M4"
+    },
+    {
+      "description": "Declare a suppression without justification, scope, owner, expiry, or invalidation.",
+      "expected": "refused as unauthorized_suppression; a valid suppression remains a finding",
+      "id": "M5"
+    },
+    {
+      "description": "Strip a required observation, adjudication, or evidence field from a receipt.",
+      "expected": "refused at parse time",
+      "id": "M6"
+    },
+    {
+      "description": "Replace a SARIF artifact location with an invented fixture path.",
+      "expected": "refused as fabricated_location",
+      "id": "M7"
+    },
+    {
+      "description": "Substitute a different candidate identity in a receipt.",
+      "expected": "refused as wrong_candidate",
+      "id": "M8"
+    },
+    {
+      "description": "Delete a raw transcript or court report named by a receipt.",
+      "expected": "refused as missing_raw_evidence",
+      "id": "M9"
+    }
+  ],
+  "obligations": [
+    {
+      "blocking": true,
+      "id": "O1",
+      "statement": "Record each declared native fixture through the closed harness under the declared resource envelope."
+    },
+    {
+      "blocking": true,
+      "id": "O2",
+      "statement": "Verify each recorded transcript with the court and retain the raw transcript and court report bytes."
+    },
+    {
+      "blocking": true,
+      "id": "O3",
+      "statement": "Retain every court finding without suppression, including observed violations and incomplete transcripts."
+    },
+    {
+      "blocking": true,
+      "id": "O4",
+      "statement": "Declare and reconcile the complete case population; no case may be missing, duplicated, unexpected, or truncated."
+    },
+    {
+      "blocking": true,
+      "id": "O5",
+      "statement": "Retain unresolved and NOT_RUN outcomes; neither is a pass and neither is silently converted into a clean result."
+    }
+  ],
+  "permitted_exclusions": [],
+  "population": [
+    {
+      "category": "positive_control",
+      "expected_outcome": "verified_compatible_within_transcript",
+      "fixture": "tests/native/fixtures/legal_transfer_free.c",
+      "id": "legal-transfer-free-c",
+      "mandatory_resolution": true,
+      "obligations": [
+        "O1",
+        "O2",
+        "O4"
+      ],
+      "requirement": "R1"
+    },
+    {
+      "category": "positive_control",
+      "expected_outcome": "verified_compatible_within_transcript",
+      "fixture": "tests/native/fixtures/legal_transfer_free.rs",
+      "id": "legal-transfer-free-rust",
+      "mandatory_resolution": true,
+      "obligations": [
+        "O1",
+        "O2",
+        "O4"
+      ],
+      "requirement": "R1"
+    },
+    {
+      "category": "positive_control",
+      "expected_outcome": "verified_compatible_within_transcript",
+      "fixture": "tests/native/fixtures/sync_callback.c",
+      "id": "sync-callback-c",
+      "mandatory_resolution": true,
+      "obligations": [
+        "O1",
+        "O2",
+        "O4"
+      ],
+      "requirement": "R1"
+    },
+    {
+      "category": "positive_control",
+      "expected_outcome": "verified_compatible_within_transcript",
+      "fixture": "tests/native/fixtures/atomic_control.c",
+      "id": "atomic-control-c",
+      "mandatory_resolution": true,
+      "obligations": [
+        "O1",
+        "O2",
+        "O4"
+      ],
+      "requirement": "R1"
+    },
+    {
+      "category": "violation_control",
+      "expected_outcome": "observed_violation",
+      "fixture": "tests/native/fixtures/use_after_free.c",
+      "id": "use-after-free-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "requirement": "R2"
+    },
+    {
+      "category": "violation_control",
+      "expected_outcome": "observed_violation",
+      "fixture": "tests/native/fixtures/use_after_free.rs",
+      "id": "use-after-free-rust",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "requirement": "R2"
+    },
+    {
+      "category": "violation_control",
+      "expected_outcome": "observed_violation",
+      "fixture": "tests/native/fixtures/mutable_alias.c",
+      "id": "mutable-alias-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "requirement": "R2"
+    },
+    {
+      "category": "violation_control",
+      "expected_outcome": "observed_violation",
+      "fixture": "tests/native/fixtures/stale_generation.c",
+      "id": "stale-generation-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "requirement": "R2"
+    },
+    {
+      "category": "violation_control",
+      "expected_outcome": "observed_violation",
+      "fixture": "tests/native/fixtures/deferred_callback.c",
+      "id": "deferred-callback-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "requirement": "R2"
+    },
+    {
+      "category": "violation_control",
+      "expected_outcome": "observed_violation",
+      "fixture": "tests/native/fixtures/data_race.c",
+      "id": "data-race-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "requirement": "R2"
+    },
+    {
+      "category": "incomplete_control",
+      "expected_outcome": "incomplete_transcript",
+      "fixture": "tests/native/fixtures/skipped_event.c",
+      "id": "skipped-free-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "requirement": "R3"
+    },
+    {
+      "category": "unresolved_control",
+      "expected_outcome": "unresolved",
+      "fixture": "tests/native/fixtures/nondeterministic.c",
+      "id": "nondeterministic-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O4",
+        "O5"
+      ],
+      "requirement": "R4"
+    },
+    {
+      "category": "unresolved_control",
+      "expected_outcome": "unresolved",
+      "fixture": "tests/native/fixtures/oversized_output.c",
+      "id": "oversized-output-c",
+      "mandatory_resolution": false,
+      "obligations": [
+        "O1",
+        "O2",
+        "O4",
+        "O5"
+      ],
+      "requirement": "R4"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "A legal fixture must record and replay an identical canonical transcript and verify cleanly within the transcript scope."
+    },
+    {
+      "id": "R2",
+      "statement": "A violation fixture must produce a definite observed violation rather than a clean verdict."
+    },
+    {
+      "id": "R3",
+      "statement": "An incomplete fixture must retain a missing-required-event finding rather than a clean verdict."
+    },
+    {
+      "id": "R4",
+      "statement": "An unresolved fixture must retain an unresolved observation; unresolved is never mapped to a pass."
+    }
+  ],
+  "resource_limits": {
+    "cpus": 2,
+    "memory_mb": 2048,
+    "nofile": 1024,
+    "oom_score_adj": 500,
+    "pids_limit": 512,
+    "swap_mb": 2048,
+    "timeout_seconds": 1800
+  },
+  "schema": "frf-etp.campaign-protocol.v1",
+  "scope": "One finite, pre-registered native campaign over the closed checked-in FRF-MemorySafety native fixture registry and the court verifier. The campaign is a single execution of 13 declared cases. It is not a population sample, a detector-sensitivity estimate, a memory-safety proof, or a deployment authorization.",
+  "spec": "frf-etp-v1",
+  "threat_model": "Accidental or silent modification of receipts, raw evidence, closure counts, candidate identity, instrument identity, source locations, suppression fields, or terminal outcomes. Excluded: an adversary who can rewrite the opening manifest, the protocol, every receipt, and the verifier together; signature forgery; transparency-log equivocation; toolchain compromise; and any inference from this finite campaign to a population.",
+  "unsupported_features": [
+    "DSSE authenticated envelopes",
+    "in-toto and SLSA attestations",
+    "Sigstore signatures",
+    "Rekor or C2SP transparency inclusion and consistency",
+    "RFC 3161 trusted timestamps",
+    "TUF update metadata",
+    "authority of a GitHub code-scanning view",
+    "population-level detector sensitivity, specificity, or defect recall",
+    "memory-safety, functional-correctness, interoperability, constant-time, or deployment-security conclusions"
+  ]
+}

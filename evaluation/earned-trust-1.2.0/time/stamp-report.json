@@ -1,0 +1,38 @@
+{
+  "schema": "frf-etp.time-stamp.v1",
+  "spec": "frf-etp-v1",
+  "status": "verified",
+  "imprint": "ece999b403e7ce05f94dbe2304a2b86b24afb1a9cd5dc5e1a5f57d22482d735a",
+  "request_sha256": "6bb0cab02f13fef2ff1c6311baede1494798d5b131e73c24aa8dd1c659c9b1ad",
+  "token_sha256": "e29725174b5ba9c839e7ab0f3f573f40817fd8f19bfa205cc7eb855c0d8a2fe8",
+  "gen_time_unix": 1795417198,
+  "gen_time_text": "Nov 23 06:59:58 2026 GMT",
+  "policy_oid": "1.3.6.1.4.1.99999.1",
+  "serial": "02",
+  "tsa_cert_sha256": "cb186b1124c75e26a096170f8060174ad14d9192dd56bf607b6c97ef87dbd324",
+  "trust_domain": "local-test-tsa",
+  "external_trust": false,
+  "provenance": {
+    "program": "/usr/bin/openssl",
+    "openssl_version": "OpenSSL 3.0.15 3 Sep 2024 (Library: OpenSSL 3.0.15 3 Sep 2024)",
+    "argv": [
+      "/usr/bin/openssl",
+      "ts",
+      "-reply",
+      "-config",
+      "/src/target/time-1.2.0/tsa/tsa.cnf",
+      "-queryfile",
+      "/src/target/etp-time-work/time-stamp-20-1795417198166481403/request.tsq",
+      "-token_out",
+      "-out",
+      "/src/target/etp-time-work/time-stamp-20-1795417198166481403/token.tsr"
+    ],
+    "work_directory": "/src/target/etp-time-work/time-stamp-20-1795417198166481403 (removed)",
+    "duration_ms": 10,
+    "return_code": 0,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "ca6aff038352475f2897a362000f393e254901341cb6a4e260675df6340f4daa"
+  },
+  "refusals": [],
+  "claim_ceiling": "A verified RFC 3161 token establishes only that a timestamp authority whose certificate chains to the caller-supplied pinned certificate signed a token with the declared message imprint and generation time. It does not establish source creation, experimental execution, evidence production, statement authentication, transparency inclusion, witness observation, release authorization, or correction time. A later timestamp is not proof of an earlier execution date, and a local test TSA is not external trusted time."
+}

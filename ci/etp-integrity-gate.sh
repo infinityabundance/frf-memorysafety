@@ -9,7 +9,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 IMAGE="${IMAGE:-rust:1.85.0-slim}"
-OUT="$ROOT/evaluation/earned-trust/integrity"
+OUT="$ROOT/evaluation/earned-trust-1.2.0/integrity"
 mkdir -p "$OUT"
 
 timeout 1800 docker run --rm \
@@ -26,5 +26,6 @@ timeout 1800 docker run --rm \
     -v "$OUT":/out \
     -v frf-cargo:/cargo \
     -e CARGO_HOME=/cargo \
+    -e CARGO_BUILD_JOBS=1 \
     -w /src \
     "$IMAGE" /src/ci/etp-integrity-gate-inner.sh

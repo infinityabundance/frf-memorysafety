@@ -2,6 +2,13 @@
 
 **Subphase:** Phase 10.4a (trusted time, corrections/revocation, durable archive);
 refreshed in Phase 10.4b (local transparency profile).
+
+> **1.2.0 note.** This document describes the historical 1.1.0 archive under
+> `evaluation/earned-trust/archive/` (76 objects). The 1.2.0 migration archive
+> under `evaluation/earned-trust-1.2.0/archive/` has 106 objects: it also
+> preserves the declared candidate/instrument source, and `reconstruct.py` and
+> `verify_sarif.py` run from its root. Its exact digest and gate counts are in
+> `evaluation/earned-trust-1.2.0/MIGRATION-STATUS.md`.
 **Protocol identifier:** `frf-etp-v1`.
 **Implementation:** `src/etp_archive.rs`, `src/cli.rs`, `tests/etp_archive.rs`,
 `evaluation/earned-trust/make_archive.py`,

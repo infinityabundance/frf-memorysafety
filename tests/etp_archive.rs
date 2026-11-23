@@ -133,28 +133,28 @@ impl Builder {
 fn populate(builder: &mut Builder) {
     builder.add_copy(
         "objects/closure.json",
-        &repo().join("evaluation/earned-trust/MANIFEST.json"),
+        &repo().join("evaluation/earned-trust-1.2.0/MANIFEST.json"),
         "closure_manifest",
         "frf-etp.campaign-closure.v1",
         true,
     );
     builder.add_copy(
         "objects/receipt.json",
-        &repo().join("evaluation/earned-trust/receipts/atomic-control-c.json"),
+        &repo().join("evaluation/earned-trust-1.2.0/receipts/atomic-control-c.json"),
         "receipt",
         "frf-etp.campaign-receipt.v1",
         true,
     );
     builder.add_copy(
         "objects/campaign.sarif",
-        &repo().join("evaluation/earned-trust/campaign.sarif"),
+        &repo().join("evaluation/earned-trust-1.2.0/campaign.sarif"),
         "sarif",
         "sarif-2.1.0",
         true,
     );
     builder.add_copy(
         "objects/attestation.envelope.json",
-        &repo().join("evaluation/earned-trust/attestations/campaign-closure.envelope.json"),
+        &repo().join("evaluation/earned-trust-1.2.0/attestations/campaign-closure.envelope.json"),
         "attestation",
         "frf-etp.dsse-envelope.v1",
         true,
@@ -173,7 +173,7 @@ fn populate(builder: &mut Builder) {
     );
     builder.add_copy(
         "objects/trust-policy.json",
-        &repo().join("evaluation/earned-trust/trust-policy.json"),
+        &repo().join("evaluation/earned-trust-1.2.0/trust-policy.json"),
         "policy",
         "frf-etp.trust-policy.v1",
         true,
